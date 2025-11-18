@@ -1,0 +1,157 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Dashboard - ReSymf CMS Admin{% endblock %}
+
+{% block body %}
+{# Welcome Section #}
+<div class="dashboard-welcome">
+    <h1>Welcome back, {{ user.username }}!</h1>
+    <p class="subtitle">{{ 'now'|date('l, F j, Y') }} • Last login: {{ user.createdAt|date('M j, Y') }}</p>
+</div>
+
+{# Stats Grid #}
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i class="bi bi-people"></i>
+        </div>
+        <div class="stat-value">-</div>
+        <div class="stat-label">Total Users</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i class="bi bi-file-text"></i>
+        </div>
+        <div class="stat-value">-</div>
+        <div class="stat-label">Published Pages</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i class="bi bi-tags"></i>
+        </div>
+        <div class="stat-value">-</div>
+        <div class="stat-label">Categories</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i class="bi bi-activity"></i>
+        </div>
+        <div class="stat-value">-</div>
+        <div class="stat-label">Recent Activity</div>
+    </div>
+</div>
+
+{# Quick Actions #}
+<div class="quick-actions">
+    <h2>Quick Actions</h2>
+    <div class="quick-actions-grid">
+        <a href="{{ path('admin_page_new') }}" class="quick-action-card primary">
+            <i class="bi bi-plus-circle"></i>
+            Create Page
+        </a>
+        {% if is_granted('ROLE_ADMIN') %}
+        <a href="{{ path('admin_user_new') }}" class="quick-action-card">
+            <i class="bi bi-person-plus"></i>
+            Add User
+        </a>
+        {% endif %}
+        <a href="{{ path('cms_homepage') }}" target="_blank" class="quick-action-card">
+            <i class="bi bi-eye"></i>
+            View Site
+        </a>
+    </div>
+</div>
+
+{# User Information Card #}
+<div class="card">
+    <div class="card-header">
+        <h3>Your Account</h3>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <strong class="text-muted small">Username:</strong>
+                <div>{{ user.username }}</div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <strong class="text-muted small">Email:</strong>
+                <div>{{ user.email }}</div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <strong class="text-muted small">Roles:</strong>
+                <div>
+                    {% for role in user.roles %}
+                        <span class="badge badge-primary">{{ role }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <strong class="text-muted small">Status:</strong>
+                <div>
+                    {% if user.isActive %}
+                        <span class="badge badge-success">Active</span>
+                    {% else %}
+                        <span class="badge badge-danger">Inactive</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <strong class="text-muted small">Member Since:</strong>
+                <div>{{ user.createdAt|date('F j, Y') }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# System Information Card #}
+<div class="card">
+    <div class="card-header">
+        <h3>System Information</h3>
+    </div>
+    <div class="card-body">
+        <table class="table table-sm">
+            <tbody>
+                <tr>
+                    <td class="fw-semibold">Symfony Version:</td>
+                    <td>{{ constant('Symfony\\Component\\HttpKernel\\Kernel::VERSION') }}</td>
+                </tr>
+                <tr>
+                    <td class="fw-semibold">PHP Version:</td>
+                    <td>{{ constant('PHP_VERSION') }}</td>
+                </tr>
+                <tr>
+                    <td class="fw-semibold">Environment:</td>
+                    <td>
+                        <span class="badge {{ app.environment == 'prod' ? 'badge-success' : 'badge-warning' }}">
+                            {{ app.environment }}
+                        </span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="fw-semibold">Debug Mode:</td>
+                    <td>
+                        {% if app.debug %}
+                            <span class="badge badge-warning">Enabled</span>
+                        {% else %}
+                            <span class="badge badge-success">Disabled</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{# Migration Status (Optional - can be removed after migration complete) #}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i>
+    <div>
+        <strong>Migration Status:</strong> Phase 5 - Frontend Modernization Complete
+        <br>
+        <small>Next: Continue entity migration and feature development</small>
+    </div>
+</div>
+{% endblock %}
