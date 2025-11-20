@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
 
     {# Custom Admin Styles #}
-    <link rel="stylesheet" href="{{ asset('styles/admin.css') }}">
+    {{ vite_entry_link_tags('admin') }}
 
     {% block stylesheets %}{% endblock %}
 </head>
@@ -135,7 +135,7 @@
     {% endblock %}
 
     {# Admin JavaScript Enhancements #}
-    <script src="{{ asset('admin.js') }}" type="module"></script>
+    {{ vite_entry_script_tags('admin') }}
 
     {% block javascripts %}{% endblock %}
 </body>

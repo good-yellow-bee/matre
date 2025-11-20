@@ -22,6 +22,10 @@
 # Tooling / local artifacts
 .php-cs-fixer.cache
 /build/
+/public/build/
+/node_modules/
+/.vite/
+npm-debug.log*
 composer-audit.json
 outdated-deps.json
 security-report.json
@@ -30,3 +34,5 @@ security-report.json
 .idea*
 nbproject*
 composer.phar
+
+.claude

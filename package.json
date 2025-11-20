@@ -1,0 +1,20 @@
+{
+  "name": "resymf-cms",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Frontend tooling for ReSymf CMS (Vite + Vue islands)",
+  "scripts": {
+    "dev": "vite",
+    "dev:host": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@hotwired/stimulus": "^3.2.2",
+    "vue": "^3.4.21"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.1.2",
+    "vite": "^5.4.2"
+  }
+}

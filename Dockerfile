@@ -1,5 +1,14 @@
 # Dockerfile for ReSymf-CMS (Symfony 7)
 
+# --- Frontend Build Stage ---
+FROM node:20-alpine AS frontend_build
+WORKDIR /app
+# Install frontend dependencies and build assets
+COPY package*.json vite.config.mjs ./
+COPY assets ./assets
+RUN npm install
+RUN npm run build
+
 # --- Base Stage ---
 # Use the official PHP 8.3 FPM image as a base.
 # This stage installs PHP extensions and Composer.
@@ -77,6 +86,9 @@ RUN mkdir -p var/cache var/log \
 
 # Install production dependencies
 RUN composer install --no-dev --no-scripts --optimize-autoloader
+
+# Copy built frontend assets from the frontend build stage
+COPY --from=frontend_build /app/public/build /app/public/build
 
 # Run composer scripts (e.g., for cache warming)
 RUN APP_ENV=$APP_ENV composer run-script post-install-cmd

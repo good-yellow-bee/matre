@@ -44,6 +44,13 @@
     </div>
 </div>
 
+{# Vue Demo Widget (Vite island) #}
+<div class="row mb-4">
+    <div class="col-lg-6">
+        <div data-vue-island="dashboard-hello" data-username="{{ user.username }}"></div>
+    </div>
+</div>
+
 {# Quick Actions #}
 <div class="quick-actions">
     <h2>Quick Actions</h2>
@@ -154,4 +161,9 @@
         <small>Next: Continue entity migration and feature development</small>
     </div>
 </div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {{ vite_entry_script_tags('admin_vue') }}
 {% endblock %}
