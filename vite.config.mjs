@@ -21,6 +21,7 @@ export default defineConfig({
         cms: './assets/cms.js',
         admin_vue: './assets/vue/admin-dashboard-app.js',
         cms_vue: './assets/vue/cms-app.js',
+        'category-grid-app': './assets/vue/category-grid-app.js',
       },
     },
   },
