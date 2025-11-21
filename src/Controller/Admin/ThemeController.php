@@ -155,4 +155,68 @@ class ThemeController extends AbstractController
 
         return $this->redirectToRoute('admin_theme_index');
     }
+
+    /**
+     * Toggle theme active status.
+     */
+    #[Route('/{id}/toggle-active', name: 'admin_theme_toggle_active', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function toggleActive(Request $request, Theme $theme): Response
+    {
+        if ($this->isCsrfTokenValid('toggle', $request->request->get('_token'))) {
+            $theme->setIsActive(!$theme->getIsActive());
+            $this->entityManager->flush();
+
+            if ($request->isXmlHttpRequest()) {
+                return $this->json([
+                    'success' => true,
+                    'isActive' => $theme->getIsActive(),
+                ]);
+            }
+
+            $this->addFlash('success', sprintf('Theme "%s" status updated.', $theme->getName()));
+        } else {
+            if ($request->isXmlHttpRequest()) {
+                return $this->json(['success' => false, 'error' => 'Invalid CSRF token'], 400);
+            }
+            $this->addFlash('error', 'Invalid CSRF token.');
+        }
+
+        return $this->redirectToRoute('admin_theme_index');
+    }
+
+    /**
+     * Toggle theme default status.
+     */
+    #[Route('/{id}/toggle-default', name: 'admin_theme_toggle_default', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function toggleDefault(Request $request, Theme $theme): Response
+    {
+        if ($this->isCsrfTokenValid('toggle', $request->request->get('_token'))) {
+            if (!$theme->getIsDefault()) {
+                $this->themeRepository->unsetAllDefaults();
+                $theme->setIsDefault(true);
+                $this->entityManager->flush();
+
+                if ($request->isXmlHttpRequest()) {
+                    return $this->json([
+                        'success' => true,
+                        'isDefault' => true,
+                    ]);
+                }
+
+                $this->addFlash('success', sprintf('Theme "%s" set as default.', $theme->getName()));
+            } else {
+                if ($request->isXmlHttpRequest()) {
+                    return $this->json(['success' => false, 'error' => 'Cannot unset default theme'], 400);
+                }
+                $this->addFlash('error', 'Cannot unset default theme. Set another theme as default first.');
+            }
+        } else {
+            if ($request->isXmlHttpRequest()) {
+                return $this->json(['success' => false, 'error' => 'Invalid CSRF token'], 400);
+            }
+            $this->addFlash('error', 'Invalid CSRF token.');
+        }
+
+        return $this->redirectToRoute('admin_theme_index');
+    }
 }
