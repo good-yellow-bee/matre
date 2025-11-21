@@ -34,12 +34,12 @@ class UserApiController extends AbstractController
         }
 
         $qb = $users->createQueryBuilder('u')
-            ->orderBy('u.'.$sortField, $sortOrder);
+            ->orderBy('u.' . $sortField, $sortOrder);
 
         if ('' !== $search) {
             $qb
                 ->andWhere('LOWER(u.username) LIKE :q OR LOWER(u.email) LIKE :q')
-                ->setParameter('q', '%'.mb_strtolower($search).'%');
+                ->setParameter('q', '%' . mb_strtolower($search) . '%');
         }
 
         $qb

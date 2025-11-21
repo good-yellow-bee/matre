@@ -25,50 +25,6 @@ class PageVoterSimplifiedTest extends TestCase
         $this->voter = new PageVoter();
     }
 
-    private function createPublishedPage(): Page
-    {
-        $page = new Page();
-        $page->setTitle('Test Page');
-        $page->setSlug('test-page');
-        $page->setContent('Content');
-        $page->setIsPublished(true);
-
-        $author = new User();
-        $author->setUsername('author');
-        $author->setEmail('author@test.com');
-        $page->setAuthor($author);
-
-        return $page;
-    }
-
-    private function createDraftPage(User $author): Page
-    {
-        $page = new Page();
-        $page->setTitle('Draft Page');
-        $page->setSlug('draft-page');
-        $page->setContent('Draft content');
-        $page->setIsPublished(false);
-        $page->setAuthor($author);
-
-        return $page;
-    }
-
-    private function createUser(int $id, array $roles = ['ROLE_USER']): User
-    {
-        $user = new User();
-        $user->setUsername('user' . $id);
-        $user->setEmail("user{$id}@test.com");
-        $user->setRoles($roles);
-
-        // Set ID using reflection
-        $reflection = new \ReflectionClass($user);
-        $property = $reflection->getProperty('id');
-        $property->setAccessible(true);
-        $property->setValue($user, $id);
-
-        return $user;
-    }
-
     // Test VIEW permission
 
     public function testPublicCanViewPublishedPage(): void
@@ -283,5 +239,49 @@ class PageVoterSimplifiedTest extends TestCase
         $result = $this->voter->vote($token, $page, [PageVoter::PUBLISH]);
 
         $this->assertEquals(VoterInterface::ACCESS_DENIED, $result);
+    }
+
+    private function createPublishedPage(): Page
+    {
+        $page = new Page();
+        $page->setTitle('Test Page');
+        $page->setSlug('test-page');
+        $page->setContent('Content');
+        $page->setIsPublished(true);
+
+        $author = new User();
+        $author->setUsername('author');
+        $author->setEmail('author@test.com');
+        $page->setAuthor($author);
+
+        return $page;
+    }
+
+    private function createDraftPage(User $author): Page
+    {
+        $page = new Page();
+        $page->setTitle('Draft Page');
+        $page->setSlug('draft-page');
+        $page->setContent('Draft content');
+        $page->setIsPublished(false);
+        $page->setAuthor($author);
+
+        return $page;
+    }
+
+    private function createUser(int $id, array $roles = ['ROLE_USER']): User
+    {
+        $user = new User();
+        $user->setUsername('user' . $id);
+        $user->setEmail("user{$id}@test.com");
+        $user->setRoles($roles);
+
+        // Set ID using reflection
+        $reflection = new \ReflectionClass($user);
+        $property = $reflection->getProperty('id');
+        $property->setAccessible(true);
+        $property->setValue($user, $id);
+
+        return $user;
     }
 }

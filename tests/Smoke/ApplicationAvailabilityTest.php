@@ -24,7 +24,7 @@ class ApplicationAvailabilityTest extends WebTestCase
         $this->assertEquals($expectedCode, $client->getResponse()->getStatusCode());
     }
 
-    public function urlProvider(): \Generator
+    public static function urlProvider(): \Generator
     {
         // Public pages (should be accessible)
         yield 'homepage' => ['/', 200];
