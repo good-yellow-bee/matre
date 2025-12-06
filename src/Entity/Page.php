@@ -21,6 +21,10 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ORM\Entity(repositoryClass: PageRepository::class)]
 #[ORM\Table(name: 'resymf_pages')]
 #[ORM\UniqueConstraint(name: 'UNIQ_PAGE_SLUG', columns: ['slug'])]
+#[ORM\Index(name: 'IDX_PAGE_PUBLISHED_CREATED', columns: ['is_published', 'created_at'])]
+#[ORM\Index(name: 'IDX_PAGE_VIEW_COUNT', columns: ['view_count'])]
+#[ORM\Index(name: 'IDX_PAGE_DISPLAY_ORDER', columns: ['display_order'])]
+#[ORM\Index(name: 'IDX_PAGE_HOMEPAGE', columns: ['is_homepage'])]
 #[UniqueEntity(fields: ['slug'], message: 'This slug is already used by another page.')]
 #[ORM\HasLifecycleCallbacks]
 class Page
@@ -345,13 +349,14 @@ class Page
 
     /**
      * Get excerpt from content (first N characters).
-     * PHP 8.5: Using pipe operator for cleaner string transformation.
      */
     public function getExcerpt(int $length = 200): string
     {
-        $text = $this->content |> strip_tags($$);
+        $text = strip_tags($this->content);
+        if (mb_strlen($text) <= $length) {
+            return $text;
+        }
 
-        return mb_strlen($text) <= $length
-            ? $text
-            : $text |> mb_substr($$, 0, $length) |> $$ . '...';
+        return mb_substr($text, 0, $length) . '...';
+    }
 }
