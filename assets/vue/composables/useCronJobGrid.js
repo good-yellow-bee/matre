@@ -1,8 +1,8 @@
 import { ref, computed } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 
-export function useThemeGrid(apiUrl, csrfToken) {
-  const themes = ref([]);
+export function useCronJobGrid(apiUrl, csrfToken) {
+  const jobs = ref([]);
   const loading = ref(false);
   const error = ref(null);
   const searchQuery = ref('');
@@ -14,7 +14,7 @@ export function useThemeGrid(apiUrl, csrfToken) {
 
   const totalPages = computed(() => Math.ceil(total.value / perPage.value));
 
-  const fetchThemes = async () => {
+  const fetchJobs = async () => {
     loading.value = true;
     error.value = null;
 
@@ -28,21 +28,21 @@ export function useThemeGrid(apiUrl, csrfToken) {
       });
 
       const response = await fetch(`${apiUrl}?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch themes');
+      if (!response.ok) throw new Error('Failed to fetch cron jobs');
 
       const data = await response.json();
-      themes.value = data.data;
+      jobs.value = data.data;
       total.value = data.total;
       currentPage.value = data.page;
     } catch (err) {
       error.value = err.message;
-      console.error('Error fetching themes:', err);
+      console.error('Error fetching cron jobs:', err);
     } finally {
       loading.value = false;
     }
   };
 
-  const debouncedFetch = useDebounceFn(fetchThemes, 300);
+  const debouncedFetch = useDebounceFn(fetchJobs, 300);
 
   const search = (query) => {
     searchQuery.value = query;
@@ -58,22 +58,22 @@ export function useThemeGrid(apiUrl, csrfToken) {
       sortOrder.value = 'asc';
     }
     currentPage.value = 1;
-    fetchThemes();
+    fetchJobs();
   };
 
   const goToPage = (page) => {
     if (page >= 1 && page <= totalPages.value) {
       currentPage.value = page;
-      fetchThemes();
+      fetchJobs();
     }
   };
 
-  const toggleActive = async (theme) => {
-    const originalStatus = theme.isActive;
-    theme.isActive = !theme.isActive; // Optimistic update
+  const toggleActive = async (job) => {
+    const originalStatus = job.isActive;
+    job.isActive = !job.isActive; // Optimistic update
 
     try {
-      const response = await fetch(`/admin/themes/${theme.id}/toggle-active`, {
+      const response = await fetch(`/api/cron-jobs/${job.id}/toggle-active`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -82,30 +82,20 @@ export function useThemeGrid(apiUrl, csrfToken) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to toggle theme status');
+        throw new Error('Failed to toggle job status');
       }
 
-      return { success: true, message: `Theme ${theme.isActive ? 'activated' : 'deactivated'}` };
+      const data = await response.json();
+      return { success: true, message: data.message };
     } catch (err) {
-      theme.isActive = originalStatus; // Revert on failure
+      job.isActive = originalStatus; // Revert on failure
       return { success: false, message: err.message };
     }
   };
 
-  const toggleDefault = async (theme) => {
-    if (theme.isDefault) {
-      return { success: false, message: 'Cannot unset default theme' };
-    }
-
-    const originalDefaults = themes.value.map(t => ({ id: t.id, isDefault: t.isDefault }));
-    
-    // Optimistic update
-    themes.value.forEach(t => {
-      t.isDefault = t.id === theme.id;
-    });
-
+  const runJob = async (job) => {
     try {
-      const response = await fetch(`/admin/themes/${theme.id}/toggle-default`, {
+      const response = await fetch(`/api/cron-jobs/${job.id}/run`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -114,41 +104,41 @@ export function useThemeGrid(apiUrl, csrfToken) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to set theme as default');
+        throw new Error('Failed to run job');
       }
 
-      return { success: true, message: `Theme "${theme.name}" set as default` };
+      const data = await response.json();
+
+      // Refresh to get updated status
+      setTimeout(fetchJobs, 1000);
+
+      return { success: true, message: data.message };
     } catch (err) {
-      // Revert on failure
-      originalDefaults.forEach(orig => {
-        const theme = themes.value.find(t => t.id === orig.id);
-        if (theme) theme.isDefault = orig.isDefault;
-      });
       return { success: false, message: err.message };
     }
   };
 
-  const deleteTheme = async (id, csrfToken) => {
+  const deleteJob = async (id) => {
     try {
-      const response = await fetch(`/admin/themes/${id}/delete`, {
-        method: 'POST',
+      const response = await fetch(`/api/cron-jobs/${id}`, {
+        method: 'DELETE',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
+          'X-CSRF-Token': csrfToken,
         },
-        body: `_token=${encodeURIComponent(csrfToken)}`,
       });
 
-      if (!response.ok) throw new Error('Failed to delete theme');
+      if (!response.ok) throw new Error('Failed to delete job');
 
-      await fetchThemes(); // Refresh list
-      return { success: true, message: 'Theme deleted' };
+      await fetchJobs(); // Refresh list
+      return { success: true, message: 'Cron job deleted' };
     } catch (err) {
       return { success: false, message: err.message };
     }
   };
 
   return {
-    themes,
+    jobs,
     loading,
     error,
     searchQuery,
@@ -158,12 +148,12 @@ export function useThemeGrid(apiUrl, csrfToken) {
     perPage,
     total,
     totalPages,
-    fetchThemes,
+    fetchJobs,
     search,
     sort,
     goToPage,
     toggleActive,
-    toggleDefault,
-    deleteTheme,
+    runJob,
+    deleteJob,
   };
 }

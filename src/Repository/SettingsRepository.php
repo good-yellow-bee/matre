@@ -26,10 +26,10 @@ class SettingsRepository extends ServiceEntityRepository
      */
     public function save(Settings $settings, bool $flush = false): void
     {
-        $this->getEntityManager()->persist($settings);
+        $this->_em->persist($settings);
 
         if ($flush) {
-            $this->getEntityManager()->flush();
+            $this->_em->flush();
         }
     }
 
@@ -38,10 +38,10 @@ class SettingsRepository extends ServiceEntityRepository
      */
     public function remove(Settings $settings, bool $flush = false): void
     {
-        $this->getEntityManager()->remove($settings);
+        $this->_em->remove($settings);
 
         if ($flush) {
-            $this->getEntityManager()->flush();
+            $this->_em->flush();
         }
     }
 
@@ -85,52 +85,30 @@ class SettingsRepository extends ServiceEntityRepository
         return $this->count([]) > 0;
     }
 
-    /**
-     * Reset settings to defaults.
-     */
     public function resetToDefaults(): Settings
     {
         $settings = $this->getSettings();
 
         $settings->setSiteName('ReSymf CMS');
-        $settings->setSiteTagline('A Modern Symfony CMS');
+        $settings->setAdminPanelTitle('ReSymf CMS Admin');
         $settings->setSeoDescription('ReSymf CMS - A powerful and flexible content management system built with Symfony');
         $settings->setSeoKeywords(null);
-        $settings->setAdminEmail(null);
-        $settings->setGoogleAnalyticsKey(null);
-        $settings->setGoogleTagManagerKey(null);
-        $settings->setMaintenanceMode(false);
-        $settings->setMaintenanceMessage(null);
         $settings->setDefaultLocale('en');
-        $settings->setTimezone('UTC');
-        $settings->setItemsPerPage(10);
-        $settings->setRegistrationEnabled(true);
-        $settings->setEmailVerificationRequired(false);
-        $settings->setFacebookUrl(null);
-        $settings->setTwitterUrl(null);
-        $settings->setLinkedinUrl(null);
-        $settings->setGithubUrl(null);
+        $settings->setHeadlessMode(false);
 
         $this->save($settings, true);
 
         return $settings;
     }
 
-    /**
-     * Create default settings with sensible defaults.
-     */
     private function createDefaultSettings(): Settings
     {
         $settings = new Settings();
         $settings->setSiteName('ReSymf CMS');
-        $settings->setSiteTagline('A Modern Symfony CMS');
+        $settings->setAdminPanelTitle('ReSymf CMS Admin');
         $settings->setSeoDescription('ReSymf CMS - A powerful and flexible content management system built with Symfony');
         $settings->setDefaultLocale('en');
-        $settings->setTimezone('UTC');
-        $settings->setItemsPerPage(10);
-        $settings->setRegistrationEnabled(true);
-        $settings->setEmailVerificationRequired(false);
-        $settings->setMaintenanceMode(false);
+        $settings->setHeadlessMode(false);
 
         return $settings;
     }

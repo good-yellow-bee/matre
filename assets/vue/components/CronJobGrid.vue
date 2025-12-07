@@ -1,18 +1,18 @@
 <template>
-  <div class="theme-grid">
+  <div class="cron-job-grid">
     <!-- Search Bar -->
     <div class="mb-3">
       <input
         type="text"
         class="form-control"
-        placeholder="Search themes by name or description..."
+        placeholder="Search by name or command..."
         :value="searchQuery"
         @input="handleSearch"
       />
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading && themes.length === 0" class="text-center py-5">
+    <div v-if="loading && jobs.length === 0" class="text-center py-5">
       <div class="spinner-border" role="status">
         <span class="visually-hidden">Loading...</span>
       </div>
@@ -24,100 +24,106 @@
     </div>
 
     <!-- Grid Table -->
-    <div v-if="!loading || themes.length > 0" class="table-responsive">
+    <div v-if="!loading || jobs.length > 0" class="table-responsive">
       <table class="table table-hover">
         <thead>
           <tr>
+            <th @click="sort('id')" class="sortable" style="width: 60px">
+              ID
+              <span v-if="sortField === 'id'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
+            </th>
             <th @click="sort('name')" class="sortable">
               Name
               <span v-if="sortField === 'name'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
             </th>
-            <th>Description</th>
-            <th>Colors</th>
-            <th @click="sort('isActive')" class="sortable" style="width: 100px">
+            <th @click="sort('command')" class="sortable">
+              Command
+              <span v-if="sortField === 'command'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
+            </th>
+            <th @click="sort('cronExpression')" class="sortable" style="width: 120px">
+              Schedule
+              <span v-if="sortField === 'cronExpression'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
+            </th>
+            <th @click="sort('isActive')" class="sortable" style="width: 80px">
               Active
               <span v-if="sortField === 'isActive'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
             </th>
-            <th @click="sort('isDefault')" class="sortable" style="width: 100px">
-              Default
-              <span v-if="sortField === 'isDefault'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
+            <th @click="sort('lastStatus')" class="sortable" style="width: 100px">
+              Status
+              <span v-if="sortField === 'lastStatus'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
             </th>
-            <th style="width: 80px">Users</th>
-            <th @click="sort('createdAt')" class="sortable" style="width: 120px">
-              Created
-              <span v-if="sortField === 'createdAt'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
+            <th @click="sort('lastRunAt')" class="sortable" style="width: 140px">
+              Last Run
+              <span v-if="sortField === 'lastRunAt'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
             </th>
-            <th style="width: 150px">Actions</th>
+            <th style="width: 200px">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="theme in themes" :key="theme.id">
-            <td><strong>{{ theme.name }}</strong></td>
+          <tr v-for="job in jobs" :key="job.id">
+            <td>{{ job.id }}</td>
             <td>
-              <span class="text-muted">{{ theme.description || '—' }}</span>
+              <strong>{{ job.name }}</strong>
+              <div v-if="job.description" class="text-muted small">
+                {{ truncate(job.description, 50) }}
+              </div>
             </td>
-            <td>
-              <span
-                v-if="theme.primaryColor"
-                class="color-badge"
-                :style="{ backgroundColor: theme.primaryColor }"
-                :title="`Primary: ${theme.primaryColor}`"
-              >
-                {{ theme.primaryColor }}
-              </span>
-              <span
-                v-if="theme.secondaryColor"
-                class="color-badge ms-1"
-                :style="{ backgroundColor: theme.secondaryColor }"
-                :title="`Secondary: ${theme.secondaryColor}`"
-              >
-                {{ theme.secondaryColor }}
-              </span>
-              <span v-if="!theme.primaryColor && !theme.secondaryColor" class="text-muted">—</span>
-            </td>
+            <td><code class="small">{{ truncate(job.command, 40) }}</code></td>
+            <td><code class="small">{{ job.cronExpression }}</code></td>
             <td>
               <button
-                @click="handleToggleActive(theme)"
-                :class="['btn', 'btn-sm', theme.isActive ? 'btn-success' : 'btn-secondary']"
+                @click="handleToggleActive(job)"
+                :class="['btn', 'btn-sm', job.isActive ? 'btn-success' : 'btn-secondary']"
               >
-                {{ theme.isActive ? 'Yes' : 'No' }}
+                {{ job.isActive ? 'Yes' : 'No' }}
               </button>
             </td>
             <td>
-              <button
-                @click="handleToggleDefault(theme)"
-                :class="['btn', 'btn-sm', theme.isDefault ? 'btn-primary' : 'btn-outline-primary']"
-                :disabled="theme.isDefault"
-              >
-                {{ theme.isDefault ? 'Yes' : 'Set' }}
-              </button>
+              <span :class="getStatusBadgeClass(job.lastStatus)">
+                {{ job.lastStatus || '—' }}
+              </span>
             </td>
-            <td>{{ theme.userCount }}</td>
-            <td>{{ formatDate(theme.createdAt) }}</td>
+            <td>{{ job.lastRunAt ? formatDate(job.lastRunAt) : '—' }}</td>
             <td>
+              <button
+                @click="handleRun(job)"
+                class="btn btn-sm btn-outline-success me-1"
+                title="Run Now"
+                :disabled="runningJob === job.id"
+              >
+                <span v-if="runningJob === job.id" class="spinner-border spinner-border-sm"></span>
+                <span v-else>Run</span>
+              </button>
               <a
-                :href="`/admin/themes/${theme.id}/edit`"
+                :href="`/admin/cron-jobs/${job.id}`"
+                class="btn btn-sm btn-info me-1"
+                title="View"
+              >
+                View
+              </a>
+              <a
+                :href="`/admin/cron-jobs/${job.id}/edit`"
                 class="btn btn-sm btn-warning me-1"
+                title="Edit"
               >
                 Edit
               </a>
               <button
-                @click="handleDelete(theme)"
+                @click="handleDelete(job)"
                 :class="[
                   'btn',
                   'btn-sm',
-                  deleteConfirm === theme.id ? 'btn-danger' : 'btn-outline-danger'
+                  deleteConfirm === job.id ? 'btn-danger' : 'btn-outline-danger'
                 ]"
-                :disabled="theme.isDefault"
-                :title="theme.isDefault ? 'Cannot delete default theme' : ''"
+                title="Delete"
               >
-                {{ deleteConfirm === theme.id ? 'Confirm?' : 'Delete' }}
+                {{ deleteConfirm === job.id ? 'Confirm?' : 'Delete' }}
               </button>
             </td>
           </tr>
-          <tr v-if="themes.length === 0 && !loading">
+          <tr v-if="jobs.length === 0 && !loading">
             <td colspan="8" class="text-center text-muted py-4">
-              No themes found
+              No cron jobs found
             </td>
           </tr>
         </tbody>
@@ -125,7 +131,7 @@
     </div>
 
     <!-- Pagination -->
-    <nav v-if="totalPages > 1" aria-label="Theme pagination">
+    <nav v-if="totalPages > 1" aria-label="Cron jobs pagination">
       <ul class="pagination justify-content-center">
         <li class="page-item" :class="{ disabled: currentPage === 1 }">
           <a class="page-link" href="#" @click.prevent="goToPage(currentPage - 1)">Previous</a>
@@ -157,7 +163,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { useThemeGrid } from '../composables/useThemeGrid.js';
+import { useCronJobGrid } from '../composables/useCronJobGrid.js';
 
 const props = defineProps({
   apiUrl: {
@@ -171,7 +177,7 @@ const props = defineProps({
 });
 
 const {
-  themes,
+  jobs,
   loading,
   error,
   searchQuery,
@@ -179,16 +185,17 @@ const {
   sortOrder,
   currentPage,
   totalPages,
-  fetchThemes,
+  fetchJobs,
   search,
   sort,
   goToPage,
   toggleActive,
-  toggleDefault,
-  deleteTheme,
-} = useThemeGrid(props.apiUrl, props.csrfToken);
+  runJob,
+  deleteJob,
+} = useCronJobGrid(props.apiUrl, props.csrfToken);
 
 const deleteConfirm = ref(null);
+const runningJob = ref(null);
 const toast = ref({ show: false, message: '', type: 'success' });
 let deleteTimeout = null;
 
@@ -196,43 +203,56 @@ const handleSearch = (event) => {
   search(event.target.value);
 };
 
-const handleToggleActive = async (theme) => {
-  const result = await toggleActive(theme);
+const handleToggleActive = async (job) => {
+  const result = await toggleActive(job);
   showToast(result.message, result.success ? 'success' : 'error');
 };
 
-const handleToggleDefault = async (theme) => {
-  const result = await toggleDefault(theme);
+const handleRun = async (job) => {
+  runningJob.value = job.id;
+  const result = await runJob(job);
+  runningJob.value = null;
   showToast(result.message, result.success ? 'success' : 'error');
 };
 
-const handleDelete = async (theme) => {
-  if (theme.isDefault) {
-    showToast('Cannot delete default theme', 'error');
-    return;
-  }
-
-  if (deleteConfirm.value === theme.id) {
+const handleDelete = async (job) => {
+  if (deleteConfirm.value === job.id) {
     clearTimeout(deleteTimeout);
     deleteConfirm.value = null;
 
-    const result = await deleteTheme(theme.id, props.csrfToken);
+    const result = await deleteJob(job.id);
     showToast(result.message, result.success ? 'success' : 'error');
   } else {
-    deleteConfirm.value = theme.id;
+    deleteConfirm.value = job.id;
     deleteTimeout = setTimeout(() => {
       deleteConfirm.value = null;
     }, 3000);
   }
 };
 
+const truncate = (str, len) => {
+  if (!str) return '';
+  return str.length > len ? str.slice(0, len) + '...' : str;
+};
+
 const formatDate = (dateString) => {
   const date = new Date(dateString);
   return date.toLocaleDateString('en-US', {
-    year: 'numeric',
     month: 'short',
     day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
+};
+
+const getStatusBadgeClass = (status) => {
+  const classes = {
+    success: 'badge bg-success',
+    failed: 'badge bg-danger',
+    running: 'badge bg-warning',
+    locked: 'badge bg-info',
+  };
+  return classes[status] || 'badge bg-secondary';
 };
 
 const visiblePages = computed(() => {
@@ -274,7 +294,7 @@ const showToast = (message, type = 'success') => {
 };
 
 onMounted(() => {
-  fetchThemes();
+  fetchJobs();
 });
 </script>
 
@@ -286,17 +306,6 @@ onMounted(() => {
 
 .sortable:hover {
   background-color: rgba(0, 0, 0, 0.05);
-}
-
-.color-badge {
-  display: inline-block;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-family: monospace;
-  color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(0, 0, 0, 0.2);
 }
 
 .toast-notification {

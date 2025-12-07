@@ -14,7 +14,7 @@ jobs:
 
     strategy:
       matrix:
-        php-version: ['8.3']
+        php-version: ['8.5']
 
     steps:
       - name: Checkout code
@@ -48,7 +48,7 @@ jobs:
           APP_ENV=test APP_DEBUG=0 php bin/phpunit --configuration phpunit.dist.xml --coverage-clover coverage.xml --coverage-text
 
       - name: Upload coverage to Codecov
-        if: matrix.php-version == '8.3'
+        if: matrix.php-version == '8.5'
         uses: codecov/codecov-action@v3
         with:
           files: ./coverage.xml
@@ -68,7 +68,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.5'
           extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_mysql
           tools: composer:v2, phpstan
 
@@ -103,7 +103,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.5'
           extensions: mbstring, xml, ctype, iconv
           tools: composer:v2, php-cs-fixer
 
@@ -169,7 +169,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.5'
           extensions: mbstring, xml, ctype, iconv
           tools: composer:v2
 
@@ -217,7 +217,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.5'
           extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_mysql
           tools: composer:v2
 
@@ -229,7 +229,11 @@ jobs:
           cat > .env.test.local <<'EOF'
           APP_ENV=test
           APP_DEBUG=0
-          DATABASE_URL="mysql://root:root@127.0.0.1:3306/resymf_test?serverVersion=8.0&charset=utf8mb4"
+          DB_HOST=127.0.0.1
+          DB_USER=root
+          DB_PASS=root
+          DB_NAME=resymf_test
+          DB_VERSION=8.0
           MAILER_DSN="null://null"
           EOF
 
@@ -264,7 +268,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.5'
           extensions: mbstring, xml, ctype, iconv
           tools: composer:v2
 
@@ -297,7 +301,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.5'
           tools: composer:v2
 
       - name: Lint PHP files
