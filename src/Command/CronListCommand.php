@@ -73,7 +73,7 @@ class CronListCommand extends Command
                 $job->getName(),
                 $job->getCronExpression(),
                 mb_strlen($job->getCommand()) > 40
-                    ? mb_substr($job->getCommand(), 0, 37).'...'
+                    ? mb_substr($job->getCommand(), 0, 37) . '...'
                     : $job->getCommand(),
                 $job->getIsActive() ? '<fg=green>Yes</>' : '<fg=gray>No</>',
                 $statusDisplay,
@@ -83,7 +83,7 @@ class CronListCommand extends Command
 
         $io->table(
             ['ID', 'Name', 'Expression', 'Command', 'Active', 'Last Status', 'Last Run'],
-            $rows
+            $rows,
         );
 
         $io->note(sprintf('%d job(s) configured', count($jobs)));
