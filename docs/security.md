@@ -1,6 +1,6 @@
 # Security
 
-This guide covers security features and best practices in ReSymf-CMS.
+This guide covers security features and best practices in MATRE.
 
 ## Authentication
 
@@ -47,7 +47,7 @@ remember_me:
 
 ## Two-Factor Authentication
 
-ReSymf-CMS supports TOTP-based 2FA via scheb/2fa-bundle.
+MATRE supports TOTP-based 2FA via scheb/2fa-bundle.
 
 ### Configuration
 
@@ -59,8 +59,8 @@ scheb_two_factor:
 
     totp:
         enabled: true
-        server_name: ReSymf-CMS
-        issuer: ReSymf-CMS
+        server_name: MATRE
+        issuer: MATRE
         window: 1
         parameters:
             image: 'https://your-domain.com/logo.png'

@@ -46,6 +46,9 @@ COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
 # This stage is for local development. It includes Xdebug.
 FROM app_base AS app_dev
 
+# Install Docker CLI for executing commands in other containers
+RUN apk add --no-cache docker-cli
+
 # Xdebug not yet available for PHP 8.5 (requires <= 8.4.99)
 # Uncomment when xdebug adds PHP 8.5 support:
 # RUN apk add --no-cache --update linux-headers $PHPIZE_DEPS \

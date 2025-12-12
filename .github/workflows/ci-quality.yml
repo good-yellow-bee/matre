@@ -21,7 +21,7 @@ jobs:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: resymf_test
+          MYSQL_DATABASE: matre_test
         ports:
           - 3306:3306
         options: >-
@@ -65,7 +65,7 @@ jobs:
           DB_HOST=127.0.0.1
           DB_USER=root
           DB_PASS=root
-          DB_NAME=resymf_test
+          DB_NAME=matre_test
           DB_VERSION=8.0
           MAILER_DSN="null://null"
           EOF
@@ -244,7 +244,7 @@ jobs:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: resymf_test
+          MYSQL_DATABASE: matre_test
         ports:
           - 3306:3306
         options: >-
@@ -275,7 +275,7 @@ jobs:
           DB_HOST=127.0.0.1
           DB_USER=root
           DB_PASS=root
-          DB_NAME=resymf_test
+          DB_NAME=matre_test
           DB_VERSION=8.0
           MAILER_DSN="null://null"
           EOF

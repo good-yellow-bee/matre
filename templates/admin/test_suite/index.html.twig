@@ -1,0 +1,79 @@
+{% extends 'admin/base.html.twig' %}
+{% block title %}Test Suites{% endblock %}
+{% block body %}
+<div class="d-flex justify-content-between mb-4">
+    <h1>Test Suites</h1>
+    <a href="{{ path('admin_test_suite_new') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Add Suite
+    </a>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Test Pattern</th>
+                    <th>Schedule</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for suite in suites %}
+                <tr>
+                    <td>
+                        <a href="{{ path('admin_test_suite_show', {id: suite.id}) }}">
+                            {{ suite.name }}
+                        </a>
+                    </td>
+                    <td>
+                        <span class="badge bg-{{ suite.type starts with 'mftf' ? 'primary' : 'info' }}">
+                            {{ suite.type|replace({'_': ' '})|title }}
+                        </span>
+                    </td>
+                    <td><code>{{ suite.testPattern }}</code></td>
+                    <td>
+                        {% if suite.cronExpression %}
+                            <code>{{ suite.cronExpression }}</code>
+                        {% else %}
+                            <span class="text-muted">Manual only</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge bg-{{ suite.isActive ? 'success' : 'secondary' }}">
+                            {{ suite.isActive ? 'Active' : 'Inactive' }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <a href="{{ path('admin_test_suite_edit', {id: suite.id}) }}" class="btn btn-outline-warning" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <form action="{{ path('admin_test_suite_toggle_active', {id: suite.id}) }}" method="post" class="d-inline">
+                                <input type="hidden" name="_token" value="{{ csrf_token('toggle' ~ suite.id) }}">
+                                <button type="submit" class="btn btn-outline-{{ suite.isActive ? 'secondary' : 'success' }}" title="{{ suite.isActive ? 'Deactivate' : 'Activate' }}">
+                                    <i class="bi bi-{{ suite.isActive ? 'pause' : 'play' }}"></i>
+                                </button>
+                            </form>
+                            <form action="{{ path('admin_test_suite_delete', {id: suite.id}) }}" method="post" class="d-inline" onsubmit="return confirm('Delete suite {{ suite.name }}?')">
+                                <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ suite.id) }}">
+                                <button type="submit" class="btn btn-outline-danger" title="Delete">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">No test suites configured. <a href="{{ path('admin_test_suite_new') }}">Add one</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,6 +1,6 @@
 {
-    "name": "ppf/resymf-cms",
-    "description": "Modernized ReSymf CMS running on Symfony 7.4 LTS and PHP 8.5",
+    "name": "good-yellow-bee/matre",
+    "description": "MATRE - Magento Automated Test Run Environment",
     "type": "project",
     "license": "proprietary",
     "minimum-stability": "stable",
@@ -54,6 +54,7 @@
         "symfony/web-link": "7.4.*",
         "symfony/yaml": "7.4.*",
         "twig/extra-bundle": "^3.0",
+        "twig/string-extra": "^3.22",
         "twig/twig": "^3.0"
     },
     "config": {

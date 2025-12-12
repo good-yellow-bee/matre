@@ -16,7 +16,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 class CronRemoveCommand extends Command
 {
-    private const CRON_MARKER = 'resymf-cms-scheduler';
+    private const CRON_MARKER = 'matre-scheduler';
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {

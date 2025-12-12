@@ -20,12 +20,12 @@ class SettingsFixtures extends Fixture
     {
         // Create default site settings
         $settings = new Settings();
-        $settings->setSiteName('ReSymf CMS');
-        $settings->setAdminPanelTitle('ReSymf CMS Admin');
-        $settings->setSeoDescription('ReSymf CMS is a powerful and flexible content management system built with Symfony 7, featuring modern architecture, robust security, and an intuitive admin interface.');
-        $settings->setSeoKeywords('symfony, cms, content management, php, symfony 7, resymf');
+        $settings->setSiteName('ATR');
+        $settings->setAdminPanelTitle('ATR Admin');
+        $settings->setSeoDescription('ATR - Automation Test Runner for MFTF and Playwright tests against Magento environments');
+        $settings->setSeoKeywords('mftf, playwright, magento, testing, automation, selenium');
         $settings->setDefaultLocale('en');
-        $settings->setHeadlessMode(false);
+        $settings->setHeadlessMode(true);
 
         $manager->persist($settings);
         $manager->flush();

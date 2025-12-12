@@ -1,8 +1,8 @@
 {
-  "name": "resymf-cms",
+  "name": "matre",
   "version": "0.1.0",
   "private": true,
-  "description": "Frontend tooling for ReSymf CMS (Vite + Vue islands)",
+  "description": "MATRE - Magento Automated Test Run Environment (Vite + Vue)",
   "scripts": {
     "dev": "vite",
     "dev:host": "vite --host",

@@ -1,6 +1,6 @@
 # CI/CD Pipeline
 
-This guide covers the GitHub Actions CI/CD pipeline for ReSymf-CMS.
+This guide covers the GitHub Actions CI/CD pipeline for MATRE.
 
 ## Overview
 
@@ -173,7 +173,7 @@ Check CI status:
 - GitHub: Repository → Actions tab
 - Badge in README:
   ```markdown
-  ![CI](https://github.com/ppf/resymf-cms/actions/workflows/symfony-ci.yml/badge.svg)
+  ![CI](https://github.com/good-yellow-bee/matre/actions/workflows/symfony-ci.yml/badge.svg)
   ```
 
 ---

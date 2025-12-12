@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\UserRepository;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Scheb\TwoFactorBundle\Model\Totp\TotpConfiguration;
@@ -32,7 +30,7 @@ use Symfony\Component\Validator\Constraints as Assert;
  * - Doctrine attributes instead of annotations
  */
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-#[ORM\Table(name: 'resymf_users')]
+#[ORM\Table(name: 'matre_users')]
 #[ORM\UniqueConstraint(name: 'UNIQ_USERNAME', columns: ['username'])]
 #[ORM\UniqueConstraint(name: 'UNIQ_EMAIL', columns: ['email'])]
 #[UniqueEntity(fields: ['username'], message: 'This username is already taken.')]
@@ -93,13 +91,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, TwoFact
     private ?string $plainPassword = null;
 
     /**
-     * Pages authored by this user
-     * Lazy loaded - not fetched unless explicitly needed.
-     */
-    #[ORM\OneToMany(targetEntity: Page::class, mappedBy: 'author')]
-    private Collection $authoredPages;
-
-    /**
      * TOTP secret for two-factor authentication.
      */
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
@@ -114,7 +105,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, TwoFact
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
-        $this->authoredPages = new ArrayCollection();
         $this->roles = ['ROLE_USER']; // Default role
     }
 
@@ -307,36 +297,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, TwoFact
     public function setUpdatedAt(): void
     {
         $this->updatedAt = new \DateTimeImmutable();
-    }
-
-    /**
-     * @return Collection<int, Page>
-     */
-    public function getAuthoredPages(): Collection
-    {
-        return $this->authoredPages;
-    }
-
-    public function addAuthoredPage(Page $page): static
-    {
-        if (!$this->authoredPages->contains($page)) {
-            $this->authoredPages->add($page);
-            $page->setAuthor($this);
-        }
-
-        return $this;
-    }
-
-    public function removeAuthoredPage(Page $page): static
-    {
-        if ($this->authoredPages->removeElement($page)) {
-            // set the owning side to null (unless already changed)
-            if ($page->getAuthor() === $this) {
-                $page->setAuthor(null);
-            }
-        }
-
-        return $this;
     }
 
     // ========================================

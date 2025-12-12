@@ -1,0 +1,58 @@
+{% extends 'admin/base.html.twig' %}
+{% form_theme form 'form/bootstrap_5_custom.html.twig' %}
+
+{% block title %}Start Test Run{% endblock %}
+
+{% block body %}
+<div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm mb-6">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <div class="h-12 w-12 rounded-xl bg-green-100 flex items-center justify-center">
+                <i class="bi bi-play-circle text-xl text-green-600"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-semibold text-slate-900">Start Test Run</h1>
+                <p class="text-sm text-slate-500 mt-0.5">Execute MFTF or Playwright tests against an environment</p>
+            </div>
+        </div>
+        <a href="{{ path('admin_test_run_index') }}"
+           class="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-200 transition-colors no-underline">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {{ form_start(form, {'attr': {'novalidate': 'novalidate'}}) }}
+
+            <div class="form-section">
+                <h3 class="form-section-title">Run Configuration</h3>
+
+                <div class="form-grid">
+                    <div>{{ form_row(form.environment) }}</div>
+                    <div>{{ form_row(form.type) }}</div>
+                </div>
+
+                {{ form_row(form.suite) }}
+                {{ form_row(form.testFilter) }}
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-play-fill"></i> Start Run
+                </button>
+                <a href="{{ path('admin_test_run_index') }}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </a>
+            </div>
+        {{ form_end(form) }}
+    </div>
+</div>
+
+<div class="mt-4">
+    <div class="alert alert-info">
+        <strong>Note:</strong> Tests will be executed asynchronously. You can monitor progress on the run details page.
+    </div>
+</div>
+{% endblock %}

@@ -17,7 +17,7 @@
 ## Directory Structure
 
 ```
-resymf-cms/
+matre/
 ├── assets/                 # Frontend assets
 │   ├── app.js             # Public site entry
 │   ├── admin.js           # Admin panel entry
@@ -168,7 +168,7 @@ if ($this->isCsrfTokenValid('delete' . $id, $token)) {
 ## Database
 
 ### Naming Conventions
-- Tables: `resymf_*` prefix (e.g., `resymf_users`)
+- Tables: `matre_*` prefix (e.g., `matre_users`)
 - Columns: snake_case
 - Entities: PascalCase
 

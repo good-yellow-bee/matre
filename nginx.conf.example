@@ -3,7 +3,7 @@
 # This is a sample configuration file.
 #
 # 1. Replace `your-domain-name.com` with your actual domain.
-# 2. Replace `/home/resymf/resymf-cms/symfony7-skeleton/public` with the correct path to your project's public directory.
+# 2. Replace `/home/matre/matre/public` with the correct path to your project's public directory.
 # 3. Ensure the `fastcgi_pass` directive points to the correct PHP-FPM socket.
 
 server {
@@ -28,15 +28,15 @@ server {
     # ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
     # Path to the public directory of your Symfony application
-    root /home/resymf/resymf-cms/symfony7-skeleton/public;
+    root /home/matre/matre/public;
     index index.php;
 
     # Default character set
     charset utf-8;
 
     # Log files
-    access_log /var/log/nginx/resymf-cms_access.log;
-    error_log /var/log/nginx/resymf-cms_error.log;
+    access_log /var/log/nginx/matre_access.log;
+    error_log /var/log/nginx/matre_error.log;
 
     # Security headers
     add_header X-Frame-Options "SAMEORIGIN" always;

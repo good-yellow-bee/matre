@@ -79,18 +79,30 @@
                 Dashboard
             </a>
 
-            <div class="px-3 mt-6 mb-2 text-xs font-medium text-slate-400 uppercase tracking-wider">Content</div>
+            <div class="px-3 mt-6 mb-2 text-xs font-medium text-slate-400 uppercase tracking-wider">Test Automation</div>
 
-            <a href="{{ path('admin_page_index') }}"
-               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.get('_route') starts with 'admin_page' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
-                <i class="bi bi-file-earmark-text text-base"></i>
-                Pages
+            <a href="{{ path('admin_test_run_index') }}"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.get('_route') starts with 'admin_test_run' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
+                <i class="bi bi-play-circle text-base"></i>
+                Test Runs
             </a>
 
-            <a href="{{ path('admin_category_index') }}"
-               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.get('_route') starts with 'admin_category' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
-                <i class="bi bi-tags text-base"></i>
-                Categories
+            <a href="{{ path('admin_test_environment_index') }}"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.get('_route') starts with 'admin_test_environment' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
+                <i class="bi bi-server text-base"></i>
+                Environments
+            </a>
+
+            <a href="{{ path('admin_test_suite_index') }}"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.get('_route') starts with 'admin_test_suite' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
+                <i class="bi bi-collection text-base"></i>
+                Test Suites
+            </a>
+
+            <a href="{{ path('admin_env_variable_index') }}"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.get('_route') starts with 'admin_env_variable' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
+                <i class="bi bi-braces text-base"></i>
+                Env Variables
             </a>
 
             {% if is_granted('ROLE_ADMIN') %}
@@ -149,14 +161,10 @@
                     {% elseif app.request.get('_route') starts with 'admin_user' %}Users
                     {% elseif app.request.get('_route') starts with 'admin_settings' %}Settings
                     {% elseif app.request.get('_route') starts with 'admin_cron_job' %}Cron Jobs
+                    {% elseif app.request.get('_route') starts with 'admin_env_variable' %}Env Variables
                     {% else %}Overview{% endif %}
                 </span>
             </div>
-            <a href="{{ path('cms_homepage') }}" target="_blank"
-               class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 no-underline transition-colors">
-                <i class="bi bi-box-arrow-up-right"></i>
-                View Site
-            </a>
         </header>
 
         {# Scrollable Page Content #}

@@ -1,6 +1,6 @@
 # Production Deployment
 
-This guide covers deploying ReSymf-CMS to production.
+This guide covers deploying MATRE to production.
 
 ## Server Requirements
 
@@ -48,16 +48,16 @@ sudo apt install -y nodejs
 ### 1. Create Deploy User
 
 ```bash
-sudo adduser resymf
-sudo usermod -a -G www-data resymf
+sudo adduser matre
+sudo usermod -a -G www-data matre
 ```
 
 ### 2. Clone Repository
 
 ```bash
-sudo -i -u resymf
-git clone https://github.com/ppf/resymf-cms.git ~/resymf-cms
-cd ~/resymf-cms
+sudo -i -u matre
+git clone https://github.com/good-yellow-bee/matre.git ~/matre
+cd ~/matre
 ```
 
 ### 3. Install Dependencies
@@ -77,7 +77,7 @@ APP_ENV=prod
 APP_DEBUG=0
 APP_SECRET=generate-a-strong-secret-key
 
-DATABASE_URL="mysql://user:password@localhost:3306/resymf_cms?serverVersion=8.0"
+DATABASE_URL="mysql://user:password@localhost:3306/matre?serverVersion=8.0"
 
 MAILER_DSN=smtp://user:pass@smtp.example.com:587
 
@@ -99,7 +99,7 @@ php bin/console doctrine:migrations:migrate --env=prod --no-interaction
 ### 6. Set Permissions
 
 ```bash
-sudo chown -R resymf:www-data var/
+sudo chown -R matre:www-data var/
 sudo chmod -R 775 var/
 ```
 
@@ -107,13 +107,13 @@ sudo chmod -R 775 var/
 
 ## Nginx Configuration
 
-Create `/etc/nginx/sites-available/resymf-cms`:
+Create `/etc/nginx/sites-available/matre`:
 
 ```nginx
 server {
     listen 80;
     server_name your-domain.com;
-    root /home/resymf/resymf-cms/public;
+    root /home/matre/matre/public;
 
     location / {
         try_files $uri /index.php$is_args$args;
@@ -132,14 +132,14 @@ server {
         return 404;
     }
 
-    error_log /var/log/nginx/resymf-cms_error.log;
-    access_log /var/log/nginx/resymf-cms_access.log;
+    error_log /var/log/nginx/matre_error.log;
+    access_log /var/log/nginx/matre_access.log;
 }
 ```
 
 Enable site:
 ```bash
-sudo ln -s /etc/nginx/sites-available/resymf-cms /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/matre /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl reload nginx
 ```
@@ -198,7 +198,7 @@ rm public/maintenance.flag
 ### Build Production Image
 
 ```bash
-docker build --target app_prod -t resymf-cms:prod .
+docker build --target app_prod -t matre:prod .
 ```
 
 ### docker-compose.prod.yml
@@ -238,7 +238,7 @@ tail -f var/log/prod.log
 
 ### Nginx Logs
 ```bash
-tail -f /var/log/nginx/resymf-cms_error.log
+tail -f /var/log/nginx/matre_error.log
 ```
 
 ### PHP-FPM Status
@@ -273,7 +273,7 @@ php bin/console cache:warmup --env=prod
 
 ### Database
 ```bash
-mysqldump -u user -p resymf_cms > backup_$(date +%Y%m%d).sql
+mysqldump -u user -p matre > backup_$(date +%Y%m%d).sql
 ```
 
 ### Files

@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Controller\Api;
 
-use App\Repository\CategoryRepository;
-use App\Repository\PageRepository;
+use App\Repository\TestEnvironmentRepository;
+use App\Repository\TestRunRepository;
+use App\Repository\TestSuiteRepository;
 use App\Repository\UserRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -18,8 +19,9 @@ class DashboardApiController extends AbstractController
 {
     public function __construct(
         private readonly UserRepository $userRepository,
-        private readonly PageRepository $pageRepository,
-        private readonly CategoryRepository $categoryRepository,
+        private readonly TestRunRepository $testRunRepository,
+        private readonly TestEnvironmentRepository $testEnvironmentRepository,
+        private readonly TestSuiteRepository $testSuiteRepository,
     ) {
     }
 
@@ -34,50 +36,47 @@ class DashboardApiController extends AbstractController
         // User statistics
         $totalUsers = $this->userRepository->countAll();
         $activeUsers = $this->userRepository->countActive();
-        $recentUsers = $this->userRepository->findRecent(30);
 
-        // Calculate users created in the last 30 days
-        $thirtyDaysAgo = new \DateTime('-30 days');
-        $newUsersThisMonth = count(array_filter($recentUsers, function ($user) use ($thirtyDaysAgo) {
-            return $user->getCreatedAt() >= $thirtyDaysAgo;
-        }));
+        // Test run statistics (last 30 days)
+        $testStats = $this->testRunRepository->getStatistics(30);
 
-        // Page statistics
-        $totalPages = $this->pageRepository->countAll();
-        $publishedPages = $this->pageRepository->countPublished();
-        $draftPages = $totalPages - $publishedPages;
+        // Environment statistics
+        $environments = $this->testEnvironmentRepository->findAllOrdered();
+        $activeEnvironments = $this->testEnvironmentRepository->findActive();
 
-        // Category statistics
-        $totalCategories = $this->categoryRepository->countAll();
-        $activeCategories = count($this->categoryRepository->findActive());
+        // Suite statistics
+        $suites = $this->testSuiteRepository->findAllOrdered();
+        $activeSuites = $this->testSuiteRepository->findActive();
+        $scheduledSuites = $this->testSuiteRepository->findScheduled();
 
-        // Recent activity (pages created in last 7 days)
-        $recentPages = $this->pageRepository->findRecent(100);
-        $sevenDaysAgo = new \DateTime('-7 days');
-        $recentActivity = count(array_filter($recentPages, function ($page) use ($sevenDaysAgo) {
-            return $page->getCreatedAt() >= $sevenDaysAgo;
-        }));
+        // Running tests
+        $runningTests = $this->testRunRepository->findRunning();
 
         return $this->json([
             'users' => [
                 'total' => $totalUsers,
                 'active' => $activeUsers,
                 'inactive' => $totalUsers - $activeUsers,
-                'newThisMonth' => $newUsersThisMonth,
             ],
-            'pages' => [
-                'total' => $totalPages,
-                'published' => $publishedPages,
-                'drafts' => $draftPages,
+            'testRuns' => [
+                'total' => $testStats['total'],
+                'completed' => $testStats['completed'],
+                'failed' => $testStats['failed'],
+                'running' => $testStats['running'],
+                'pending' => $testStats['pending'],
+                'period' => '30 days',
             ],
-            'categories' => [
-                'total' => $totalCategories,
-                'active' => $activeCategories,
-                'inactive' => $totalCategories - $activeCategories,
+            'environments' => [
+                'total' => count($environments),
+                'active' => count($activeEnvironments),
+            ],
+            'suites' => [
+                'total' => count($suites),
+                'active' => count($activeSuites),
+                'scheduled' => count($scheduledSuites),
             ],
             'activity' => [
-                'recentPages' => $recentActivity,
-                'period' => '7 days',
+                'runningNow' => count($runningTests),
             ],
         ]);
     }

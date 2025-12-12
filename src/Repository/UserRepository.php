@@ -29,10 +29,10 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
      */
     public function save(User $user, bool $flush = false): void
     {
-        $this->_em->persist($user);
+        $this->getEntityManager()->persist($user);
 
         if ($flush) {
-            $this->_em->flush();
+            $this->getEntityManager()->flush();
         }
     }
 
@@ -41,10 +41,10 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
      */
     public function remove(User $user, bool $flush = false): void
     {
-        $this->_em->remove($user);
+        $this->getEntityManager()->remove($user);
 
         if ($flush) {
-            $this->_em->flush();
+            $this->getEntityManager()->flush();
         }
     }
 

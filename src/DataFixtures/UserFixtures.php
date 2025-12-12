@@ -37,7 +37,7 @@ class UserFixtures extends Fixture
         // Create admin user
         $admin = new User();
         $admin->setUsername('admin');
-        $admin->setEmail('admin@resymf.local');
+        $admin->setEmail('admin@matre.local');
         $admin->setRoles(['ROLE_ADMIN', 'ROLE_USER']);
         $admin->setIsActive(true);
 
@@ -53,7 +53,7 @@ class UserFixtures extends Fixture
         // Create regular test user
         $user = new User();
         $user->setUsername('testuser');
-        $user->setEmail('user@resymf.local');
+        $user->setEmail('user@matre.local');
         $user->setRoles(['ROLE_USER']);
         $user->setIsActive(true);
 
@@ -68,7 +68,7 @@ class UserFixtures extends Fixture
         // Create inactive user for testing
         $inactiveUser = new User();
         $inactiveUser->setUsername('inactive');
-        $inactiveUser->setEmail('inactive@resymf.local');
+        $inactiveUser->setEmail('inactive@matre.local');
         $inactiveUser->setRoles(['ROLE_USER']);
         $inactiveUser->setIsActive(false);
 

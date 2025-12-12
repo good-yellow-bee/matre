@@ -26,10 +26,10 @@ class SettingsRepository extends ServiceEntityRepository
      */
     public function save(Settings $settings, bool $flush = false): void
     {
-        $this->_em->persist($settings);
+        $this->getEntityManager()->persist($settings);
 
         if ($flush) {
-            $this->_em->flush();
+            $this->getEntityManager()->flush();
         }
     }
 
@@ -38,10 +38,10 @@ class SettingsRepository extends ServiceEntityRepository
      */
     public function remove(Settings $settings, bool $flush = false): void
     {
-        $this->_em->remove($settings);
+        $this->getEntityManager()->remove($settings);
 
         if ($flush) {
-            $this->_em->flush();
+            $this->getEntityManager()->flush();
         }
     }
 
@@ -89,12 +89,12 @@ class SettingsRepository extends ServiceEntityRepository
     {
         $settings = $this->getSettings();
 
-        $settings->setSiteName('ReSymf CMS');
-        $settings->setAdminPanelTitle('ReSymf CMS Admin');
-        $settings->setSeoDescription('ReSymf CMS - A powerful and flexible content management system built with Symfony');
+        $settings->setSiteName('ATR');
+        $settings->setAdminPanelTitle('ATR Admin');
+        $settings->setSeoDescription('ATR - Automation Test Runner for MFTF and Playwright tests');
         $settings->setSeoKeywords(null);
         $settings->setDefaultLocale('en');
-        $settings->setHeadlessMode(false);
+        $settings->setHeadlessMode(true);
 
         $this->save($settings, true);
 
@@ -104,11 +104,11 @@ class SettingsRepository extends ServiceEntityRepository
     private function createDefaultSettings(): Settings
     {
         $settings = new Settings();
-        $settings->setSiteName('ReSymf CMS');
-        $settings->setAdminPanelTitle('ReSymf CMS Admin');
-        $settings->setSeoDescription('ReSymf CMS - A powerful and flexible content management system built with Symfony');
+        $settings->setSiteName('ATR');
+        $settings->setAdminPanelTitle('ATR Admin');
+        $settings->setSeoDescription('ATR - Automation Test Runner for MFTF and Playwright tests');
         $settings->setDefaultLocale('en');
-        $settings->setHeadlessMode(false);
+        $settings->setHeadlessMode(true);
 
         return $settings;
     }

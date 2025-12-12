@@ -1,0 +1,21 @@
+{% extends 'admin/base.html.twig' %}
+{% block title %}Test Runs{% endblock %}
+{% block body %}
+<div class="d-flex justify-content-between mb-4">
+    <h1>Test Runs</h1>
+    <a href="{{ path('admin_test_run_new') }}" class="btn btn-primary">
+        <i class="bi bi-play-fill"></i> Start New Run
+    </a>
+</div>
+
+<div
+    data-vue-island="test-run-grid"
+    data-api-url="{{ path('api_test_runs_list') }}"
+    data-csrf-token="{{ csrf_token('test_run_api') }}"
+></div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {{ vite_entry_script_tags('test-run-grid-app') }}
+{% endblock %}

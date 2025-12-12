@@ -14,7 +14,7 @@ use Doctrine\ORM\Mapping as ORM;
  * Stores tokens for password reset requests with expiration tracking.
  */
 #[ORM\Entity(repositoryClass: PasswordResetRequestRepository::class)]
-#[ORM\Table(name: 'resymf_password_reset_requests')]
+#[ORM\Table(name: 'matre_password_reset_requests')]
 #[ORM\HasLifecycleCallbacks]
 class PasswordResetRequest
 {

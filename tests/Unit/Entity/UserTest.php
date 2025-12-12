@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Entity;
 
-use App\Entity\Page;
 use App\Entity\User;
 use PHPUnit\Framework\TestCase;
 
 /**
  * Unit tests for User entity.
  *
- * Tests user authentication, roles, and relationship management.
+ * Tests user authentication, roles, and TOTP 2FA.
  */
 class UserTest extends TestCase
 {
@@ -23,7 +22,6 @@ class UserTest extends TestCase
         $this->assertTrue($user->getIsActive());
         $this->assertInstanceOf(\DateTimeImmutable::class, $user->getCreatedAt());
         $this->assertNull($user->getUpdatedAt());
-        $this->assertCount(0, $user->getAuthoredPages());
         $this->assertEquals(['ROLE_USER'], $user->getRoles());
     }
 
@@ -111,7 +109,6 @@ class UserTest extends TestCase
         $user->setRoles(['ROLE_ADMIN', 'ROLE_EDITOR']);
         $user->removeRole('ROLE_ADMIN');
 
-        // PHP 8.5: setAccessible() is deprecated and no longer needed since PHP 8.1
         $reflection = new \ReflectionClass($user);
         $property = $reflection->getProperty('roles');
         $internalRoles = $property->getValue($user);
@@ -173,59 +170,6 @@ class UserTest extends TestCase
         $this->assertLessThanOrEqual($after, $user->getUpdatedAt());
     }
 
-    public function testAuthoredPagesCollection(): void
-    {
-        $user = new User();
-
-        $this->assertCount(0, $user->getAuthoredPages());
-    }
-
-    public function testAddAuthoredPage(): void
-    {
-        $user = new User();
-        $page = $this->createMock(Page::class);
-
-        $page->expects($this->once())
-            ->method('setAuthor')
-            ->with($user);
-
-        $user->addAuthoredPage($page);
-
-        $this->assertCount(1, $user->getAuthoredPages());
-        $this->assertTrue($user->getAuthoredPages()->contains($page));
-    }
-
-    public function testAddAuthoredPageDoesNotDuplicate(): void
-    {
-        $user = new User();
-        $page = $this->createMock(Page::class);
-
-        $page->expects($this->once())
-            ->method('setAuthor');
-
-        $user->addAuthoredPage($page);
-        $user->addAuthoredPage($page);
-
-        $this->assertCount(1, $user->getAuthoredPages());
-    }
-
-    // Test removed due to complex mock expectations for bidirectional relationships
-    // This functionality is adequately tested by integration tests
-    public function testRemoveAuthoredPageReducesCount(): void
-    {
-        $user = new User();
-        $page = new Page();
-        $page->setTitle('Test');
-        $page->setSlug('test');
-        $page->setContent('Content');
-
-        $user->addAuthoredPage($page);
-        $this->assertCount(1, $user->getAuthoredPages());
-
-        $user->removeAuthoredPage($page);
-        $this->assertCount(0, $user->getAuthoredPages());
-    }
-
     public function testToString(): void
     {
         $user = new User();
@@ -247,5 +191,21 @@ class UserTest extends TestCase
             ->addRole('ROLE_ADMIN');
 
         $this->assertSame($user, $result);
+    }
+
+    public function testTotpConfiguration(): void
+    {
+        $user = new User();
+
+        $this->assertFalse($user->isTotpEnabled());
+        $this->assertNull($user->getTotpSecret());
+        $this->assertFalse($user->isTotpAuthenticationEnabled());
+
+        $user->setTotpSecret('TESTSECRET123');
+        $user->setIsTotpEnabled(true);
+
+        $this->assertTrue($user->isTotpEnabled());
+        $this->assertEquals('TESTSECRET123', $user->getTotpSecret());
+        $this->assertTrue($user->isTotpAuthenticationEnabled());
     }
 }

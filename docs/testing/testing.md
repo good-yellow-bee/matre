@@ -1,6 +1,6 @@
 # Testing Guide
 
-This guide covers testing practices for ReSymf-CMS using PHPUnit.
+This guide covers testing practices for MATRE using PHPUnit.
 
 ## Running Tests
 
@@ -222,7 +222,7 @@ public function testServiceWithMockedDependency(): void
 Configure a test database in `.env.test`:
 
 ```dotenv
-DATABASE_URL="mysql://root:password@127.0.0.1:3306/resymf_test?serverVersion=8.0"
+DATABASE_URL="mysql://root:password@127.0.0.1:3306/matre_test?serverVersion=8.0"
 ```
 
 Setup test database:

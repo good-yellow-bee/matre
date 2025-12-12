@@ -1,0 +1,69 @@
+{% extends 'admin/base.html.twig' %}
+{% block title %}Test Environments{% endblock %}
+{% block body %}
+<div class="d-flex justify-content-between mb-4">
+    <h1>Test Environments</h1>
+    <a href="{{ path('admin_test_environment_new') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Add Environment
+    </a>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Code</th>
+                    <th>Region</th>
+                    <th>Base URL</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for env in environments %}
+                <tr>
+                    <td>
+                        <a href="{{ path('admin_test_environment_show', {id: env.id}) }}">
+                            {{ env.name }}
+                        </a>
+                    </td>
+                    <td><code>{{ env.code }}</code></td>
+                    <td><span class="badge bg-secondary">{{ env.region|upper }}</span></td>
+                    <td><a href="{{ env.baseUrl }}" target="_blank" rel="noopener">{{ env.baseUrl|u.truncate(40, '...') }}</a></td>
+                    <td>
+                        <span class="badge bg-{{ env.isActive ? 'success' : 'secondary' }}">
+                            {{ env.isActive ? 'Active' : 'Inactive' }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <a href="{{ path('admin_test_environment_edit', {id: env.id}) }}" class="btn btn-outline-warning" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <form action="{{ path('admin_test_environment_toggle_active', {id: env.id}) }}" method="post" class="d-inline">
+                                <input type="hidden" name="_token" value="{{ csrf_token('toggle' ~ env.id) }}">
+                                <button type="submit" class="btn btn-outline-{{ env.isActive ? 'secondary' : 'success' }}" title="{{ env.isActive ? 'Deactivate' : 'Activate' }}">
+                                    <i class="bi bi-{{ env.isActive ? 'pause' : 'play' }}"></i>
+                                </button>
+                            </form>
+                            <form action="{{ path('admin_test_environment_delete', {id: env.id}) }}" method="post" class="d-inline" onsubmit="return confirm('Delete environment {{ env.name }}?')">
+                                <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ env.id) }}">
+                                <button type="submit" class="btn btn-outline-danger" title="Delete">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">No environments configured. <a href="{{ path('admin_test_environment_new') }}">Add one</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
