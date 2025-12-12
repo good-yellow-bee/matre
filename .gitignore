@@ -1,5 +1,5 @@
-
 ###> symfony/framework-bundle ###
+/.env
 /.env.local
 /.env.local.php
 /.env.*.local
@@ -12,6 +12,7 @@
 ###> phpunit/phpunit ###
 /phpunit.xml
 /.phpunit.cache/
+/.phpunit.result.cache
 ###< phpunit/phpunit ###
 
 ###> symfony/asset-mapper ###
@@ -19,23 +20,55 @@
 /assets/vendor/
 ###< symfony/asset-mapper ###
 
-# Tooling / local artifacts
-.php-cs-fixer.cache
-/build/
-/public/build/
+###> Node/Frontend ###
 /node_modules/
+/public/build/
 /.vite/
 npm-debug.log*
-composer-audit.json
-outdated-deps.json
-security-report.json
+yarn-error.log*
+.pnpm-debug.log*
+###< Node/Frontend ###
+
+###> IDE ###
+.idea/
+.vscode/
+*.sublime-*
+nbproject/
+.project
+.settings/
+*.swp
+*.swo
+*~
+###< IDE ###
+
+###> PHP Tooling ###
+.php-cs-fixer.cache
+.phpunit.result.cache
 /phpstan-baseline.neon
 /psalm-baseline.xml
-.idea*
-nbproject*
 composer.phar
+composer-audit.json
+###< PHP Tooling ###
 
+###> Build/Reports ###
+/build/
+/coverage/
+outdated-deps.json
+security-report.json
+###< Build/Reports ###
+
+###> OS ###
+.DS_Store
+Thumbs.db
+###< OS ###
+
+###> AI/Dev Tools ###
 .claude/
 .serena/
-.DS_Store
 .phpactor.json
+.aider*
+###< AI/Dev Tools ###
+
+###> Docker (optional local overrides) ###
+docker-compose.override.yml
+###< Docker ###
