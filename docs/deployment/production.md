@@ -229,6 +229,96 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 ---
 
+## Docker with Auto SSL (Recommended)
+
+MATRE includes an embedded Traefik reverse proxy with automatic Let's Encrypt SSL.
+
+### Prerequisites
+
+- Domain pointing to server (DNS A record)
+- Ports 80 and 443 open
+- No other services using these ports
+
+### Setup
+
+1. **Configure environment:**
+
+```bash
+cat > .env.prod.local << 'EOF'
+APP_ENV=prod
+APP_DEBUG=0
+APP_SECRET=$(openssl rand -base64 32)
+
+# SSL Configuration
+APP_DOMAIN=matre.example.com
+LETSENCRYPT_EMAIL=admin@example.com
+CERT_RESOLVER=letsencrypt
+
+# Database
+DB_DRIVER=pdo_mysql
+DB_HOST=db
+DB_PORT=3306
+DB_NAME=matre
+DB_USER=matre
+DB_PASS=secure-password
+EOF
+```
+
+2. **Validate configuration:**
+
+```bash
+docker-compose exec php php bin/console app:validate-ssl-config
+```
+
+3. **Start with production profile:**
+
+```bash
+docker-compose --profile production up -d
+```
+
+4. **Verify SSL:**
+
+```bash
+curl -I https://matre.example.com
+```
+
+### How It Works
+
+- **Profile activation:** `--profile production` starts the embedded Traefik
+- **HTTP-01 challenge:** Traefik automatically requests certs via Let's Encrypt
+- **Auto-renewal:** Certificates renewed before expiry
+- **HTTP redirect:** All HTTP traffic redirected to HTTPS
+- **Persistent storage:** Certificates stored in `traefik_certs` volume
+
+### Local Development
+
+Local development is unaffected. Without `--profile production`:
+- Embedded Traefik does not start
+- Uses external Traefik network (if available)
+- Works with self-signed certs for `*.local` domains
+
+### Troubleshooting
+
+**Certificate not issued:**
+```bash
+# Check Traefik logs
+docker logs matre_traefik
+
+# Verify DNS
+dig +short matre.example.com
+
+# Test HTTP challenge path
+curl http://matre.example.com/.well-known/acme-challenge/test
+```
+
+**Rate limits:** Let's Encrypt has [rate limits](https://letsencrypt.org/docs/rate-limits/). For testing, use staging:
+```yaml
+# In docker/traefik/traefik.yml, add under acme:
+caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+```
+
+---
+
 ## Monitoring
 
 ### Application Logs
