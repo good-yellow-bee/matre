@@ -157,15 +157,6 @@ sudo certbot --nginx -d your-domain.com
 
 ## Deploy Script
 
-Use the included `deploy.sh`:
-
-```bash
-chmod +x deploy.sh
-./deploy.sh
-```
-
-Or manually:
-
 ```bash
 # Enable maintenance mode
 touch public/maintenance.flag
