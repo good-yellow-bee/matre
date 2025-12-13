@@ -104,28 +104,6 @@ class EnvVariableAnalyzerService
     }
 
     /**
-     * Find the MFTF Test directory within the module.
-     */
-    private function findTestDirectory(string $modulePath): ?string
-    {
-        // Common MFTF test directory patterns
-        $patterns = [
-            '/Test/Mftf/Test',
-            '/Mftf/Test',
-            '/Test/Test',
-        ];
-
-        foreach ($patterns as $pattern) {
-            $testDir = rtrim($modulePath, '/') . $pattern;
-            if (is_dir($testDir)) {
-                return $testDir;
-            }
-        }
-
-        return null;
-    }
-
-    /**
      * Extract test ID from XML filename.
      *
      * Examples:
@@ -161,5 +139,27 @@ class EnvVariableAnalyzerService
     public function getDefaultModulePath(): string
     {
         return $this->projectDir . '/var/test-modules/current';
+    }
+
+    /**
+     * Find the MFTF Test directory within the module.
+     */
+    private function findTestDirectory(string $modulePath): ?string
+    {
+        // Common MFTF test directory patterns
+        $patterns = [
+            '/Test/Mftf/Test',
+            '/Mftf/Test',
+            '/Test/Test',
+        ];
+
+        foreach ($patterns as $pattern) {
+            $testDir = rtrim($modulePath, '/') . $pattern;
+            if (is_dir($testDir)) {
+                return $testDir;
+            }
+        }
+
+        return null;
     }
 }

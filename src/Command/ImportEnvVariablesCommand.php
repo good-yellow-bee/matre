@@ -128,7 +128,7 @@ class ImportEnvVariablesCommand extends Command
         if (!is_dir($envDataPath)) {
             $io->error(sprintf(
                 'Module not found at %s. Use --clone to fetch from TEST_MODULE_REPO.',
-                $modulePath
+                $modulePath,
             ));
 
             return Command::FAILURE;
@@ -147,7 +147,7 @@ class ImportEnvVariablesCommand extends Command
             $environment = $io->choice(
                 'Select environment to import',
                 $availableEnvs,
-                $availableEnvs[0] ?? null
+                $availableEnvs[0] ?? null,
             );
         }
 
@@ -157,7 +157,7 @@ class ImportEnvVariablesCommand extends Command
             $io->error(sprintf(
                 'Environment "%s" not found. Available: %s',
                 $environment,
-                implode(', ', $availableEnvs)
+                implode(', ', $availableEnvs),
             ));
 
             return Command::FAILURE;
@@ -173,6 +173,7 @@ class ImportEnvVariablesCommand extends Command
 
         // Parse .env file
         $io->section('Parsing .env file...');
+
         try {
             $envVars = $this->analyzerService->parseEnvFile($envFile);
         } catch (\InvalidArgumentException $e) {
@@ -239,14 +240,14 @@ class ImportEnvVariablesCommand extends Command
                 'Import completed: %d new, %d updated, %d unchanged',
                 $stats['new'],
                 $stats['updated'],
-                $stats['unchanged']
+                $stats['unchanged'],
             ));
         } else {
             $io->note(sprintf(
                 'Dry run: %d would be created, %d would be updated, %d unchanged',
                 $stats['new'],
                 $stats['updated'],
-                $stats['unchanged']
+                $stats['unchanged'],
             ));
         }
 
