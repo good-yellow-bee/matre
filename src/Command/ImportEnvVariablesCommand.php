@@ -7,6 +7,7 @@ namespace App\Command;
 use App\Entity\GlobalEnvVariable;
 use App\Repository\GlobalEnvVariableRepository;
 use App\Service\EnvVariableAnalyzerService;
+use App\Service\ModuleCloneService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -22,7 +23,11 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  * patterns, and saves variables to GlobalEnvVariable with usedInTests populated.
  *
  * Usage:
- *   # Import from module's environment-specific .env file
+ *   # Clone fresh module and import (recommended)
+ *   php bin/console app:env:import \
+ *     -f var/test-modules/current/Cron/data/.env.stage-us --clone
+ *
+ *   # Import from existing module
  *   php bin/console app:env:import \
  *     -f var/test-modules/current/Cron/data/.env.stage-us \
  *     -m var/test-modules/current
@@ -32,9 +37,6 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  *
  *   # Update existing variables
  *   php bin/console app:env:import -f .env --overwrite
- *
- *   # Import from external .env file
- *   php bin/console app:env:import -f /path/to/project/.env
  *
  * Patterns detected in MFTF tests:
  *   - {{_ENV.VAR_NAME}} - Environment variable references
@@ -52,6 +54,7 @@ class ImportEnvVariablesCommand extends Command
         private readonly EntityManagerInterface $entityManager,
         private readonly GlobalEnvVariableRepository $globalEnvRepository,
         private readonly EnvVariableAnalyzerService $analyzerService,
+        private readonly ModuleCloneService $moduleCloneService,
     ) {
         parent::__construct();
     }
@@ -63,13 +66,19 @@ class ImportEnvVariablesCommand extends Command
             ->addOption('module-path', 'm', InputOption::VALUE_OPTIONAL, 'Path to test module (default: var/test-modules/current)')
             ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Preview without saving changes')
             ->addOption('overwrite', null, InputOption::VALUE_NONE, 'Update existing variables')
+            ->addOption('clone', 'c', InputOption::VALUE_NONE, 'Clone fresh test module from TEST_MODULE_REPO before import')
             ->setHelp(
                 <<<'HELP'
                     The <info>%command.name%</info> command imports environment variables and analyzes test usage:
 
                         <info>php %command.full_name% --env-file=path/to/.env</info>
 
-                    Import from module's environment-specific file:
+                    Clone fresh module and import (recommended):
+
+                        <info>php %command.full_name% \
+                            -f var/test-modules/current/Cron/data/.env.stage-us --clone</info>
+
+                    Import from existing module:
 
                         <info>php %command.full_name% \
                             -f var/test-modules/current/Cron/data/.env.stage-us \
@@ -101,6 +110,27 @@ class ImportEnvVariablesCommand extends Command
         $modulePath = $input->getOption('module-path') ?? $this->analyzerService->getDefaultModulePath();
         $dryRun = $input->getOption('dry-run');
         $overwrite = $input->getOption('overwrite');
+        $clone = $input->getOption('clone');
+
+        // Clone fresh module if requested
+        if ($clone) {
+            $io->section('Cloning fresh test module...');
+            $io->text([
+                sprintf('Repository: %s', $this->moduleCloneService->getModuleRepo()),
+                sprintf('Branch: %s', $this->moduleCloneService->getModuleBranch()),
+            ]);
+
+            try {
+                $targetPath = $this->analyzerService->getDefaultModulePath();
+                $this->moduleCloneService->cloneModule($targetPath);
+                $modulePath = $targetPath;
+                $io->text(sprintf('<fg=green>✓</> Cloned to: %s', $targetPath));
+            } catch (\Throwable $e) {
+                $io->error(sprintf('Failed to clone module: %s', $e->getMessage()));
+
+                return Command::FAILURE;
+            }
+        }
 
         // Validate env-file option
         if (!$envFile) {
