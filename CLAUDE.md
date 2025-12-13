@@ -43,6 +43,7 @@ MATRE (Magento Automated Test Run Environment) is a test automation orchestratio
 | `AdminConfigService` | Admin menu/config, role-based access |
 | `ArtifactCollectorService` | Test screenshots/HTML collection |
 | `FileUploadService` | Flysystem uploads with MIME validation |
+| `EnvVariableAnalyzerService` | Parse .env files and analyze MFTF test variable usage |
 
 ## Security Pattern
 
@@ -71,6 +72,7 @@ MATRE (Magento Automated Test Run Environment) is a test automation orchestratio
 | `app:check-magento` | Validate Magento connectivity |
 | `app:cleanup-tests` | Clean old artifacts |
 | `app:import-environments` | Bulk import test targets |
+| `app:env:import` | Import .env vars from TEST_MODULE_REPO with test usage analysis |
 
 ## Message Queue Pattern
 
