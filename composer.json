@@ -93,11 +93,16 @@
             "assets:install %PUBLIC_DIR%": "symfony-cmd",
             "importmap:install": "symfony-cmd"
         },
+        "install-hooks": [
+            "git config core.hooksPath .githooks || true"
+        ],
         "post-install-cmd": [
-            "@auto-scripts"
+            "@auto-scripts",
+            "@install-hooks"
         ],
         "post-update-cmd": [
-            "@auto-scripts"
+            "@auto-scripts",
+            "@install-hooks"
         ]
     },
     "conflict": {
