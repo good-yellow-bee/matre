@@ -5,16 +5,14 @@ declare(strict_types=1);
 namespace App\Twig;
 
 use Symfony\Component\Asset\Packages;
-use Symfony\Component\AssetMapper\ImportMap\ImportMapRenderer;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 
 /**
- * Lightweight Vite helpers with graceful fallback to the existing importmap pipeline.
+ * Lightweight Vite helpers for including bundled assets in Twig templates.
  *
- * This avoids a hard dependency on symfonycasts/vite-bundle so we can keep the
- * application working while Vite is being introduced.
+ * This avoids a hard dependency on symfonycasts/vite-bundle.
  */
 class ViteExtension extends AbstractExtension
 {
@@ -22,8 +20,6 @@ class ViteExtension extends AbstractExtension
 
     public function __construct(
         private readonly Packages $packages,
-        #[Autowire(service: 'asset_mapper.importmap.renderer', lazy: true)]
-        private readonly ?ImportMapRenderer $importMapRenderer = null,
         #[Autowire('%kernel.project_dir%')]
         private readonly string $projectDir = '',
     ) {
@@ -54,11 +50,6 @@ class ViteExtension extends AbstractExtension
             $tags[] = sprintf('<script type="module" src="%s"></script>', $this->assetUrl('build/' . $entry['file']));
 
             return implode("\n", $tags);
-        }
-
-        // Fallbacks so the app keeps working before Vite is wired up.
-        if ('app' === $entryName && $this->importMapRenderer) {
-            return $this->importMapRenderer->render('app');
         }
 
         // Admin/CMS were loaded via asset() previously; mirror that.
