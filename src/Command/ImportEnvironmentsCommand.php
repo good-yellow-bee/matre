@@ -90,6 +90,7 @@ class ImportEnvironmentsCommand extends Command
 
             if (empty($envName)) {
                 $io->warning(sprintf('Skipping invalid file: %s', $filename));
+
                 continue;
             }
 
@@ -99,7 +100,8 @@ class ImportEnvironmentsCommand extends Command
             $existing = $this->environmentRepository->findOneBy(['name' => $envName]);
             if ($existing && !$overwrite) {
                 $io->note(sprintf('Environment "%s" already exists. Use --overwrite to update.', $envName));
-                $skipped++;
+                ++$skipped;
+
                 continue;
             }
 
@@ -108,7 +110,8 @@ class ImportEnvironmentsCommand extends Command
 
             if (!isset($envData['MAGENTO_BASE_URL'])) {
                 $io->warning(sprintf('Missing MAGENTO_BASE_URL in %s', $filename));
-                $errors++;
+                ++$errors;
+
                 continue;
             }
 
@@ -150,12 +153,12 @@ class ImportEnvironmentsCommand extends Command
                     ['Base URL', $envData['MAGENTO_BASE_URL']],
                     ['Backend', $envData['MAGENTO_BACKEND_NAME'] ?? 'admin'],
                     ['Custom vars', count($customVars)],
-                ]
+                ],
             );
 
             if (!$dryRun) {
                 $this->entityManager->persist($environment);
-                $imported++;
+                ++$imported;
             } else {
                 $io->note('(dry-run) Would import this environment');
             }
@@ -172,7 +175,7 @@ class ImportEnvironmentsCommand extends Command
                 ['Imported', $imported],
                 ['Skipped', $skipped],
                 ['Errors', $errors],
-            ]
+            ],
         );
 
         if ($dryRun) {

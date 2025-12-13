@@ -89,7 +89,7 @@ class TestRun
     /**
      * Optional filter for specific tests or groups.
      * For MFTF: test name like "MOEC1625" or group like "pricing"
-     * For Playwright: grep pattern like "@smoke"
+     * For Playwright: grep pattern like "@smoke".
      */
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
     private ?string $testFilter = null;
@@ -451,10 +451,10 @@ class TestRun
         ];
 
         foreach ($this->results as $result) {
-            $counts['total']++;
+            ++$counts['total'];
             $status = $result->getStatus();
             if (isset($counts[$status])) {
-                $counts[$status]++;
+                ++$counts[$status];
             }
         }
 

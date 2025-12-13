@@ -69,7 +69,7 @@ class TestSuite
     /**
      * Test pattern - group name or specific test name(s).
      * For MFTF: group name like "pricing" or test name like "MOEC1625"
-     * For Playwright: grep pattern like "@smoke" or specific test name
+     * For Playwright: grep pattern like "@smoke" or specific test name.
      */
     #[ORM\Column(type: Types::STRING, length: 255)]
     #[Assert\NotBlank(message: 'Test pattern cannot be blank.')]

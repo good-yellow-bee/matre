@@ -74,7 +74,7 @@ class ValidateSslConfigCommand extends Command
         if ($certResolver === 'letsencrypt' && $appEnv !== 'prod') {
             $io->warning(sprintf(
                 'APP_ENV=%s with Let\'s Encrypt. Consider APP_ENV=prod for production.',
-                $appEnv
+                $appEnv,
             ));
         }
 

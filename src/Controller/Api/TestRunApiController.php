@@ -52,7 +52,7 @@ class TestRunApiController extends AbstractController
             $criteria,
             ['createdAt' => 'DESC'],
             $limit,
-            ($page - 1) * $limit
+            ($page - 1) * $limit,
         );
 
         $total = $this->testRunRepository->count($criteria);
@@ -105,7 +105,7 @@ class TestRunApiController extends AbstractController
 
         $this->messageBus->dispatch(new TestRunMessage(
             $newRun->getId(),
-            TestRunMessage::PHASE_PREPARE
+            TestRunMessage::PHASE_PREPARE,
         ));
 
         return $this->json([

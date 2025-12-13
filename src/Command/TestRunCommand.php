@@ -120,7 +120,7 @@ class TestRunCommand extends Command
                 ['Base URL', $environment->getBaseUrl()],
                 ['Filter', $filter ?: '(all tests)'],
                 ['Suite', $suite ? $suite->getName() : '(none)'],
-            ]
+            ],
         );
 
         // Create test run
@@ -129,7 +129,7 @@ class TestRunCommand extends Command
             $type,
             $filter,
             $suite,
-            TestRun::TRIGGER_MANUAL
+            TestRun::TRIGGER_MANUAL,
         );
 
         $io->success(sprintf('Test run #%d created.', $run->getId()));
@@ -155,7 +155,7 @@ class TestRunCommand extends Command
                         ['Failed', $counts['failed']],
                         ['Skipped', $counts['skipped']],
                         ['Broken', $counts['broken']],
-                    ]
+                    ],
                 );
 
                 if ($counts['failed'] > 0 || $counts['broken'] > 0) {
@@ -176,7 +176,7 @@ class TestRunCommand extends Command
             // Dispatch async execution
             $this->messageBus->dispatch(new TestRunMessage(
                 $run->getId(),
-                TestRunMessage::PHASE_PREPARE
+                TestRunMessage::PHASE_PREPARE,
             ));
 
             $io->note([

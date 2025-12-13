@@ -42,6 +42,7 @@ class ArtifactCollectorService
 
         if (!is_dir($sourcePath)) {
             $this->logger->warning('MFTF results directory not found', ['path' => $sourcePath]);
+
             return $collected;
         }
 
@@ -53,7 +54,7 @@ class ArtifactCollectorService
             $sourcePath,
             $targetPath,
             self::SCREENSHOT_EXTENSIONS,
-            $filesystem
+            $filesystem,
         );
 
         // Collect HTML files
@@ -61,7 +62,7 @@ class ArtifactCollectorService
             $sourcePath,
             $targetPath,
             self::HTML_EXTENSIONS,
-            $filesystem
+            $filesystem,
         );
 
         $this->logger->info('Artifacts collected', [
@@ -90,14 +91,15 @@ class ArtifactCollectorService
 
                 // Match by test name or test ID in filename
                 if (
-                    ($testName && stripos($filename, $testName) !== false) ||
-                    ($testId && stripos($filename, $testId) !== false)
+                    ($testName && stripos($filename, $testName) !== false)
+                    || ($testId && stripos($filename, $testId) !== false)
                 ) {
                     $result->setScreenshotPath($filename);
                     $this->logger->debug('Screenshot associated', [
                         'test' => $testName,
                         'screenshot' => $filename,
                     ]);
+
                     break;
                 }
             }
@@ -134,6 +136,7 @@ class ArtifactCollectorService
     public function artifactExists(TestRun $run, string $filename): bool
     {
         $path = $this->getArtifactFilePath($run, $filename);
+
         return file_exists($path) && is_file($path);
     }
 
@@ -191,7 +194,7 @@ class ArtifactCollectorService
         foreach ($finder as $dir) {
             if ($dir->getMTime() < $cutoff->getTimestamp()) {
                 $filesystem->remove($dir->getRealPath());
-                $removed++;
+                ++$removed;
             }
         }
 
@@ -202,13 +205,14 @@ class ArtifactCollectorService
      * Collect files by extension from source to target directory.
      *
      * @param string[] $extensions
+     *
      * @return string[] Collected filenames
      */
     private function collectFilesByExtension(
         string $sourcePath,
         string $targetPath,
         array $extensions,
-        Filesystem $filesystem
+        Filesystem $filesystem,
     ): array {
         $collected = [];
 
@@ -225,6 +229,7 @@ class ArtifactCollectorService
                     'file' => $file->getFilename(),
                     'size' => $file->getSize(),
                 ]);
+
                 continue;
             }
 

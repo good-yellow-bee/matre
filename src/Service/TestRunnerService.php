@@ -6,7 +6,6 @@ namespace App\Service;
 
 use App\Entity\TestEnvironment;
 use App\Entity\TestReport;
-use App\Entity\TestResult;
 use App\Entity\TestRun;
 use App\Entity\TestSuite;
 use App\Repository\TestRunRepository;
@@ -86,6 +85,7 @@ class TestRunnerService
             ]);
             $run->markFailed($e->getMessage());
             $this->entityManager->flush();
+
             throw $e;
         }
     }
@@ -161,6 +161,7 @@ class TestRunnerService
             $run->setOutput($output . "\n\nERROR: " . $e->getMessage());
             $run->markFailed($e->getMessage());
             $this->entityManager->flush();
+
             throw $e;
         }
     }
@@ -207,6 +208,7 @@ class TestRunnerService
             ]);
             $run->markFailed('Report generation failed: ' . $e->getMessage());
             $this->entityManager->flush();
+
             throw $e;
         }
     }

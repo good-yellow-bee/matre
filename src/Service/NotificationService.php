@@ -31,6 +31,7 @@ class NotificationService
     {
         if (empty($this->slackWebhookUrl)) {
             $this->logger->debug('Slack webhook not configured, skipping notification');
+
             return;
         }
 
@@ -139,7 +140,7 @@ class NotificationService
                     '✅ %d passed | ❌ %d failed | ⏭ %d skipped',
                     $counts['passed'],
                     $counts['failed'],
-                    $counts['skipped']
+                    $counts['skipped'],
                 ),
                 'short' => false,
             ];
@@ -200,7 +201,7 @@ class NotificationService
             $prefix,
             $run->getId(),
             ucfirst($status),
-            $run->getEnvironment()->getName()
+            $run->getEnvironment()->getName(),
         );
     }
 
@@ -264,7 +265,7 @@ class NotificationService
         return sprintf(
             '<tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">%s</td><td style="padding: 8px; border-bottom: 1px solid #eee;">%s</td></tr>',
             htmlspecialchars($label),
-            htmlspecialchars($value)
+            htmlspecialchars($value),
         );
     }
 }

@@ -83,7 +83,7 @@ class AllureReportService
             // Copy all files from source to target
             $iterator = new \RecursiveIteratorIterator(
                 new \RecursiveDirectoryIterator($sourcePath, \RecursiveDirectoryIterator::SKIP_DOTS),
-                \RecursiveIteratorIterator::SELF_FIRST
+                \RecursiveIteratorIterator::SELF_FIRST,
             );
 
             foreach ($iterator as $item) {
@@ -94,78 +94,6 @@ class AllureReportService
                     $this->filesystem->copy($item->getPathname(), $target, true);
                 }
             }
-        }
-    }
-
-    /**
-     * Trigger report generation via Allure Docker service.
-     */
-    private function triggerReportGeneration(int $runId): string
-    {
-        $projectId = 'run-' . $runId;
-
-        try {
-            // Create project if not exists
-            $this->httpClient->request('POST', $this->allureUrl . '/allure-docker-service/projects', [
-                'json' => ['id' => $projectId],
-            ]);
-        } catch (\Throwable $e) {
-            // Project might already exist, that's ok
-            $this->logger->debug('Project creation response', ['error' => $e->getMessage()]);
-        }
-
-        // Send results to Allure service
-        $resultsPath = $this->getAllureResultsPath($runId);
-        if ($this->filesystem->exists($resultsPath)) {
-            $this->sendResultsToAllure($projectId, $resultsPath);
-        }
-
-        // Generate report
-        try {
-            $this->httpClient->request(
-                'GET',
-                $this->allureUrl . '/allure-docker-service/generate-report',
-                ['query' => ['project_id' => $projectId]]
-            );
-        } catch (\Throwable $e) {
-            $this->logger->warning('Failed to generate Allure report', [
-                'error' => $e->getMessage(),
-            ]);
-        }
-
-        return $projectId;
-    }
-
-    /**
-     * Send results files to Allure service.
-     */
-    private function sendResultsToAllure(string $projectId, string $resultsPath): void
-    {
-        $files = glob($resultsPath . '/*-result.json');
-        if (empty($files)) {
-            return;
-        }
-
-        $results = [];
-        foreach ($files as $file) {
-            $content = file_get_contents($file);
-            if ($content) {
-                $results[] = [
-                    'file_name' => basename($file),
-                    'content_base64' => base64_encode($content),
-                ];
-            }
-        }
-
-        if (!empty($results)) {
-            $this->httpClient->request(
-                'POST',
-                $this->allureUrl . '/allure-docker-service/send-results',
-                [
-                    'query' => ['project_id' => $projectId],
-                    'json' => ['results' => $results],
-                ]
-            );
         }
     }
 
@@ -204,10 +132,82 @@ class AllureReportService
             // For now, just clean up directories older than 30 days
             if (filemtime($dir) < strtotime('-30 days')) {
                 $this->filesystem->remove($dir);
-                $cleaned++;
+                ++$cleaned;
             }
         }
 
         return $cleaned;
+    }
+
+    /**
+     * Trigger report generation via Allure Docker service.
+     */
+    private function triggerReportGeneration(int $runId): string
+    {
+        $projectId = 'run-' . $runId;
+
+        try {
+            // Create project if not exists
+            $this->httpClient->request('POST', $this->allureUrl . '/allure-docker-service/projects', [
+                'json' => ['id' => $projectId],
+            ]);
+        } catch (\Throwable $e) {
+            // Project might already exist, that's ok
+            $this->logger->debug('Project creation response', ['error' => $e->getMessage()]);
+        }
+
+        // Send results to Allure service
+        $resultsPath = $this->getAllureResultsPath($runId);
+        if ($this->filesystem->exists($resultsPath)) {
+            $this->sendResultsToAllure($projectId, $resultsPath);
+        }
+
+        // Generate report
+        try {
+            $this->httpClient->request(
+                'GET',
+                $this->allureUrl . '/allure-docker-service/generate-report',
+                ['query' => ['project_id' => $projectId]],
+            );
+        } catch (\Throwable $e) {
+            $this->logger->warning('Failed to generate Allure report', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return $projectId;
+    }
+
+    /**
+     * Send results files to Allure service.
+     */
+    private function sendResultsToAllure(string $projectId, string $resultsPath): void
+    {
+        $files = glob($resultsPath . '/*-result.json');
+        if (empty($files)) {
+            return;
+        }
+
+        $results = [];
+        foreach ($files as $file) {
+            $content = file_get_contents($file);
+            if ($content) {
+                $results[] = [
+                    'file_name' => basename($file),
+                    'content_base64' => base64_encode($content),
+                ];
+            }
+        }
+
+        if (!empty($results)) {
+            $this->httpClient->request(
+                'POST',
+                $this->allureUrl . '/allure-docker-service/send-results',
+                [
+                    'query' => ['project_id' => $projectId],
+                    'json' => ['results' => $results],
+                ],
+            );
+        }
     }
 }

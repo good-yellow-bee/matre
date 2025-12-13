@@ -125,7 +125,7 @@ class PlaywrightExecutorService
             '/^\s*(✓|✘|○|-)\s+(.+?)\s+\(([0-9.]+(?:ms|s))\)/m',
             $output,
             $matches,
-            PREG_SET_ORDER
+            PREG_SET_ORDER,
         );
 
         foreach ($matches as $match) {
@@ -145,6 +145,22 @@ class PlaywrightExecutorService
         }
 
         return $results;
+    }
+
+    /**
+     * Get path to Playwright output directory.
+     */
+    public function getOutputPath(): string
+    {
+        return $this->projectDir . '/var/playwright-results';
+    }
+
+    /**
+     * Get path to Allure results from Playwright.
+     */
+    public function getAllureResultsPath(): string
+    {
+        return $this->projectDir . '/var/playwright-results/allure-results';
     }
 
     /**
@@ -201,22 +217,6 @@ class PlaywrightExecutorService
         }
 
         return $results;
-    }
-
-    /**
-     * Get path to Playwright output directory.
-     */
-    public function getOutputPath(): string
-    {
-        return $this->projectDir . '/var/playwright-results';
-    }
-
-    /**
-     * Get path to Allure results from Playwright.
-     */
-    public function getAllureResultsPath(): string
-    {
-        return $this->projectDir . '/var/playwright-results/allure-results';
     }
 
     private function mapStatus(string $symbol): string

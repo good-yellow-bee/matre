@@ -146,39 +146,6 @@ class MftfExecutorService
         return implode(' && ', $parts);
     }
 
-
-    /**
-     * Build command to generate MFTF credentials file from env variables.
-     * 
-     * MFTF uses _CREDS suffix in tests to reference credentials from .credentials file.
-     * This extracts relevant variables from .env and formats them for MFTF.
-     */
-    private function buildCredentialsCommand(string $envFile, string $credentialsFile): string
-    {
-        // Extract password/secret variables from .env and format for .credentials
-        // Format: magento/VAR_NAME=value
-        $script = <<<'BASH'
-(
-    echo "# MFTF credentials auto-generated from .env"
-    echo "magento/tfa/OTP_SHARED_SECRET=ABCDEFGHIJKLMNOP"
-    
-    # Extract all PASSWORD, SECRET, KEY variables from .env
-    grep -E "^(MAGENTO_ADMIN|MAGENTO_TEST|.*PASSWORD|.*SECRET|.*KEY)=" "$1" 2>/dev/null | while IFS='=' read -r key value; do
-        # Remove quotes from value
-        value=$(echo "$value" | sed "s/^['\"]//;s/['\"]$//")
-        echo "magento/${key}=${value}"
-    done
-) > "$2"
-BASH;
-
-        return sprintf(
-            'bash -c %s -- %s %s',
-            escapeshellarg($script),
-            escapeshellarg($envFile),
-            escapeshellarg($credentialsFile)
-        );
-    }
-
     /**
      * Parse MFTF output to extract test results.
      *
@@ -195,7 +162,7 @@ BASH;
             '/^(PASSED|FAIL|ERROR|SKIP)\s+([^\s]+)(?:\s+\(([0-9.]+)s\))?/m',
             $output,
             $matches,
-            PREG_SET_ORDER
+            PREG_SET_ORDER,
         );
 
         foreach ($matches as $match) {
@@ -233,6 +200,38 @@ BASH;
     public function getAllureResultsPath(): string
     {
         return $this->projectDir . '/var/mftf-results/allure-results';
+    }
+
+    /**
+     * Build command to generate MFTF credentials file from env variables.
+     *
+     * MFTF uses _CREDS suffix in tests to reference credentials from .credentials file.
+     * This extracts relevant variables from .env and formats them for MFTF.
+     */
+    private function buildCredentialsCommand(string $envFile, string $credentialsFile): string
+    {
+        // Extract password/secret variables from .env and format for .credentials
+        // Format: magento/VAR_NAME=value
+        $script = <<<'BASH'
+            (
+                echo "# MFTF credentials auto-generated from .env"
+                echo "magento/tfa/OTP_SHARED_SECRET=ABCDEFGHIJKLMNOP"
+                
+                # Extract all PASSWORD, SECRET, KEY variables from .env
+                grep -E "^(MAGENTO_ADMIN|MAGENTO_TEST|.*PASSWORD|.*SECRET|.*KEY)=" "$1" 2>/dev/null | while IFS='=' read -r key value; do
+                    # Remove quotes from value
+                    value=$(echo "$value" | sed "s/^['\"]//;s/['\"]$//")
+                    echo "magento/${key}=${value}"
+                done
+            ) > "$2"
+            BASH;
+
+        return sprintf(
+            'bash -c %s -- %s %s',
+            escapeshellarg($script),
+            escapeshellarg($envFile),
+            escapeshellarg($credentialsFile),
+        );
     }
 
     private function mapStatus(string $codeceptStatus): string

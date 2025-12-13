@@ -105,10 +105,11 @@ class CleanupTestsCommand extends Command
         $stats['runs_deleted'] = count($oldRuns);
 
         foreach ($oldRuns as $run) {
-            $io->text(sprintf('  - Run #%d (%s on %s)',
+            $io->text(sprintf(
+                '  - Run #%d (%s on %s)',
                 $run->getId(),
                 $run->getStatus(),
-                $run->getCreatedAt()->format('Y-m-d')
+                $run->getCreatedAt()->format('Y-m-d'),
             ));
 
             // Clean up module directory
@@ -117,7 +118,7 @@ class CleanupTestsCommand extends Command
                 if (!$dryRun) {
                     $this->moduleCloneService->cleanup($modulePath);
                 }
-                $stats['files_cleaned']++;
+                ++$stats['files_cleaned'];
             }
 
             if (!$dryRun) {
@@ -146,7 +147,7 @@ class CleanupTestsCommand extends Command
                         if (!$dryRun) {
                             $this->moduleCloneService->cleanup($dir);
                         }
-                        $stats['files_cleaned']++;
+                        ++$stats['files_cleaned'];
                     }
                 }
             }
@@ -163,7 +164,7 @@ class CleanupTestsCommand extends Command
                 ['Test runs', $stats['runs_deleted']],
                 ['Reports', $stats['reports_deleted']],
                 ['Directories', $stats['files_cleaned']],
-            ]
+            ],
         );
 
         if ($dryRun) {

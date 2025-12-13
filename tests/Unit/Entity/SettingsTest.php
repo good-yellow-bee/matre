@@ -17,8 +17,8 @@ class SettingsTest extends TestCase
         $settings = new Settings();
 
         $this->assertNull($settings->getId());
-        $this->assertEquals('ReSymf CMS', $settings->getSiteName());
-        $this->assertEquals('ReSymf CMS Admin', $settings->getAdminPanelTitle());
+        $this->assertEquals('MATRE', $settings->getSiteName());
+        $this->assertEquals('MATRE Admin', $settings->getAdminPanelTitle());
         $this->assertEquals('en', $settings->getDefaultLocale());
         $this->assertFalse($settings->isHeadlessMode());
         $this->assertFalse($settings->isEnforce2fa());

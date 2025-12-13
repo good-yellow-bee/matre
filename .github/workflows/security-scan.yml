@@ -103,8 +103,16 @@ jobs:
       - name: Create .env file
         run: cp .env.example .env
 
-      - name: Install dependencies
+      - name: Install PHP dependencies
         run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Node dependencies
+        run: npm ci
 
       - name: Run OWASP Dependency-Check
         uses: dependency-check/Dependency-Check_Action@main

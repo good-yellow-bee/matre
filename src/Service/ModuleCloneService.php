@@ -65,6 +65,7 @@ class ModuleCloneService
                 'error' => $e->getMessage(),
                 'output' => $this->sanitizeOutput($process->getErrorOutput()),
             ]);
+
             throw $e;
         }
     }
@@ -90,6 +91,7 @@ class ModuleCloneService
             $this->logger->error('Failed to pull changes', [
                 'error' => $e->getMessage(),
             ]);
+
             throw $e;
         }
     }
@@ -182,7 +184,7 @@ class ModuleCloneService
             $output = str_replace(
                 urlencode($this->repoUsername) . ':' . urlencode($this->repoPassword) . '@',
                 '***:***@',
-                $output
+                $output,
             );
             $output = str_replace($this->repoPassword, '***', $output);
         }
