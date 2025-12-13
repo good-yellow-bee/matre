@@ -53,13 +53,13 @@ class TestRunController extends AbstractController
                 $data['type'],
                 $data['testFilter'],
                 $data['suite'],
-                TestRun::TRIGGER_MANUAL
+                TestRun::TRIGGER_MANUAL,
             );
 
             // Dispatch async execution
             $this->messageBus->dispatch(new TestRunMessage(
                 $run->getId(),
-                TestRunMessage::PHASE_PREPARE
+                TestRunMessage::PHASE_PREPARE,
             ));
 
             $this->addFlash('success', sprintf('Test run #%d started.', $run->getId()));
@@ -103,7 +103,7 @@ class TestRunController extends AbstractController
         $response = new BinaryFileResponse($filePath);
         $response->setContentDisposition(
             ResponseHeaderBag::DISPOSITION_INLINE,
-            $filename
+            $filename,
         );
 
         return $response;
@@ -135,7 +135,7 @@ class TestRunController extends AbstractController
             // Dispatch async execution
             $this->messageBus->dispatch(new TestRunMessage(
                 $newRun->getId(),
-                TestRunMessage::PHASE_PREPARE
+                TestRunMessage::PHASE_PREPARE,
             ));
 
             $this->addFlash('success', sprintf('New test run #%d created from retry.', $newRun->getId()));

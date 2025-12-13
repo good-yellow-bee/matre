@@ -36,6 +36,7 @@ class ScheduledTestRunMessageHandler
         $suite = $this->testSuiteRepository->find($message->suiteId);
         if (!$suite || !$suite->isActive()) {
             $this->logger->info('Suite not found or inactive', ['suiteId' => $message->suiteId]);
+
             return;
         }
 
@@ -53,6 +54,7 @@ class ScheduledTestRunMessageHandler
                 $this->logger->info('Skipping environment with running tests', [
                     'environment' => $environment->getName(),
                 ]);
+
                 continue;
             }
 
@@ -69,7 +71,7 @@ class ScheduledTestRunMessageHandler
                 $type,
                 $suite->getTestPattern(),
                 $suite,
-                TestRun::TRIGGER_SCHEDULER
+                TestRun::TRIGGER_SCHEDULER,
             );
 
             $this->logger->info('Created scheduled test run', [
@@ -80,7 +82,7 @@ class ScheduledTestRunMessageHandler
             // Dispatch execution
             $this->messageBus->dispatch(new TestRunMessage(
                 $run->getId(),
-                TestRunMessage::PHASE_PREPARE
+                TestRunMessage::PHASE_PREPARE,
             ));
         }
     }

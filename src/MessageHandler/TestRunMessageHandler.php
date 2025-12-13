@@ -40,12 +40,14 @@ class TestRunMessageHandler
         $run = $this->testRunRepository->find($runId);
         if (!$run) {
             $this->logger->error('Test run not found', ['runId' => $runId]);
+
             return;
         }
 
         // Skip if already cancelled or failed
         if (in_array($run->getStatus(), [TestRun::STATUS_CANCELLED, TestRun::STATUS_FAILED], true)) {
             $this->logger->info('Skipping cancelled/failed run', ['runId' => $runId]);
+
             return;
         }
 
@@ -53,6 +55,7 @@ class TestRunMessageHandler
         $lock = $this->lockFactory->createLock('test_run_' . $runId, 3600);
         if (!$lock->acquire()) {
             $this->logger->warning('Could not acquire lock for test run', ['runId' => $runId]);
+
             return;
         }
 
@@ -84,7 +87,7 @@ class TestRunMessageHandler
         // Dispatch next phase
         $this->messageBus->dispatch(new TestRunMessage(
             $run->getId(),
-            TestRunMessage::PHASE_EXECUTE
+            TestRunMessage::PHASE_EXECUTE,
         ));
     }
 
@@ -95,7 +98,7 @@ class TestRunMessageHandler
         // Dispatch next phase
         $this->messageBus->dispatch(new TestRunMessage(
             $run->getId(),
-            TestRunMessage::PHASE_REPORT
+            TestRunMessage::PHASE_REPORT,
         ));
     }
 
@@ -106,7 +109,7 @@ class TestRunMessageHandler
         // Dispatch next phase
         $this->messageBus->dispatch(new TestRunMessage(
             $run->getId(),
-            TestRunMessage::PHASE_NOTIFY
+            TestRunMessage::PHASE_NOTIFY,
         ));
     }
 
@@ -117,7 +120,7 @@ class TestRunMessageHandler
         // Dispatch cleanup phase
         $this->messageBus->dispatch(new TestRunMessage(
             $run->getId(),
-            TestRunMessage::PHASE_CLEANUP
+            TestRunMessage::PHASE_CLEANUP,
         ));
     }
 
