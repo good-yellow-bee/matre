@@ -36,5 +36,50 @@ services:
             $apiLimiter: '@limiter.api'
             $userCreationLimiter: '@limiter.user_creation'
 
+    # Test Automation Services
+    App\Service\ModuleCloneService:
+        arguments:
+            $moduleRepo: '%env(TEST_MODULE_REPO)%'
+            $moduleBranch: '%env(TEST_MODULE_BRANCH)%'
+            $projectDir: '%kernel.project_dir%'
+            $repoUsername: '%env(REPO_USERNAME)%'
+            $repoPassword: '%env(REPO_PASSWORD)%'
+
+    App\Service\MftfExecutorService:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+            $seleniumHost: '%env(SELENIUM_HOST)%'
+            $seleniumPort: '%env(int:SELENIUM_PORT)%'
+            $magentoRoot: '%env(MAGENTO_ROOT)%'
+            $testModulePath: '%env(TEST_MODULE_PATH)%'
+
+    App\Service\PlaywrightExecutorService:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
+    App\Service\AllureReportService:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+            $allureUrl: '%env(ALLURE_URL)%'
+
+    App\Service\ArtifactCollectorService:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+            $artifactsDir: 'var/test-artifacts'
+            $mftfResultsDir: 'var/mftf-results'
+
+    App\Service\NotificationService:
+        arguments:
+            $slackWebhookUrl: '%env(SLACK_WEBHOOK_URL)%'
+            $slackChannel: '%env(SLACK_CHANNEL)%'
+
+    App\Command\CleanupTestsCommand:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
+    App\Command\CheckMagentoCommand:
+        arguments:
+            $magentoRoot: '%env(MAGENTO_ROOT)%'
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones

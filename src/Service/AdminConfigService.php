@@ -22,22 +22,29 @@ class AdminConfigService
      * labels, icons, and access control.
      */
     private const ADMIN_MENU = [
-        'content' => [
-            'label' => 'Content Management',
-            'icon' => 'bi-file-text',
+        'testing' => [
+            'label' => 'Test Management',
+            'icon' => 'bi-check-circle',
             'items' => [
-                'page' => [
-                    'label' => 'Pages',
-                    'icon' => 'bi-file-earmark-text',
-                    'entity' => 'App\Entity\Page',
-                    'route' => 'admin_page',
+                'test_run' => [
+                    'label' => 'Test Runs',
+                    'icon' => 'bi-play-circle',
+                    'entity' => 'App\Entity\TestRun',
+                    'route' => 'admin_test_run',
                     'roles' => ['ROLE_USER'],
                 ],
-                'category' => [
-                    'label' => 'Categories',
-                    'icon' => 'bi-folder',
-                    'entity' => 'App\Entity\Category',
-                    'route' => 'admin_category',
+                'test_environment' => [
+                    'label' => 'Environments',
+                    'icon' => 'bi-globe',
+                    'entity' => 'App\Entity\TestEnvironment',
+                    'route' => 'admin_test_environment',
+                    'roles' => ['ROLE_ADMIN'],
+                ],
+                'test_suite' => [
+                    'label' => 'Test Suites',
+                    'icon' => 'bi-collection',
+                    'entity' => 'App\Entity\TestSuite',
+                    'route' => 'admin_test_suite',
                     'roles' => ['ROLE_USER'],
                 ],
             ],

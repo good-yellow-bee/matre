@@ -1,28 +1,52 @@
-# ReSymf-CMS
+# MATRE - Magento Automated Test Run Environment
 
-A modern, lightweight CMS built with Symfony 7, Vue 3, and Tailwind CSS.
+Enterprise-grade test automation orchestration for Magento 2.
 
 ![PHP](https://img.shields.io/badge/PHP-8.5-777BB4?logo=php&logoColor=white)
-![Symfony](https://img.shields.io/badge/Symfony-7.3-000000?logo=symfony&logoColor=white)
+![Symfony](https://img.shields.io/badge/Symfony-7.4-000000?logo=symfony&logoColor=white)
+![Magento](https://img.shields.io/badge/Magento-2.4-EE672F?logo=magento&logoColor=white)
 ![Vue](https://img.shields.io/badge/Vue-3-4FC08D?logo=vue.js&logoColor=white)
-![Tailwind](https://img.shields.io/badge/Tailwind-3-06B6D4?logo=tailwindcss&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-blue)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 
 ## Features
 
-- **Modern Stack**: Symfony 7.3, PHP 8.5, Vue 3, Tailwind CSS, Vite
-- **Admin Panel**: Full CRUD with Vue-powered grids and forms
-- **CMS Pages**: Slug-based routing with SEO support
-- **Security**: CSRF protection, login throttling, 2FA support
-- **API-Ready**: JSON endpoints for Vue islands
-- **Docker**: Complete development environment
+### Test Execution
+- **Multi-framework**: Run MFTF and Playwright tests in a single execution
+- **Multi-environment**: Isolated configs per target (dev/staging/production)
+- **Async pipeline**: 5-phase execution (prepare → execute → report → notify → cleanup)
+- **Cron scheduling**: Per-suite cron expressions for automated runs
+- **Concurrency control**: Prevents overlapping runs per environment
+
+### Artifacts & Screenshots
+- **Per-result screenshots**: Each test result has associated failure screenshot
+- **Screenshot gallery**: Thumbnail grid with click-to-enlarge lightbox
+- **HTML reports**: Direct links to MFTF HTML output files
+- **Secure artifact serving**: Route serves only allowed file types (png, jpg, html)
+- **Run isolation**: Artifacts copied to `var/test-artifacts/{runId}/` for persistence
+
+### Reporting & Notifications
+- **Allure integration**: Interactive reports with 30-day retention
+- **Slack notifications**: Rich messages with status, duration, report links
+- **Email alerts**: Configurable recipient list
+- **Result aggregation**: Merged MFTF + Playwright results in single view
+
+### Environment Configuration
+- **Database-stored variables**: Per-environment custom variables in DB
+- **Admin credentials**: Secure storage per target environment
+- **Base URL management**: Auto-normalized URLs with validation
+
+### Admin UI & API
+- **Full CRUD**: Manage environments, test suites, and runs
+- **Real-time status**: Live monitoring of running tests
+- **Cancel/retry**: Control test runs mid-execution
+- **REST API**: Programmatic access for CI/CD integration
 
 ## Quick Start
 
 ```bash
 # Clone and start
-git clone https://github.com/ppf/resymf-cms.git
-cd resymf-cms
+git clone https://github.com/good-yellow-bee/matre.git
+cd matre
 docker-compose up -d --build
 
 # Wait for containers, then setup database
@@ -30,40 +54,168 @@ docker-compose exec php php bin/console doctrine:migrations:migrate --no-interac
 docker-compose exec php php bin/console doctrine:fixtures:load --no-interaction
 ```
 
-**Access:**
-- Application: http://localhost:8088
-- Mailpit UI: http://localhost:8030
-- Database: localhost:33066
+**Access Points:**
+| Service | URL |
+|---------|-----|
+| Admin Panel | http://localhost:8089 |
+| Allure Reports | http://localhost:5050 |
+| Selenium Grid | http://localhost:4444 |
+| Mailpit UI | http://localhost:8031 |
 
 **Default credentials:** `admin` / `admin123`
 
-## Tech Stack
+## Architecture
 
-| Layer | Technology |
-|-------|------------|
-| Backend | Symfony 7.3, PHP 8.5, Doctrine ORM 3 |
-| Frontend | Vue 3, Vite, Tailwind CSS |
-| Database | MariaDB 11 / MySQL 8 |
-| Infrastructure | Docker, Nginx, PHP-FPM |
-| Testing | PHPUnit, PHPStan, PHP-CS-Fixer |
+### Entities
+| Entity | Purpose |
+|--------|---------|
+| `TestEnvironment` | Target Magento instances with credentials and custom env vars |
+| `TestSuite` | Reusable test collections with optional cron scheduling |
+| `TestRun` | Execution instance with full lifecycle tracking |
+| `TestResult` | Individual test outcomes with screenshots and error messages |
+| `TestReport` | Generated artifacts (Allure, HTML, JSON) |
 
-## Documentation
+### Services
+| Service | Responsibility |
+|---------|---------------|
+| `TestRunnerService` | Orchestrates 5-phase pipeline |
+| `MftfExecutorService` | Executes MFTF tests via Docker |
+| `PlaywrightExecutorService` | Executes Playwright tests |
+| `AllureReportService` | Merges and publishes reports |
+| `ModuleCloneService` | Git operations for test modules |
+| `NotificationService` | Slack and email alerts |
 
-- [Installation Guide](docs/getting-started/installation.md)
-- [Configuration](docs/getting-started/configuration.md)
-- [Architecture Overview](docs/development/architecture.md)
-- [Creating Entities](docs/development/entities.md)
-- [Admin CRUD](docs/development/admin-crud.md)
-- [Vue Islands](docs/development/vue-islands.md)
-- [Forms](docs/development/forms.md)
-- [Testing](docs/testing/testing.md)
-- [Production Deployment](docs/deployment/production.md)
-- [CI/CD](docs/deployment/ci-cd.md)
-- [Security](docs/security.md)
+### Execution Flow
+```
+pending → preparing → cloning → running → reporting → completed/failed
+```
+
+### Docker Services
+| Container | Purpose |
+|-----------|---------|
+| `matre_php` | Symfony application |
+| `matre_db` | MariaDB database |
+| `matre_nginx` | Web server |
+| `matre_magento` | MFTF execution environment |
+| `matre_playwright` | Playwright test runner |
+| `matre_selenium_hub` | Selenium Grid hub |
+| `matre_chrome_node` | Chrome browser node |
+| `matre_allure` | Allure report generator |
+| `matre_test_worker` | Async test execution worker |
+| `matre_scheduler` | Cron-based test scheduling |
+
+## Configuration
+
+### Environment Variables
+
+```bash
+# Test Module Repository
+TEST_MODULE_REPO=git@github.com:org/magento-module.git
+TEST_MODULE_BRANCH=main
+
+# Selenium Grid
+SELENIUM_HOST=selenium-hub
+SELENIUM_PORT=4444
+
+# Allure Reports
+ALLURE_URL=http://allure:5050
+
+# Magento Credentials (for MFTF)
+MAGENTO_PUBLIC_KEY=your-public-key
+MAGENTO_PRIVATE_KEY=your-private-key
+
+# Notifications
+SLACK_WEBHOOK_URL=https://hooks.slack.com/...
+SLACK_CHANNEL=#test-results
+```
+
+### TestEnvironment Configuration
+
+Each environment can have custom variables stored in the database:
+
+| Field | Description |
+|-------|-------------|
+| `name` | Display name (e.g., "Staging") |
+| `code` | Unique code (e.g., "staging") |
+| `baseUrl` | Magento base URL |
+| `backendName` | Admin path (default: "admin") |
+| `adminUsername` | Magento admin username |
+| `adminPassword` | Magento admin password |
+| `customVariables` | JSON object of custom env vars |
+
+## API Reference
+
+### Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/test-runs` | List runs (paginated, filtered) |
+| `GET` | `/api/test-runs/{id}` | Get run details with results |
+| `POST` | `/api/test-runs/{id}/cancel` | Cancel running test |
+| `POST` | `/api/test-runs/{id}/retry` | Retry failed test |
+
+### Response Example
+
+```json
+{
+  "id": 42,
+  "status": "completed",
+  "type": "both",
+  "duration": "5m 23s",
+  "environment": {
+    "id": 1,
+    "name": "Staging",
+    "code": "staging"
+  },
+  "resultCounts": {
+    "passed": 95,
+    "failed": 2,
+    "skipped": 3,
+    "total": 100
+  },
+  "results": [
+    {
+      "testName": "StorefrontCheckoutTest",
+      "status": "passed",
+      "duration": 12.5,
+      "screenshotPath": null
+    }
+  ],
+  "reports": [
+    {
+      "type": "allure",
+      "publicUrl": "http://allure:5050/allure-docker-service/projects/run-42/reports/latest"
+    }
+  ]
+}
+```
+
+## Admin UI
+
+### Test Environments (`/admin/test-environments`)
+- Create and manage target Magento instances
+- Configure credentials and custom environment variables
+- Toggle active/inactive status
+
+### Test Suites (`/admin/test-suites`)
+- Define reusable test collections
+- Configure test type (MFTF, Playwright, or both)
+- Set test patterns (group names, specific tests, grep patterns)
+- Enable cron scheduling with expressions
+
+### Test Runs (`/admin/test-runs`)
+- Create new test runs
+- Monitor execution progress in real-time
+- View results with screenshot gallery
+- Access Allure reports
+- Cancel or retry runs
 
 ## Development
 
 ```bash
+# Start services
+docker-compose up -d
+
 # Frontend development (HMR)
 npm run dev
 
@@ -75,11 +227,37 @@ docker-compose exec php bin/phpunit
 
 # Code quality
 docker-compose exec php vendor/bin/phpstan analyse
-docker-compose exec php vendor/bin/php-cs-fixer fix --dry-run
+
+# View worker logs
+docker-compose logs -f matre_test_worker
 ```
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Backend | Symfony 7.4, PHP 8.5, Doctrine ORM 3 |
+| Frontend | Vue 3, Vite, Tailwind CSS |
+| Database | MariaDB 11 |
+| Testing | MFTF (Codeception), Playwright |
+| Reporting | Allure |
+| Infrastructure | Docker, Nginx, Selenium Grid |
+| Queue | Symfony Messenger |
+
+## Documentation
+
+- [Installation Guide](docs/getting-started/installation.md)
+- [Configuration](docs/getting-started/configuration.md)
+- [Architecture Overview](docs/development/architecture.md)
+- [Entities](docs/development/entities.md)
+- [Admin CRUD](docs/development/admin-crud.md)
+- [Testing](docs/testing/testing.md)
+- [Production Deployment](docs/deployment/production.md)
+- [CI/CD](docs/deployment/ci-cd.md)
+- [Security](docs/security.md)
 
 ## License
 
-MIT License - Copyright (c) 2013-2025 Piotr Francuz
+MIT License - Copyright (c) 2025
 
 See [LICENSE](LICENSE) for details.

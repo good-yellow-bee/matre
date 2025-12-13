@@ -1,0 +1,243 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Service;
+
+use App\Entity\TestResult;
+use App\Entity\TestRun;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Finder\Finder;
+
+/**
+ * Collects test artifacts (screenshots, HTML) from MFTF output and organizes them by run.
+ */
+class ArtifactCollectorService
+{
+    private const SCREENSHOT_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif'];
+    private const HTML_EXTENSIONS = ['html', 'htm'];
+    private const MAX_ARTIFACT_SIZE = 10 * 1024 * 1024; // 10MB
+
+    public function __construct(
+        private readonly LoggerInterface $logger,
+        private readonly string $projectDir,
+        private readonly string $artifactsDir = 'var/test-artifacts',
+        private readonly string $mftfResultsDir = 'var/mftf-results',
+    ) {
+    }
+
+    /**
+     * Collect artifacts from MFTF output directory for a test run.
+     * Returns array of collected artifact paths.
+     *
+     * @return array{screenshots: string[], html: string[]}
+     */
+    public function collectArtifacts(TestRun $run): array
+    {
+        $sourcePath = $this->projectDir . '/' . $this->mftfResultsDir;
+        $targetPath = $this->getRunArtifactsPath($run);
+
+        $collected = ['screenshots' => [], 'html' => []];
+
+        if (!is_dir($sourcePath)) {
+            $this->logger->warning('MFTF results directory not found', ['path' => $sourcePath]);
+
+            return $collected;
+        }
+
+        $filesystem = new Filesystem();
+        $filesystem->mkdir($targetPath);
+
+        // Collect screenshots
+        $collected['screenshots'] = $this->collectFilesByExtension(
+            $sourcePath,
+            $targetPath,
+            self::SCREENSHOT_EXTENSIONS,
+            $filesystem,
+        );
+
+        // Collect HTML files
+        $collected['html'] = $this->collectFilesByExtension(
+            $sourcePath,
+            $targetPath,
+            self::HTML_EXTENSIONS,
+            $filesystem,
+        );
+
+        $this->logger->info('Artifacts collected', [
+            'run_id' => $run->getId(),
+            'screenshots' => count($collected['screenshots']),
+            'html' => count($collected['html']),
+        ]);
+
+        return $collected;
+    }
+
+    /**
+     * Associate collected screenshots with test results based on filename matching.
+     *
+     * @param TestResult[] $results
+     * @param string[] $screenshotPaths
+     */
+    public function associateScreenshotsWithResults(array $results, array $screenshotPaths): void
+    {
+        foreach ($results as $result) {
+            $testName = $result->getTestName();
+            $testId = $result->getTestId();
+
+            foreach ($screenshotPaths as $path) {
+                $filename = basename($path);
+
+                // Match by test name or test ID in filename
+                if (
+                    ($testName && stripos($filename, $testName) !== false)
+                    || ($testId && stripos($filename, $testId) !== false)
+                ) {
+                    $result->setScreenshotPath($filename);
+                    $this->logger->debug('Screenshot associated', [
+                        'test' => $testName,
+                        'screenshot' => $filename,
+                    ]);
+
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
+     * Get the artifacts directory path for a specific run.
+     */
+    public function getRunArtifactsPath(TestRun $run): string
+    {
+        return sprintf('%s/%s/%d', $this->projectDir, $this->artifactsDir, $run->getId());
+    }
+
+    /**
+     * Get web-accessible path for an artifact.
+     */
+    public function getArtifactWebPath(TestRun $run, string $filename): string
+    {
+        return sprintf('/admin/test-runs/%d/artifacts/%s', $run->getId(), $filename);
+    }
+
+    /**
+     * Get full filesystem path to an artifact file.
+     */
+    public function getArtifactFilePath(TestRun $run, string $filename): string
+    {
+        return sprintf('%s/%s', $this->getRunArtifactsPath($run), $filename);
+    }
+
+    /**
+     * Check if artifact file exists.
+     */
+    public function artifactExists(TestRun $run, string $filename): bool
+    {
+        $path = $this->getArtifactFilePath($run, $filename);
+
+        return file_exists($path) && is_file($path);
+    }
+
+    /**
+     * List all artifacts for a run.
+     *
+     * @return array{screenshots: string[], html: string[], other: string[]}
+     */
+    public function listArtifacts(TestRun $run): array
+    {
+        $path = $this->getRunArtifactsPath($run);
+        $artifacts = ['screenshots' => [], 'html' => [], 'other' => []];
+
+        if (!is_dir($path)) {
+            return $artifacts;
+        }
+
+        $finder = new Finder();
+        $finder->files()->in($path)->depth(0);
+
+        foreach ($finder as $file) {
+            $ext = strtolower($file->getExtension());
+            $filename = $file->getFilename();
+
+            if (in_array($ext, self::SCREENSHOT_EXTENSIONS, true)) {
+                $artifacts['screenshots'][] = $filename;
+            } elseif (in_array($ext, self::HTML_EXTENSIONS, true)) {
+                $artifacts['html'][] = $filename;
+            } else {
+                $artifacts['other'][] = $filename;
+            }
+        }
+
+        return $artifacts;
+    }
+
+    /**
+     * Clean up artifacts older than specified days.
+     */
+    public function cleanupOldArtifacts(int $daysOld = 30): int
+    {
+        $baseDir = $this->projectDir . '/' . $this->artifactsDir;
+
+        if (!is_dir($baseDir)) {
+            return 0;
+        }
+
+        $filesystem = new Filesystem();
+        $cutoff = new \DateTimeImmutable("-{$daysOld} days");
+        $removed = 0;
+
+        $finder = new Finder();
+        $finder->directories()->in($baseDir)->depth(0);
+
+        foreach ($finder as $dir) {
+            if ($dir->getMTime() < $cutoff->getTimestamp()) {
+                $filesystem->remove($dir->getRealPath());
+                ++$removed;
+            }
+        }
+
+        return $removed;
+    }
+
+    /**
+     * Collect files by extension from source to target directory.
+     *
+     * @param string[] $extensions
+     *
+     * @return string[] Collected filenames
+     */
+    private function collectFilesByExtension(
+        string $sourcePath,
+        string $targetPath,
+        array $extensions,
+        Filesystem $filesystem,
+    ): array {
+        $collected = [];
+
+        $finder = new Finder();
+        $finder->files()->in($sourcePath)->depth(0);
+
+        foreach ($extensions as $ext) {
+            $finder->name('*.' . $ext);
+        }
+
+        foreach ($finder as $file) {
+            if ($file->getSize() > self::MAX_ARTIFACT_SIZE) {
+                $this->logger->warning('Artifact too large, skipping', [
+                    'file' => $file->getFilename(),
+                    'size' => $file->getSize(),
+                ]);
+
+                continue;
+            }
+
+            $targetFile = $targetPath . '/' . $file->getFilename();
+            $filesystem->copy($file->getRealPath(), $targetFile, true);
+            $collected[] = $file->getFilename();
+        }
+
+        return $collected;
+    }
+}

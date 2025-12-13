@@ -1,0 +1,91 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Suite: {{ suite.name }}{% endblock %}
+
+{% block body %}
+<div class="dashboard-welcome mb-4">
+    <h1>{{ suite.name }}</h1>
+    <p class="subtitle">{{ suite.description|default('Test suite configuration') }}</p>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Suite Configuration</h5>
+                <span class="badge bg-{{ suite.isActive ? 'success' : 'secondary' }}">
+                    {{ suite.isActive ? 'Active' : 'Inactive' }}
+                </span>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless mb-0">
+                    <tr>
+                        <th style="width: 150px">Type</th>
+                        <td>
+                            <span class="badge bg-{{ suite.type starts with 'mftf' ? 'primary' : 'info' }}">
+                                {{ suite.type|replace({'_': ' '})|title }}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Test Pattern</th>
+                        <td><code>{{ suite.testPattern }}</code></td>
+                    </tr>
+                    <tr>
+                        <th>Schedule</th>
+                        <td>
+                            {% if suite.cronExpression %}
+                                <code>{{ suite.cronExpression }}</code>
+                            {% else %}
+                                <span class="text-muted">Manual execution only</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% if suite.estimatedDuration %}
+                    <tr>
+                        <th>Est. Duration</th>
+                        <td>{{ suite.estimatedDuration }} minutes</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <th>Created</th>
+                        <td>{{ suite.createdAt|date('Y-m-d H:i:s') }}</td>
+                    </tr>
+                    {% if suite.updatedAt %}
+                    <tr>
+                        <th>Updated</th>
+                        <td>{{ suite.updatedAt|date('Y-m-d H:i:s') }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Actions</h5>
+            </div>
+            <div class="card-body d-grid gap-2">
+                <a href="{{ path('admin_test_run_new') }}?suite={{ suite.id }}" class="btn btn-success">
+                    <i class="bi bi-play-fill"></i> Run Suite
+                </a>
+                <a href="{{ path('admin_test_suite_edit', {id: suite.id}) }}" class="btn btn-warning">
+                    <i class="bi bi-pencil"></i> Edit
+                </a>
+                <form action="{{ path('admin_test_suite_toggle_active', {id: suite.id}) }}" method="post">
+                    <input type="hidden" name="_token" value="{{ csrf_token('toggle' ~ suite.id) }}">
+                    <button type="submit" class="btn btn-{{ suite.isActive ? 'secondary' : 'primary' }} w-100">
+                        <i class="bi bi-{{ suite.isActive ? 'pause' : 'play' }}"></i>
+                        {{ suite.isActive ? 'Deactivate' : 'Activate' }}
+                    </button>
+                </form>
+                <a href="{{ path('admin_test_suite_index') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to List
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

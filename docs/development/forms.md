@@ -1,6 +1,6 @@
 # Form Types
 
-This guide explains how to create Symfony form types in ReSymf-CMS.
+This guide explains how to create Symfony form types in MATRE.
 
 ## Form Type Pattern
 

@@ -5,20 +5,20 @@
 {% block body %}
 {# Welcome Header #}
 <div class="mb-8">
-    <h1 class="text-2xl font-bold text-slate-900">Welcome back, {{ user.username }}!</h1>
-    <p class="text-slate-500 mt-1">{{ "now"|date("l, F j, Y") }}</p>
+    <h1 class="text-2xl font-bold text-slate-900">ATR - Automation Test Runner</h1>
+    <p class="text-slate-500 mt-1">Welcome back, {{ user.username }} &middot; {{ "now"|date("l, F j, Y") }}</p>
 </div>
 
-{# Stats Cards - Using Tailwind #}
+{# Stats Cards #}
 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
     <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
         <div class="flex items-center gap-4">
             <div class="h-12 w-12 rounded-lg bg-blue-50 flex items-center justify-center">
-                <i class="bi bi-people text-xl text-blue-600"></i>
+                <i class="bi bi-play-circle text-xl text-blue-600"></i>
             </div>
             <div>
-                <div class="text-2xl font-bold text-slate-900">{{ stats.totalUsers ?? 1 }}</div>
-                <div class="text-sm text-slate-500">Total Users</div>
+                <div class="text-2xl font-bold text-slate-900">{{ stats.totalRuns ?? 0 }}</div>
+                <div class="text-sm text-slate-500">Total Runs</div>
             </div>
         </div>
     </div>
@@ -26,23 +26,23 @@
     <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
         <div class="flex items-center gap-4">
             <div class="h-12 w-12 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <i class="bi bi-file-earmark-text text-xl text-emerald-600"></i>
+                <i class="bi bi-check-circle text-xl text-emerald-600"></i>
             </div>
             <div>
-                <div class="text-2xl font-bold text-slate-900">{{ stats.publishedPages ?? 0 }}</div>
-                <div class="text-sm text-slate-500">Published Pages</div>
+                <div class="text-2xl font-bold text-slate-900">{{ stats.passedRuns ?? 0 }}</div>
+                <div class="text-sm text-slate-500">Passed</div>
             </div>
         </div>
     </div>
 
     <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
         <div class="flex items-center gap-4">
-            <div class="h-12 w-12 rounded-lg bg-violet-50 flex items-center justify-center">
-                <i class="bi bi-tags text-xl text-violet-600"></i>
+            <div class="h-12 w-12 rounded-lg bg-red-50 flex items-center justify-center">
+                <i class="bi bi-x-circle text-xl text-red-600"></i>
             </div>
             <div>
-                <div class="text-2xl font-bold text-slate-900">{{ stats.totalCategories ?? 0 }}</div>
-                <div class="text-sm text-slate-500">Categories</div>
+                <div class="text-2xl font-bold text-slate-900">{{ stats.failedRuns ?? 0 }}</div>
+                <div class="text-sm text-slate-500">Failed</div>
             </div>
         </div>
     </div>
@@ -50,11 +50,11 @@
     <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
         <div class="flex items-center gap-4">
             <div class="h-12 w-12 rounded-lg bg-amber-50 flex items-center justify-center">
-                <i class="bi bi-eye text-xl text-amber-600"></i>
+                <i class="bi bi-server text-xl text-amber-600"></i>
             </div>
             <div>
-                <div class="text-2xl font-bold text-slate-900">{{ stats.totalViews ?? 0 }}</div>
-                <div class="text-sm text-slate-500">Total Views</div>
+                <div class="text-2xl font-bold text-slate-900">{{ stats.environments ?? 0 }}</div>
+                <div class="text-sm text-slate-500">Environments</div>
             </div>
         </div>
     </div>
@@ -66,34 +66,32 @@
     <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
         <h2 class="text-lg font-semibold text-slate-900 mb-4">Quick Actions</h2>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <a href="{{ path('admin_page_new') }}" class="flex flex-col items-center gap-2 p-4 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-colors no-underline group">
+            <a href="{{ path('admin_test_run_new') }}" class="flex flex-col items-center gap-2 p-4 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-colors no-underline group">
                 <div class="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                    <i class="bi bi-plus-lg text-blue-600"></i>
+                    <i class="bi bi-play-fill text-blue-600"></i>
                 </div>
-                <span class="text-sm font-medium text-slate-700">New Page</span>
+                <span class="text-sm font-medium text-slate-700">New Test Run</span>
             </a>
 
-            <a href="{{ path('admin_category_new') }}" class="flex flex-col items-center gap-2 p-4 rounded-lg border border-slate-200 hover:border-violet-300 hover:bg-violet-50 transition-colors no-underline group">
+            <a href="{{ path('admin_test_environment_new') }}" class="flex flex-col items-center gap-2 p-4 rounded-lg border border-slate-200 hover:border-violet-300 hover:bg-violet-50 transition-colors no-underline group">
                 <div class="h-10 w-10 rounded-lg bg-violet-100 flex items-center justify-center group-hover:bg-violet-200 transition-colors">
-                    <i class="bi bi-tag text-violet-600"></i>
+                    <i class="bi bi-server text-violet-600"></i>
                 </div>
-                <span class="text-sm font-medium text-slate-700">New Category</span>
+                <span class="text-sm font-medium text-slate-700">Add Environment</span>
             </a>
 
-            {% if is_granted('ROLE_ADMIN') %}
-            <a href="{{ path('admin_user_new') }}" class="flex flex-col items-center gap-2 p-4 rounded-lg border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 transition-colors no-underline group">
+            <a href="{{ path('admin_test_suite_new') }}" class="flex flex-col items-center gap-2 p-4 rounded-lg border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 transition-colors no-underline group">
                 <div class="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
-                    <i class="bi bi-person-plus text-emerald-600"></i>
+                    <i class="bi bi-collection text-emerald-600"></i>
                 </div>
-                <span class="text-sm font-medium text-slate-700">Add User</span>
+                <span class="text-sm font-medium text-slate-700">New Test Suite</span>
             </a>
-            {% endif %}
 
-            <a href="{{ path('cms_homepage') }}" target="_blank" class="flex flex-col items-center gap-2 p-4 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors no-underline group">
+            <a href="{{ path('admin_test_run_index') }}" class="flex flex-col items-center gap-2 p-4 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors no-underline group">
                 <div class="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center group-hover:bg-slate-200 transition-colors">
-                    <i class="bi bi-box-arrow-up-right text-slate-600"></i>
+                    <i class="bi bi-list-ul text-slate-600"></i>
                 </div>
-                <span class="text-sm font-medium text-slate-700">View Site</span>
+                <span class="text-sm font-medium text-slate-700">View All Runs</span>
             </a>
         </div>
     </div>
@@ -127,11 +125,6 @@
             </div>
         </div>
     </div>
-</div>
-
-{# Vue Dashboard Widget #}
-<div class="mt-6 bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-    <div data-vue-island="dashboard-hello" data-username="{{ user.username }}"></div>
 </div>
 {% endblock %}
 

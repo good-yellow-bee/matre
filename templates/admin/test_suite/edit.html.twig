@@ -1,0 +1,70 @@
+{% extends 'admin/base.html.twig' %}
+{% form_theme form 'form/bootstrap_5_custom.html.twig' %}
+
+{% block title %}Edit Suite: {{ suite.name }}{% endblock %}
+
+{% block body %}
+<div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm mb-6">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <div class="h-12 w-12 rounded-xl bg-amber-100 flex items-center justify-center">
+                <i class="bi bi-collection text-xl text-amber-600"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-semibold text-slate-900">Edit Suite: {{ suite.name }}</h1>
+                <p class="text-sm text-slate-500 mt-0.5">Update test suite configuration</p>
+            </div>
+        </div>
+        <a href="{{ path('admin_test_suite_index') }}"
+           class="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-200 transition-colors no-underline">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {{ form_start(form, {'attr': {'novalidate': 'novalidate'}}) }}
+
+            <div class="form-section">
+                <h3 class="form-section-title">Suite Configuration</h3>
+
+                <div class="form-grid">
+                    <div>{{ form_row(form.name) }}</div>
+                    <div>{{ form_row(form.type) }}</div>
+                </div>
+
+                {{ form_row(form.testPattern) }}
+                {{ form_row(form.description) }}
+            </div>
+
+            <div class="form-section">
+                <h3 class="form-section-title">Schedule</h3>
+
+                <div class="form-grid">
+                    <div>{{ form_row(form.cronExpression) }}</div>
+                    <div>{{ form_row(form.estimatedDuration) }}</div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3 class="form-section-title">Status</h3>
+
+                <div class="form-check mb-3">
+                    {{ form_widget(form.isActive) }}
+                    {{ form_label(form.isActive) }}
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Save Changes
+                </button>
+                <a href="{{ path('admin_test_suite_index') }}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </a>
+            </div>
+        {{ form_end(form) }}
+    </div>
+</div>
+{% endblock %}

@@ -6,10 +6,10 @@
 - Docker and Docker Compose
 
 **Manual Setup:**
-- PHP 8.3+ with extensions: mbstring, xml, intl, pdo_mysql, gd, zip
+- PHP 8.5+ with extensions: mbstring, xml, intl, pdo_mysql, gd, zip
 - Composer 2.8+
 - Node.js 20+
-- MySQL 8.0+ or MariaDB 10.11+
+- MySQL 8.0+ or MariaDB 11+
 - Git
 
 ---
@@ -19,8 +19,8 @@
 ### 1. Clone and Start
 
 ```bash
-git clone https://github.com/ppf/resymf-cms.git
-cd resymf-cms
+git clone https://github.com/good-yellow-bee/matre.git
+cd matre
 docker-compose up -d --build
 ```
 
@@ -28,16 +28,22 @@ This starts all services:
 
 | Service | Description | Port |
 |---------|-------------|------|
-| php | PHP 8.5 FPM | - |
-| nginx | Web server | 8088 |
-| db | MariaDB 11 | 33066 |
-| mailpit | Email testing | 1030 (SMTP), 8030 (UI) |
-| frontend-build | Vite asset builder | - |
-| scheduler | Cron job worker | - |
+| matre_php | PHP 8.5 FPM | - |
+| matre_nginx | Web server | 8089 |
+| matre_db | MariaDB 11 | 33067 |
+| matre_mailpit | Email testing | 1031 (SMTP), 8031 (UI) |
+| matre_frontend_build | Vite asset builder | - |
+| matre_scheduler | Cron job worker | - |
+| matre_test_worker | Test execution worker | - |
+| matre_selenium_hub | Selenium Grid hub | 4444 |
+| matre_chrome_node | Chrome browser node | - |
+| matre_playwright | Playwright runner | - |
+| matre_allure | Allure report service | 5050 |
+| matre_magento | Magento MFTF environment | - |
 
 ### 2. Frontend Build
 
-The `frontend-build` container automatically runs on startup:
+The `matre_frontend_build` container automatically runs on startup:
 - Image: `node:20-alpine`
 - Command: `npm install && npm run build`
 - Output: `public/build/`
@@ -56,9 +62,11 @@ docker-compose exec php php bin/console doctrine:fixtures:load --no-interaction
 
 ### 4. Access the Application
 
-- **Application:** http://localhost:8088
-- **Mailpit UI:** http://localhost:8030
-- **Database:** localhost:33066 (user: resymf, password: password)
+- **Admin Panel:** http://localhost:8089
+- **Allure Reports:** http://localhost:5050
+- **Selenium Grid:** http://localhost:4444
+- **Mailpit UI:** http://localhost:8031
+- **Database:** localhost:33067 (user: matre, password: matre)
 
 **Default login:** `admin` / `admin123`
 
@@ -72,8 +80,9 @@ docker-compose up -d
 docker-compose down
 
 # View logs
-docker-compose logs -f php
-docker-compose logs -f nginx
+docker-compose logs -f matre_php
+docker-compose logs -f matre_test_worker
+docker-compose logs -f matre_scheduler
 
 # Run Symfony commands
 docker-compose exec php php bin/console <command>
@@ -102,12 +111,16 @@ npm install
 ### 2. Configure Environment
 
 ```bash
-cp .env .env.local
+cp .env.example .env.local
 ```
 
 Edit `.env.local`:
 ```dotenv
-DATABASE_URL="mysql://root:password@127.0.0.1:3306/resymf_cms?serverVersion=8.0&charset=utf8mb4"
+DB_NAME=matre
+DB_USER=matre
+DB_PASS=matre
+DB_HOST=127.0.0.1
+DB_PORT=3306
 MAILER_DSN=smtp://localhost:1025
 ```
 
@@ -153,10 +166,32 @@ The Twig helpers (`vite_entry_script_tags`) automatically detect dev mode and se
 
 ---
 
+## Test Infrastructure
+
+MATRE includes a complete test infrastructure:
+
+### Selenium Grid
+- Hub: `matre_selenium_hub` on port 4444
+- Chrome node: `matre_chrome_node` with 2 sessions
+
+### Playwright
+- Container: `matre_playwright`
+- Results: `var/playwright-results/`
+
+### Magento (MFTF)
+- Container: `matre_magento`
+- Results: `var/mftf-results/`
+
+### Allure Reports
+- Container: `matre_allure` on port 5050
+- Results: `var/allure-results/`
+
+---
+
 ## Troubleshooting
 
 ### "Database connection failed"
-- Check DATABASE_URL in `.env.local`
+- Check DB_* variables in `.env.local`
 - Ensure MySQL/MariaDB is running
 - Verify credentials
 
@@ -175,7 +210,16 @@ php bin/console doctrine:migrations:version --delete <version>
 ### Docker: "Port already in use"
 ```bash
 # Find process using port
-lsof -i :8088
+lsof -i :8089
 
 # Or change port in docker-compose.yml
+```
+
+### Test worker not processing
+```bash
+# Check worker logs
+docker-compose logs -f matre_test_worker
+
+# Restart worker
+docker-compose restart matre_test_worker
 ```

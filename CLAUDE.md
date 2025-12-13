@@ -1,62 +1,122 @@
-# Claude Code Instructions for ReSymf-CMS
+# Claude Code Instructions for MATRE
 
 ## Project Overview
 
-ReSymf-CMS is a Symfony 7.3 CMS with Vue 3 islands and Tailwind CSS.
+MATRE (Magento Automated Test Run Environment) is a test automation orchestration platform for Magento 2.
 
-**Stack:** PHP 8.5 | Symfony 7.3 | Doctrine ORM 3 | Vue 3 | Vite | Tailwind CSS | MariaDB 11
+**Stack:** PHP 8.5 | Symfony 7.4 | Doctrine ORM 3 | Vue 3 | Vite | Tailwind CSS | MariaDB 11
 
-## Code Patterns
+**Purpose:** Execute and manage MFTF and Playwright tests across multiple Magento environments with scheduling, reporting, and notifications.
 
-### Entity Pattern
+## Entity Pattern
 - Location: `src/Entity/`
-- Use Doctrine attributes (not annotations)
-- Table names: `resymf_*` prefix
-- Include: `createdAt` (immutable), `updatedAt` (nullable with PreUpdate)
+- Doctrine attributes (not annotations)
+- Table names: `matre_*` prefix
+- Timestamps: `createdAt` (immutable), `updatedAt` (nullable with PreUpdate)
 - Fluent interface (return `static`)
-- Reference: `src/Entity/Category.php`
 
-### Admin Controller Pattern
+| Entity | Purpose |
+|--------|---------|
+| `User` | Auth + 2FA (TOTP), roles, implements UserInterface/TwoFactorInterface |
+| `Settings` | Singleton config (site name, enforce2fa, headless mode) |
+| `TestEnvironment` | Target Magento instances with credentials |
+| `TestSuite` | Reusable test collections with cron scheduling |
+| `TestRun` | Execution instance (pending → running → completed) |
+| `TestResult` | Individual test outcomes with screenshots |
+| `TestReport` | Generated artifacts (Allure, HTML, JSON) |
+| `GlobalEnvVariable` | Shared env vars across test environments |
+| `CronJob` | Scheduled commands with status tracking |
+| `PasswordResetRequest` | Token-based reset with expiration |
+
+## Service Pattern
+
+| Service | Purpose |
+|---------|---------|
+| `TestRunnerService` | 5-phase pipeline orchestration |
+| `MftfExecutorService` | MFTF test execution via Docker |
+| `PlaywrightExecutorService` | Playwright test execution |
+| `AllureReportService` | Report generation and publishing |
+| `ModuleCloneService` | Git operations for test modules |
+| `NotificationService` | Slack/email notifications |
+| `PasswordResetService` | Reset workflow with token validation |
+| `EmailService` | Templated emails (welcome, reset, notifications) |
+| `AdminConfigService` | Admin menu/config, role-based access |
+| `ArtifactCollectorService` | Test screenshots/HTML collection |
+| `FileUploadService` | Flysystem uploads with MIME validation |
+
+## Security Pattern
+
+**Authentication:**
+- Bcrypt (cost 12), login throttling (5/min), remember me (1 week)
+- 2FA: SchebTwoFactorBundle + TOTP, optional enforcement via Settings.enforce2fa
+- Flow: login → 2fa_login_check (if enabled) → IS_AUTHENTICATED_FULLY
+
+**Key Files:**
+- `config/packages/security.yaml` - Auth rules, role hierarchy
+- `config/packages/scheb_2fa.yaml` - TOTP config
+- `src/Controller/TwoFactorSetupController.php` - QR code + setup
+- `src/EventSubscriber/TwoFactorEnforcementSubscriber.php` - Global 2FA enforcement
+
+## CLI Commands
+
+| Command | Purpose |
+|---------|---------|
+| `app:create-admin` | Create admin user |
+| `app:create-user` | Create regular user |
+| `app:test:run` | Run tests (filter, suite, sync/async) |
+| `app:cron:run` | Execute cron job manually |
+| `app:cron:list` | List scheduled jobs |
+| `app:cron:install` | Install crontab entry |
+| `app:validate-ssl-config` | Check SSL/Let's Encrypt config |
+| `app:check-magento` | Validate Magento connectivity |
+| `app:cleanup-tests` | Clean old artifacts |
+| `app:import-environments` | Bulk import test targets |
+
+## Message Queue Pattern
+
+**Queues:** `async`, `test_runner`, `scheduler_test_runner`
+
+| Message | Queue | Retries |
+|---------|-------|---------|
+| Email/Chat/SMS | async | 3 |
+| TestRunMessage | test_runner | 2 |
+| ScheduledTestRunMessage | scheduler_test_runner | 2 |
+
+**Config:** `config/packages/messenger.yaml`
+
+## Custom Validators
+
+| Validator | Purpose |
+|-----------|---------|
+| `ValidCronExpression` | Cron syntax (dragonmantank/cron-expression) |
+| `ValidConsoleCommand` | Verifies command exists in kernel |
+
+## Admin Controller Pattern
 - Location: `src/Controller/Admin/`
 - Route prefix: `/admin/{plural}`
 - Security: `#[IsGranted('ROLE_ADMIN')]`
 - Methods: index, new, show, edit, delete, toggleActive
 - CSRF: Always validate on POST actions
-- Reference: `src/Controller/Admin/CategoryController.php`
 
-### Vue Island Pattern
-- Entry point: `assets/vue/{feature}-app.js`
+## Vue Island Pattern
+- Entry: `assets/vue/{feature}-app.js`
 - Component: `assets/vue/components/{Feature}.vue`
 - Composable: `assets/vue/composables/use{Feature}.js`
 - Mount: `<div data-vue-island="{feature}" data-api-url="...">`
 - Register in `vite.config.mjs` rollupOptions.input
-- Reference: `assets/vue/category-form-app.js`
-
-### Form Type Pattern
-- Location: `src/Form/`
-- Bootstrap classes: `form-control`, `form-check-input`
-- Include `help` for field descriptions
-- Reference: `src/Form/CategoryType.php`
 
 ## Docker Commands
 
 ```bash
-# Start environment
-docker-compose up -d --build
-
-# Run Symfony commands
-docker-compose exec php php bin/console <command>
-
-# Run tests
-docker-compose exec php bin/phpunit
-
-# Frontend dev (HMR)
-npm run dev
+docker-compose up -d --build           # Start environment
+docker-compose exec php php bin/console <cmd>  # Symfony commands
+docker-compose exec php bin/phpunit    # Run tests
+npm run dev                            # Frontend HMR
+docker-compose logs -f matre_test_worker  # Test worker logs
 ```
 
 ## Testing
 
-Run all tests before committing:
 ```bash
 docker-compose exec php bin/phpunit
 docker-compose exec php vendor/bin/phpstan analyse
@@ -67,8 +127,6 @@ docker-compose exec php vendor/bin/php-cs-fixer fix --dry-run
 
 ```
 {issue-number} - Brief description
-
-Example: 31 - Add user authentication
 ```
 
 Do not include Claude attribution in commits.
@@ -78,6 +136,19 @@ Do not include Claude attribution in commits.
 | Purpose | File |
 |---------|------|
 | Docker | `docker-compose.yml` |
-| Vite config | `vite.config.mjs` |
+| Vite | `vite.config.mjs` |
 | Security | `config/packages/security.yaml` |
-| Routes | `config/routes/` |
+| 2FA | `config/packages/scheb_2fa.yaml` |
+| Messenger | `config/packages/messenger.yaml` |
+| Test Runner | `src/Service/TestRunnerService.php` |
+| MFTF Executor | `src/Service/MftfExecutorService.php` |
+| SSL Validation | `src/Command/ValidateSslConfigCommand.php` |
+| Traefik SSL | `docker/traefik/traefik.yml` |
+
+## Artifact Storage
+
+- Test artifacts: `var/test-artifacts/{runId}/`
+- MFTF results: `var/mftf-results/`
+- Playwright results: `var/playwright-results/`
+- Allure results: `var/allure-results/`
+- Test modules: `var/test-modules/`

@@ -27,12 +27,6 @@ class EntityVoter extends Voter
      * @var array<string, array<string, array<string>>>
      */
     private const ENTITY_PERMISSIONS = [
-        'App\Entity\Category' => [
-            'view' => ['ROLE_USER'],
-            'edit' => ['ROLE_USER'],
-            'delete' => ['ROLE_ADMIN'],
-            'create' => ['ROLE_USER'],
-        ],
         'App\Entity\Settings' => [
             'view' => ['ROLE_ADMIN'],
             'edit' => ['ROLE_ADMIN'],

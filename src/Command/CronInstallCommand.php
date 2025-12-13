@@ -18,7 +18,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 )]
 class CronInstallCommand extends Command
 {
-    private const CRON_MARKER = 'resymf-cms-scheduler';
+    private const CRON_MARKER = 'matre-scheduler';
 
     public function __construct(
         #[Autowire('%kernel.project_dir%')]

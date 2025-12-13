@@ -26,6 +26,9 @@ jobs:
           php-version: '8.5'
           tools: composer:v2
 
+      - name: Create .env file
+        run: cp .env.example .env
+
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress --no-interaction
 
@@ -63,6 +66,9 @@ jobs:
           php-version: '8.5'
           tools: composer:v2
 
+      - name: Create .env file
+        run: cp .env.example .env
+
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress --no-interaction
 
@@ -94,13 +100,24 @@ jobs:
           php-version: '8.5'
           tools: composer:v2
 
-      - name: Install dependencies
+      - name: Create .env file
+        run: cp .env.example .env
+
+      - name: Install PHP dependencies
         run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Node dependencies
+        run: npm ci
 
       - name: Run OWASP Dependency-Check
         uses: dependency-check/Dependency-Check_Action@main
         with:
-          project: 'resymf-cms'
+          project: 'matre'
           path: '.'
           format: 'HTML'
           out: 'reports'
@@ -126,6 +143,9 @@ jobs:
         with:
           php-version: '8.5'
           tools: composer:v2
+
+      - name: Create .env file
+        run: cp .env.example .env
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress --no-interaction
@@ -162,6 +182,9 @@ jobs:
           php-version: '8.5'
           extensions: mbstring, xml, ctype, iconv
           tools: composer:v2, vimeo/psalm
+
+      - name: Create .env file
+        run: cp .env.example .env
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress --no-interaction

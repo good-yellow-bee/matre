@@ -1,0 +1,94 @@
+{% extends 'admin/base.html.twig' %}
+{% form_theme form 'form/bootstrap_5_custom.html.twig' %}
+
+{% block title %}Edit Environment: {{ environment.name }}{% endblock %}
+
+{% block body %}
+<div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm mb-6">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <div class="h-12 w-12 rounded-xl bg-amber-100 flex items-center justify-center">
+                <i class="bi bi-globe text-xl text-amber-600"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-semibold text-slate-900">Edit Environment: {{ environment.name }}</h1>
+                <p class="text-sm text-slate-500 mt-0.5">Update environment configuration</p>
+            </div>
+        </div>
+        <a href="{{ path('admin_test_environment_index') }}"
+           class="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-200 transition-colors no-underline">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {{ form_start(form, {'attr': {'novalidate': 'novalidate'}}) }}
+
+            <div class="form-section">
+                <h3 class="form-section-title">Environment Details</h3>
+
+                <div class="form-grid">
+                    <div>{{ form_row(form.name) }}</div>
+                    <div>{{ form_row(form.code) }}</div>
+                    <div>{{ form_row(form.region) }}</div>
+                </div>
+
+                {{ form_row(form.baseUrl) }}
+                {{ form_row(form.backendName) }}
+            </div>
+
+            <div class="form-section">
+                <h3 class="form-section-title">Admin Credentials</h3>
+
+                <div class="form-grid">
+                    <div>{{ form_row(form.adminUsername) }}</div>
+                    <div>{{ form_row(form.adminPassword) }}</div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3 class="form-section-title">Additional Info</h3>
+
+                {{ form_row(form.description) }}
+
+                <div class="form-check mb-3">
+                    {{ form_widget(form.isActive) }}
+                    {{ form_label(form.isActive) }}
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Save Changes
+                </button>
+                <a href="{{ path('admin_test_environment_index') }}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </a>
+            </div>
+        {{ form_end(form) }}
+    </div>
+</div>
+
+{# Environment Variables Section (Vue Component) #}
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="bi bi-braces me-2"></i>Environment Variables
+        </h5>
+    </div>
+    <div class="card-body">
+        <div
+            data-vue-island="environment-variables"
+            data-api-url="{{ path('api_test_environment_env_vars_list', {id: environment.id}) }}"
+            data-csrf-token="{{ csrf_token('env_variable_api') }}"
+        ></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {{ vite_entry_script_tags('environment-variables-app') }}
+{% endblock %}

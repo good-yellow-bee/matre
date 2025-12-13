@@ -44,7 +44,7 @@ class LoadFixturesCommand extends Command
                         <info>php %command.full_name% --yes</info>
 
                     This is a convenience wrapper around the Doctrine fixtures bundle command.
-                    It replaces the legacy "resymf:populate" command.
+                    It replaces the legacy "matre:populate" command.
                     HELP
             );
     }
@@ -125,9 +125,8 @@ class LoadFixturesCommand extends Command
                 [
                     ['UserFixtures - Sample users (admin, testuser, inactive)'],
                     ['SettingsFixtures - Default site configuration'],
-                    ['ThemeFixtures - Sample themes'],
-                    ['CategoryFixtures - Content categories'],
-                    ['PageFixtures - Sample CMS pages'],
+                    ['TestEnvironmentFixtures - Sample test environments'],
+                    ['TestSuiteFixtures - Sample test suites'],
                 ],
             );
 

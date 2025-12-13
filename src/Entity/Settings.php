@@ -16,7 +16,7 @@ use Symfony\Component\Validator\Constraints as Assert;
  * Design Pattern: Single-row table (only one Settings record should exist)
  */
 #[ORM\Entity(repositoryClass: SettingsRepository::class)]
-#[ORM\Table(name: 'resymf_settings')]
+#[ORM\Table(name: 'matre_settings')]
 #[ORM\HasLifecycleCallbacks]
 class Settings
 {
@@ -36,12 +36,12 @@ class Settings
         max: 255,
         maxMessage: 'Site name cannot be longer than {{ limit }} characters.',
     )]
-    private string $siteName = 'ReSymf CMS';
+    private string $siteName = 'MATRE';
 
     #[ORM\Column(type: Types::STRING, length: 255)]
     #[Assert\NotBlank(message: 'Admin panel title cannot be blank.')]
     #[Assert\Length(max: 255)]
-    private string $adminPanelTitle = 'ReSymf CMS Admin';
+    private string $adminPanelTitle = 'MATRE Admin';
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     #[Assert\Length(max: 500)]

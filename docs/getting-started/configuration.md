@@ -13,7 +13,11 @@ APP_SECRET=your-secret-key     # Generate with: openssl rand -base64 32
 APP_DEBUG=1                    # 1 for dev, 0 for prod
 
 # Database
-DATABASE_URL="mysql://user:password@127.0.0.1:3306/resymf_cms?serverVersion=8.0&charset=utf8mb4"
+DB_NAME=matre
+DB_USER=matre
+DB_PASS=matre
+DB_HOST=127.0.0.1
+DB_PORT=3306
 
 # Mailer
 MAILER_DSN=smtp://localhost:1025  # Mailpit for dev
@@ -24,53 +28,113 @@ MAILER_DSN=smtp://localhost:1025  # Mailpit for dev
 The `docker-compose.yml` sets these automatically:
 ```dotenv
 DB_HOST=db
-DB_USER=resymf
-DB_PASS=password
+DB_NAME=matre
+DB_USER=matre
+DB_PASS=matre
 MAILER_DSN=smtp://mailpit:1025
+```
+
+### Test Automation Settings
+
+```dotenv
+# Test Module Repository
+TEST_MODULE_REPO=git@github.com:org/magento-module.git
+TEST_MODULE_BRANCH=main
+TEST_MODULE_PATH=app/code/Vendor/Module
+
+# Repository credentials (for HTTPS repos)
+REPO_USERNAME=
+REPO_PASSWORD=
+
+# Selenium Grid
+SELENIUM_HOST=selenium-hub
+SELENIUM_PORT=4444
+
+# Allure Reports
+ALLURE_URL=http://allure:5050
+
+# Magento Marketplace credentials
+MAGENTO_PUBLIC_KEY=
+MAGENTO_PRIVATE_KEY=
+
+# Notifications
+SLACK_WEBHOOK_URL=
+SLACK_CHANNEL=#test-results
 ```
 
 ---
 
 ## Docker Services
 
-### php
+### matre_php
 - **Image:** Custom (from Dockerfile)
 - **Target:** `app_dev` stage
 - **Extensions:** GD, IntL, ZIP, PDO MySQL, GMP
 - **Volumes:** Application code, vendor (named volume)
 
-### nginx
+### matre_nginx
 - **Image:** `nginx:1.25-alpine`
-- **Port:** 8088 → 80
+- **Port:** 8089 → 80
 - **Config:** `docker/nginx/default.conf`
 
-### db
+### matre_db
 - **Image:** `mariadb:11`
-- **Port:** 33066 → 3306
+- **Port:** 33067 → 3306
 - **Credentials:**
-  - Database: `resymf_cms`
-  - User: `resymf`
-  - Password: `password`
-  - Root password: `root_password`
+  - Database: `matre`
+  - User: `matre`
+  - Password: `matre`
+  - Root password: `matre_root`
 
-### mailpit
+### matre_mailpit
 - **Image:** `axllent/mailpit:latest`
 - **Ports:**
-  - 1030 → 1025 (SMTP)
-  - 8030 → 8025 (Web UI)
+  - 1031 → 1025 (SMTP)
+  - 8031 → 8025 (Web UI)
 - **Usage:** All emails sent by the app appear in the web UI
 
-### frontend-build
+### matre_frontend_build
 - **Image:** `node:20-alpine`
 - **Command:** `npm install && npm run build`
 - **Purpose:** Builds Vite assets on container startup
 - **Output:** `public/build/`
 
-### scheduler
+### matre_scheduler
 - **Image:** Custom (from Dockerfile)
 - **Command:** `php bin/console messenger:consume scheduler_cron --time-limit=60 -vv`
-- **Purpose:** Processes scheduled tasks
+- **Purpose:** Processes scheduled test runs
 - **Restart:** `unless-stopped`
+
+### matre_test_worker
+- **Image:** Custom (from Dockerfile)
+- **Command:** `php bin/console messenger:consume test_runner --time-limit=3600 -vv`
+- **Purpose:** Executes test runs asynchronously
+- **Restart:** `unless-stopped`
+
+### matre_selenium_hub
+- **Image:** `selenium/hub:4.15`
+- **Ports:** 4442, 4443, 4444
+- **Purpose:** Selenium Grid coordinator
+
+### matre_chrome_node
+- **Image:** `selenium/node-chrome:4.15`
+- **Purpose:** Chrome browser for MFTF tests
+- **Sessions:** 2 concurrent
+
+### matre_playwright
+- **Image:** Custom (from `docker/playwright/Dockerfile`)
+- **Purpose:** Playwright test execution
+- **Volumes:** `var/playwright-results/`
+
+### matre_allure
+- **Image:** `frankescobar/allure-docker-service:latest`
+- **Ports:** 5050, 5252
+- **Purpose:** Allure report generation and serving
+
+### matre_magento
+- **Image:** Custom (from `docker/magento/Dockerfile`)
+- **Purpose:** Magento 2 environment for MFTF execution
+- **Volumes:** `var/mftf-results/`
 
 ---
 
@@ -105,6 +169,30 @@ security:
 
 ---
 
+## Messenger Configuration
+
+### config/packages/messenger.yaml
+
+```yaml
+framework:
+    messenger:
+        transports:
+            test_runner:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    queue_name: test_runner
+            scheduler_cron:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    queue_name: scheduler_cron
+
+        routing:
+            'App\Message\TestRunMessage': test_runner
+            'App\Message\ScheduledTestRunMessage': scheduler_cron
+```
+
+---
+
 ## Vite Configuration
 
 ### vite.config.mjs
@@ -118,9 +206,8 @@ export default defineConfig({
       input: {
         app: './assets/app.js',
         admin: './assets/admin.js',
-        cms: './assets/cms.js',
         // Vue islands
-        'category-form-app': './assets/vue/category-form-app.js',
+        'test-run-grid-app': './assets/vue/test-run-grid-app.js',
         // ... more entries
       },
     },
@@ -141,15 +228,43 @@ Add new Vue islands to `rollupOptions.input`.
 ### Docker
 ```bash
 # Connect from host
-mysql -h 127.0.0.1 -P 33066 -u resymf -ppassword resymf_cms
+mysql -h 127.0.0.1 -P 33067 -u matre -pmatre matre
 
 # Connect from container
-docker-compose exec db mysql -u resymf -ppassword resymf_cms
+docker-compose exec db mysql -u matre -pmatre matre
 ```
 
 ### GUI Clients
 - Host: `127.0.0.1`
-- Port: `33066`
-- User: `resymf`
-- Password: `password`
-- Database: `resymf_cms`
+- Port: `33067`
+- User: `matre`
+- Password: `matre`
+- Database: `matre`
+
+---
+
+## Test Environment Configuration
+
+Test environments are configured in the database via the Admin UI:
+
+| Field | Description |
+|-------|-------------|
+| `name` | Display name (e.g., "Staging") |
+| `code` | Unique code (e.g., "staging") |
+| `baseUrl` | Magento base URL |
+| `backendName` | Admin path (default: "admin") |
+| `adminUsername` | Magento admin username |
+| `adminPassword` | Magento admin password |
+| `customVariables` | JSON object of custom env vars |
+
+### Custom Variables Example
+
+```json
+{
+  "MAGENTO_BASE_URL": "https://staging.example.com",
+  "MAGENTO_BACKEND_NAME": "admin_secret",
+  "CUSTOM_VAR": "value"
+}
+```
+
+These variables are exported to the test environment during execution.

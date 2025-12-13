@@ -1,6 +1,6 @@
 # Creating Entities
 
-This guide explains how to create new Doctrine entities in ReSymf-CMS.
+This guide explains how to create new Doctrine entities in MATRE.
 
 ## Entity Pattern
 
@@ -20,7 +20,7 @@ use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: YourEntityRepository::class)]
-#[ORM\Table(name: 'resymf_your_entities')]
+#[ORM\Table(name: 'matre_your_entities')]
 #[ORM\UniqueConstraint(name: 'UNIQ_ENTITY_NAME', columns: ['name'])]
 #[UniqueEntity(fields: ['name'], message: 'This name is already taken.')]
 #[ORM\HasLifecycleCallbacks]
@@ -102,9 +102,9 @@ class YourEntity
 ## Conventions
 
 ### Table Naming
-- Prefix: `resymf_`
-- Plural: `resymf_categories`, `resymf_users`
-- Snake case: `resymf_cron_jobs`
+- Prefix: `matre_`
+- Plural: `matre_test_environments`, `matre_users`
+- Snake case: `matre_test_runs`
 
 ### Column Types
 | PHP Type | Doctrine Type |
@@ -195,7 +195,7 @@ private Parent $parent;
 ```php
 // Owning side
 #[ORM\ManyToMany(targetEntity: Tag::class, inversedBy: 'posts')]
-#[ORM\JoinTable(name: 'resymf_post_tags')]
+#[ORM\JoinTable(name: 'matre_post_tags')]
 private Collection $tags;
 ```
 
@@ -282,7 +282,7 @@ docker-compose exec php php bin/console doctrine:migrations:migrate --no-interac
 When creating a new entity:
 
 1. [ ] Create entity in `src/Entity/`
-2. [ ] Use `resymf_` table prefix
+2. [ ] Use `matre_` table prefix
 3. [ ] Add timestamps (`createdAt`, `updatedAt`)
 4. [ ] Add validation constraints
 5. [ ] Create repository in `src/Repository/`

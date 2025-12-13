@@ -19,7 +19,7 @@ use Symfony\Component\Validator\Constraints as Assert;
  * Managed via admin panel and executed by Symfony Scheduler
  */
 #[ORM\Entity(repositoryClass: CronJobRepository::class)]
-#[ORM\Table(name: 'resymf_cron_jobs')]
+#[ORM\Table(name: 'matre_cron_jobs')]
 #[ORM\UniqueConstraint(name: 'UNIQ_CRONJOB_NAME', columns: ['name'])]
 #[ORM\Index(name: 'IDX_CRONJOB_ACTIVE', columns: ['is_active'])]
 #[UniqueEntity(fields: ['name'], message: 'A cron job with this name already exists.')]

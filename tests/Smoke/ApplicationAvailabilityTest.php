@@ -37,15 +37,11 @@ class ApplicationAvailabilityTest extends WebTestCase
     public static function urlProvider(): \Generator
     {
         // Public pages
-        // Homepage returns 500 in test env without page fixtures (expected behavior)
-        yield 'homepage' => ['/', 500];
         yield 'login page' => ['/login', 200];
 
         // Admin pages (should redirect to login if not authenticated)
         yield 'admin dashboard' => ['/admin', 302];
         yield 'admin users' => ['/admin/users', 302];
-        yield 'admin pages' => ['/admin/pages', 302];
-        yield 'admin categories' => ['/admin/categories', 302];
     }
 
     public function testServiceContainerIsBooted(): void

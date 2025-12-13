@@ -1,0 +1,14 @@
+{
+  "name": "atr-playwright-runner",
+  "version": "1.0.0",
+  "description": "Playwright test runner for ATR",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.40.0",
+    "allure-playwright": "^2.10.0"
+  }
+}

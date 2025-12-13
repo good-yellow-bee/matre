@@ -1,6 +1,6 @@
 # Admin CRUD Controllers
 
-This guide explains how to create admin CRUD features in ReSymf-CMS.
+This guide explains how to create admin CRUD features in MATRE.
 
 ## Controller Pattern
 
