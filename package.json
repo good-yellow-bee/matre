@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "@hotwired/stimulus": "^3.2.2",
-    "@openai/codex": "^0.71.0",
     "@vueuse/core": "^14.0.0",
     "vue": "^3.4.21",
     "vuedraggable": "^4.1.0"
