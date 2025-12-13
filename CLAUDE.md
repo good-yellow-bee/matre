@@ -154,3 +154,23 @@ Do not include Claude attribution in commits.
 - Playwright results: `var/playwright-results/`
 - Allure results: `var/allure-results/`
 - Test modules: `var/test-modules/`
+
+## Dev Mode (Local Module Development)
+
+Skip git clone on each test run by using a local module directory:
+
+```env
+# .env
+DEV_MODULE_PATH=./test-module  # Relative or absolute path
+```
+
+**Behavior:**
+- When set: Creates symlink to local module (instant, live edits visible)
+- When empty: Normal git clone from `TEST_MODULE_REPO`
+- If path invalid: Fails with clear error (no silent fallback)
+
+**Usage:**
+1. Clone/place your module in project root (e.g., `./test-module/`)
+2. Set `DEV_MODULE_PATH=./test-module` in `.env`
+3. Run tests → uses local module, no git clone
+4. Edit module files → changes reflected immediately
