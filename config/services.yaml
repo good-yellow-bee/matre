@@ -77,6 +77,10 @@ services:
         arguments:
             $projectDir: '%kernel.project_dir%'
 
+    App\Service\EnvVariableAnalyzerService:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
     App\Command\CheckMagentoCommand:
         arguments:
             $magentoRoot: '%env(MAGENTO_ROOT)%'
