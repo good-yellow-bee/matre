@@ -44,6 +44,7 @@ services:
             $projectDir: '%kernel.project_dir%'
             $repoUsername: '%env(REPO_USERNAME)%'
             $repoPassword: '%env(REPO_PASSWORD)%'
+            $devModulePath: '%env(DEV_MODULE_PATH)%'
 
     App\Service\MftfExecutorService:
         arguments:
@@ -74,6 +75,10 @@ services:
             $slackChannel: '%env(SLACK_CHANNEL)%'
 
     App\Command\CleanupTestsCommand:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
+    App\Service\EnvVariableAnalyzerService:
         arguments:
             $projectDir: '%kernel.project_dir%'
 

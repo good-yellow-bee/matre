@@ -43,6 +43,7 @@ MATRE (Magento Automated Test Run Environment) is a test automation orchestratio
 | `AdminConfigService` | Admin menu/config, role-based access |
 | `ArtifactCollectorService` | Test screenshots/HTML collection |
 | `FileUploadService` | Flysystem uploads with MIME validation |
+| `EnvVariableAnalyzerService` | Parse .env files and analyze MFTF test variable usage |
 
 ## Security Pattern
 
@@ -71,6 +72,7 @@ MATRE (Magento Automated Test Run Environment) is a test automation orchestratio
 | `app:check-magento` | Validate Magento connectivity |
 | `app:cleanup-tests` | Clean old artifacts |
 | `app:import-environments` | Bulk import test targets |
+| `app:env:import` | Import .env vars from TEST_MODULE_REPO with test usage analysis |
 
 ## Message Queue Pattern
 
@@ -152,3 +154,23 @@ Do not include Claude attribution in commits.
 - Playwright results: `var/playwright-results/`
 - Allure results: `var/allure-results/`
 - Test modules: `var/test-modules/`
+
+## Dev Mode (Local Module Development)
+
+Skip git clone on each test run by using a local module directory:
+
+```env
+# .env
+DEV_MODULE_PATH=./test-module  # Relative or absolute path
+```
+
+**Behavior:**
+- When set: Creates symlink to local module (instant, live edits visible)
+- When empty: Normal git clone from `TEST_MODULE_REPO`
+- If path invalid: Fails with clear error (no silent fallback)
+
+**Usage:**
+1. Clone/place your module in project root (e.g., `./test-module/`)
+2. Set `DEV_MODULE_PATH=./test-module` in `.env`
+3. Run tests → uses local module, no git clone
+4. Edit module files → changes reflected immediately

@@ -23,19 +23,91 @@ class ModuleCloneService
         private readonly string $projectDir,
         private readonly ?string $repoUsername = null,
         private readonly ?string $repoPassword = null,
+        private readonly ?string $devModulePath = null,
     ) {
         $this->filesystem = new Filesystem();
     }
 
     /**
-     * Clone module repository to target path.
+     * Check if dev mode is enabled (local module path configured).
+     */
+    public function isDevModeEnabled(): bool
+    {
+        return !empty($this->devModulePath);
+    }
+
+    /**
+     * Get resolved dev module path (absolute).
+     */
+    public function getDevModulePath(): ?string
+    {
+        if (empty($this->devModulePath)) {
+            return null;
+        }
+
+        // Handle relative paths
+        if (!str_starts_with($this->devModulePath, '/')) {
+            return $this->projectDir . '/' . $this->devModulePath;
+        }
+
+        return $this->devModulePath;
+    }
+
+    /**
+     * Use local module via symlink (dev mode).
+     *
+     * @throws \RuntimeException if dev module path doesn't exist
+     */
+    public function useLocalModule(string $targetPath): void
+    {
+        $sourcePath = $this->getDevModulePath();
+
+        if (!$this->filesystem->exists($sourcePath)) {
+            throw new \RuntimeException(sprintf(
+                'Dev module path does not exist: %s (DEV_MODULE_PATH=%s)',
+                $sourcePath,
+                $this->devModulePath,
+            ));
+        }
+
+        $this->logger->info('Using local module (dev mode)', [
+            'source' => $sourcePath,
+            'target' => $targetPath,
+        ]);
+
+        // Remove existing target if any
+        if ($this->filesystem->exists($targetPath)) {
+            $this->filesystem->remove($targetPath);
+        }
+
+        // Create parent dir if needed
+        $this->filesystem->mkdir(\dirname($targetPath));
+
+        // Create symlink to local module
+        $this->filesystem->symlink(
+            (string) realpath($sourcePath),
+            $targetPath,
+        );
+
+        $this->logger->info('Local module symlinked successfully');
+    }
+
+    /**
+     * Clone module repository to target path (or use local module in dev mode).
      */
     public function cloneModule(string $targetPath): void
     {
+        // Dev mode: use local module via symlink
+        if ($this->isDevModeEnabled()) {
+            $this->useLocalModule($targetPath);
+
+            return;
+        }
+
         $repoUrl = $this->getAuthenticatedRepoUrl();
 
         $this->logger->info('Cloning module', [
-            'repo' => $this->moduleRepo, // Log original URL without credentials
+            'repo' => $this->moduleRepo,
             'branch' => $this->moduleBranch,
             'target' => $targetPath,
         ]);
