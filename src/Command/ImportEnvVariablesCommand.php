@@ -11,45 +11,43 @@ use App\Service\ModuleCloneService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Finder\Finder;
 
 /**
  * Import environment variables from .env file and analyze MFTF test usage.
  *
- * This command parses a .env file, scans MFTF test XML files for {{_ENV.VAR}}
- * patterns, and saves variables to GlobalEnvVariable with usedInTests populated.
+ * This command parses a .env file from TEST_MODULE_REPO, scans MFTF test XML
+ * files for {{_ENV.VAR}} patterns, and saves to GlobalEnvVariable.
  *
  * Usage:
- *   # Clone fresh module and import (recommended)
- *   php bin/console app:env:import \
- *     -f var/test-modules/current/Cron/data/.env.stage-us --clone
+ *   # Clone fresh and select environment interactively
+ *   php bin/console app:env:import --clone
  *
- *   # Import from existing module
- *   php bin/console app:env:import \
- *     -f var/test-modules/current/Cron/data/.env.stage-us \
- *     -m var/test-modules/current
+ *   # Clone and import specific environment
+ *   php bin/console app:env:import stage-us --clone
  *
- *   # Preview without saving (dry run)
- *   php bin/console app:env:import -f .env --dry-run
+ *   # Import from already cloned module
+ *   php bin/console app:env:import stage-us
  *
  *   # Update existing variables
- *   php bin/console app:env:import -f .env --overwrite
- *
- * Patterns detected in MFTF tests:
- *   - {{_ENV.VAR_NAME}} - Environment variable references
+ *   php bin/console app:env:import stage-us --clone --overwrite
  *
  * @see GlobalEnvVariable Entity storing imported variables
  * @see EnvVariableAnalyzerService Service handling parsing and analysis
  */
 #[AsCommand(
     name: 'app:env:import',
-    description: 'Import .env variables and analyze MFTF test usage',
+    description: 'Import .env variables from TEST_MODULE_REPO and analyze MFTF test usage',
 )]
 class ImportEnvVariablesCommand extends Command
 {
+    private const ENV_DATA_PATH = 'Cron/data';
+
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly GlobalEnvVariableRepository $globalEnvRepository,
@@ -62,41 +60,36 @@ class ImportEnvVariablesCommand extends Command
     protected function configure(): void
     {
         $this
-            ->addOption('env-file', 'f', InputOption::VALUE_REQUIRED, 'Path to .env file to import')
-            ->addOption('module-path', 'm', InputOption::VALUE_OPTIONAL, 'Path to test module (default: var/test-modules/current)')
+            ->addArgument('environment', InputArgument::OPTIONAL, 'Environment name (e.g., stage-us, dev-es)')
+            ->addOption('clone', 'c', InputOption::VALUE_NONE, 'Clone fresh test module from TEST_MODULE_REPO')
             ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Preview without saving changes')
             ->addOption('overwrite', null, InputOption::VALUE_NONE, 'Update existing variables')
-            ->addOption('clone', 'c', InputOption::VALUE_NONE, 'Clone fresh test module from TEST_MODULE_REPO before import')
             ->setHelp(
                 <<<'HELP'
-                    The <info>%command.name%</info> command imports environment variables and analyzes test usage:
+                    The <info>%command.name%</info> command imports environment variables from TEST_MODULE_REPO:
 
-                        <info>php %command.full_name% --env-file=path/to/.env</info>
+                    Clone fresh module and select environment interactively:
 
-                    Clone fresh module and import (recommended):
+                        <info>php %command.full_name% --clone</info>
 
-                        <info>php %command.full_name% \
-                            -f var/test-modules/current/Cron/data/.env.stage-us --clone</info>
+                    Clone and import specific environment:
 
-                    Import from existing module:
+                        <info>php %command.full_name% stage-us --clone</info>
 
-                        <info>php %command.full_name% \
-                            -f var/test-modules/current/Cron/data/.env.stage-us \
-                            -m var/test-modules/current</info>
+                    Import from already cloned module:
 
-                    Preview changes without saving:
-
-                        <info>php %command.full_name% -f .env --dry-run</info>
+                        <info>php %command.full_name% stage-us</info>
 
                     Update existing variables:
 
-                        <info>php %command.full_name% -f .env --overwrite</info>
+                        <info>php %command.full_name% stage-us --clone --overwrite</info>
 
                     The command will:
-                      1. Parse the .env file for KEY=VALUE pairs
-                      2. Scan MFTF test XML files for {{_ENV.VAR}} patterns
-                      3. Map each variable to the tests that use it
-                      4. Create or update GlobalEnvVariable entities
+                      1. Clone TEST_MODULE_REPO to var/test-modules/current (if --clone)
+                      2. Discover .env files in Cron/data/ directory
+                      3. Parse the selected .env file
+                      4. Scan MFTF test XML files for {{_ENV.VAR}} patterns
+                      5. Create or update GlobalEnvVariable entities
                     HELP
             );
     }
@@ -105,12 +98,12 @@ class ImportEnvVariablesCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
 
-        // Get options
-        $envFile = $input->getOption('env-file');
-        $modulePath = $input->getOption('module-path') ?? $this->analyzerService->getDefaultModulePath();
+        $environment = $input->getArgument('environment');
+        $clone = $input->getOption('clone');
         $dryRun = $input->getOption('dry-run');
         $overwrite = $input->getOption('overwrite');
-        $clone = $input->getOption('clone');
+
+        $modulePath = $this->analyzerService->getDefaultModulePath();
 
         // Clone fresh module if requested
         if ($clone) {
@@ -121,10 +114,8 @@ class ImportEnvVariablesCommand extends Command
             ]);
 
             try {
-                $targetPath = $this->analyzerService->getDefaultModulePath();
-                $this->moduleCloneService->cloneModule($targetPath);
-                $modulePath = $targetPath;
-                $io->text(sprintf('<fg=green>✓</> Cloned to: %s', $targetPath));
+                $this->moduleCloneService->cloneModule($modulePath);
+                $io->text(sprintf('<fg=green>✓</> Cloned to: %s', $modulePath));
             } catch (\Throwable $e) {
                 $io->error(sprintf('Failed to clone module: %s', $e->getMessage()));
 
@@ -132,29 +123,55 @@ class ImportEnvVariablesCommand extends Command
             }
         }
 
-        // Validate env-file option
-        if (!$envFile) {
-            $io->error('The --env-file option is required');
+        // Check if module exists
+        $envDataPath = $modulePath . '/' . self::ENV_DATA_PATH;
+        if (!is_dir($envDataPath)) {
+            $io->error(sprintf(
+                'Module not found at %s. Use --clone to fetch from TEST_MODULE_REPO.',
+                $modulePath
+            ));
 
             return Command::FAILURE;
         }
 
-        // Validate file exists
+        // Discover available environments
+        $availableEnvs = $this->discoverEnvironments($envDataPath);
+        if (empty($availableEnvs)) {
+            $io->error(sprintf('No .env.* files found in %s', $envDataPath));
+
+            return Command::FAILURE;
+        }
+
+        // Select environment
+        if (!$environment) {
+            $environment = $io->choice(
+                'Select environment to import',
+                $availableEnvs,
+                $availableEnvs[0] ?? null
+            );
+        }
+
+        // Validate environment exists
+        $envFile = sprintf('%s/.env.%s', $envDataPath, $environment);
         if (!file_exists($envFile)) {
-            $io->error(sprintf('File not found: %s', $envFile));
+            $io->error(sprintf(
+                'Environment "%s" not found. Available: %s',
+                $environment,
+                implode(', ', $availableEnvs)
+            ));
 
             return Command::FAILURE;
         }
 
         $io->title('Import Environment Variables');
         $io->text([
-            sprintf('Env file: %s', $envFile),
-            sprintf('Module path: %s', $modulePath),
-            sprintf('Mode: %s', $dryRun ? 'Dry run (preview only)' : ($overwrite ? 'Overwrite existing' : 'Create new only')),
+            sprintf('Environment: %s', $environment),
+            sprintf('File: %s', $envFile),
+            sprintf('Mode: %s', $dryRun ? 'Dry run' : ($overwrite ? 'Overwrite' : 'Create new only')),
         ]);
         $io->newLine();
 
-        // Step 1: Parse .env file
+        // Parse .env file
         $io->section('Parsing .env file...');
         try {
             $envVars = $this->analyzerService->parseEnvFile($envFile);
@@ -172,21 +189,18 @@ class ImportEnvVariablesCommand extends Command
 
         $io->text(sprintf('Found %d variables', count($envVars)));
 
-        // Step 2: Analyze test usage
+        // Analyze test usage
         $io->section('Analyzing MFTF test usage...');
         $testUsage = $this->analyzerService->analyzeTestUsage($modulePath);
-        $usedVarsCount = count($testUsage);
-        $io->text(sprintf('Found %d variables used in tests', $usedVarsCount));
+        $io->text(sprintf('Found %d variables used in tests', count($testUsage)));
 
-        // Step 3: Process variables
+        // Process variables
         $io->section('Processing variables...');
         $stats = ['new' => 0, 'updated' => 0, 'unchanged' => 0];
         $rows = [];
 
         foreach ($envVars as $name => $value) {
-            // Normalize name to uppercase
             $name = strtoupper($name);
-
             $usedInTests = $testUsage[$name] ?? [];
             $usedInTestsStr = implode(',', $usedInTests);
             $existing = $this->globalEnvRepository->findByName($name);
@@ -209,7 +223,6 @@ class ImportEnvVariablesCommand extends Command
                 ++$stats['new'];
             }
 
-            // Build display row
             $displayValue = strlen($value) > 40 ? substr($value, 0, 37) . '...' : $value;
             $displayTests = count($usedInTests) > 3
                 ? implode(', ', array_slice($usedInTests, 0, 3)) . sprintf(' (+%d)', count($usedInTests) - 3)
@@ -218,10 +231,8 @@ class ImportEnvVariablesCommand extends Command
             $rows[] = [$name, $displayValue, $displayTests ?: '-', $this->formatStatus($status)];
         }
 
-        // Display table
         $io->table(['Variable', 'Value', 'Tests Using It', 'Status'], $rows);
 
-        // Flush if not dry-run
         if (!$dryRun) {
             $this->entityManager->flush();
             $io->success(sprintf(
@@ -240,6 +251,31 @@ class ImportEnvVariablesCommand extends Command
         }
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * Discover available .env.* files in the data directory.
+     *
+     * @return string[] Environment names (e.g., ['dev-us', 'stage-es'])
+     */
+    private function discoverEnvironments(string $dataPath): array
+    {
+        $environments = [];
+
+        $finder = new Finder();
+        $finder->files()->in($dataPath)->name('.env.*')->depth(0)->ignoreDotFiles(false);
+
+        foreach ($finder as $file) {
+            $name = $file->getFilename();
+            // Extract environment name from .env.{name}
+            if (preg_match('/^\.env\.(.+)$/', $name, $matches)) {
+                $environments[] = $matches[1];
+            }
+        }
+
+        sort($environments);
+
+        return $environments;
     }
 
     private function formatStatus(string $status): string
