@@ -63,11 +63,7 @@ class ModuleCloneService
         $sourcePath = $this->getDevModulePath();
 
         if (!$this->filesystem->exists($sourcePath)) {
-            throw new \RuntimeException(sprintf(
-                'Dev module path does not exist: %s (DEV_MODULE_PATH=%s)',
-                $sourcePath,
-                $this->devModulePath,
-            ));
+            throw new \RuntimeException(sprintf('Dev module path does not exist: %s (DEV_MODULE_PATH=%s)', $sourcePath, $this->devModulePath));
         }
 
         $this->logger->info('Using local module (dev mode)', [
