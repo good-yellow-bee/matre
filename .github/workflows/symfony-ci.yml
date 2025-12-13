@@ -24,9 +24,6 @@ jobs:
   code-quality:
     name: Code Quality & Static Analysis
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./symfony7-skeleton
 
     steps:
       - name: Checkout code
@@ -43,12 +40,15 @@ jobs:
       - name: Validate composer.json and composer.lock
         run: composer validate --strict
 
+      - name: Create .env file
+        run: cp .env.example .env
+
       - name: Cache Composer packages
         id: composer-cache
         uses: actions/cache@v4
         with:
-          path: symfony7-skeleton/vendor
-          key: ${{ runner.os }}-php-${{ env.PHP_VERSION }}-composer-${{ hashFiles('symfony7-skeleton/composer.lock') }}
+          path: vendor
+          key: ${{ runner.os }}-php-${{ env.PHP_VERSION }}-composer-${{ hashFiles('composer.lock') }}
           restore-keys: |
             ${{ runner.os }}-php-${{ env.PHP_VERSION }}-composer-
 
@@ -81,10 +81,6 @@ jobs:
         php-version: ['8.5']
         # Future: Add 8.4 when stable
 
-    defaults:
-      run:
-        working-directory: ./symfony7-skeleton
-
     services:
       mysql:
         image: mysql:${{ env.MYSQL_VERSION }}
@@ -111,11 +107,14 @@ jobs:
           coverage: xdebug
           tools: composer:v2
 
+      - name: Create .env file
+        run: cp .env.example .env
+
       - name: Cache Composer packages
         uses: actions/cache@v4
         with:
-          path: symfony7-skeleton/vendor
-          key: ${{ runner.os }}-php-${{ matrix.php-version }}-composer-${{ hashFiles('symfony7-skeleton/composer.lock') }}
+          path: vendor
+          key: ${{ runner.os }}-php-${{ matrix.php-version }}-composer-${{ hashFiles('composer.lock') }}
           restore-keys: |
             ${{ runner.os }}-php-${{ matrix.php-version }}-composer-
 
@@ -168,7 +167,7 @@ jobs:
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4
         with:
-          files: ./symfony7-skeleton/coverage.xml
+          files: ./coverage.xml
           flags: unittests
           name: symfony7-coverage
           fail_ci_if_error: false
@@ -180,9 +179,6 @@ jobs:
   security-audit:
     name: Security Vulnerability Scan
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./symfony7-skeleton
 
     steps:
       - name: Checkout code
@@ -194,11 +190,14 @@ jobs:
           php-version: ${{ env.PHP_VERSION }}
           tools: composer:v2
 
+      - name: Create .env file
+        run: cp .env.example .env
+
       - name: Cache Composer packages
         uses: actions/cache@v4
         with:
-          path: symfony7-skeleton/vendor
-          key: ${{ runner.os }}-php-${{ env.PHP_VERSION }}-composer-${{ hashFiles('symfony7-skeleton/composer.lock') }}
+          path: vendor
+          key: ${{ runner.os }}-php-${{ env.PHP_VERSION }}-composer-${{ hashFiles('composer.lock') }}
           restore-keys: |
             ${{ runner.os }}-php-${{ env.PHP_VERSION }}-composer-
 
@@ -217,9 +216,6 @@ jobs:
   doctrine-validation:
     name: Doctrine Schema Validation
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./symfony7-skeleton
 
     services:
       mysql:
@@ -245,6 +241,9 @@ jobs:
           php-version: ${{ env.PHP_VERSION }}
           extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_mysql
           tools: composer:v2
+
+      - name: Create .env file
+        run: cp .env.example .env
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress --no-interaction
@@ -284,9 +283,6 @@ jobs:
   lint:
     name: PHP Lint & Syntax Check
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./symfony7-skeleton
 
     steps:
       - name: Checkout code
@@ -303,6 +299,9 @@ jobs:
 
       - name: Lint config files
         run: find config -name "*.php" -print0 | xargs -0 -n1 -P4 php -l
+
+      - name: Create .env file
+        run: cp .env.example .env
 
       - name: Lint Twig templates
         run: |
