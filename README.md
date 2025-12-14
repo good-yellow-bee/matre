@@ -246,12 +246,26 @@ docker-compose logs -f matre_test_worker
 
 ## Documentation
 
+### Getting Started
 - [Installation Guide](docs/getting-started/installation.md)
 - [Configuration](docs/getting-started/configuration.md)
+
+### Operations
+- [Running Tests](docs/operations/test-execution.md) - Execute MFTF/Playwright tests
+- [Allure Reports](docs/operations/allure-reports.md) - View and manage reports
+- [Monitoring](docs/operations/monitoring.md) - Health checks and diagnostics
+- [Scheduling](docs/operations/scheduling.md) - Automate test runs
+- [CLI Reference](docs/operations/cli-reference.md) - All commands
+- [API Reference](docs/operations/api-reference.md) - REST API
+- [Troubleshooting](docs/operations/troubleshooting.md) - Common issues
+
+### Development
 - [Architecture Overview](docs/development/architecture.md)
 - [Entities](docs/development/entities.md)
 - [Admin CRUD](docs/development/admin-crud.md)
-- [Testing](docs/testing/testing.md)
+- [Unit Tests](docs/testing/unit-tests.md) - PHPUnit testing
+
+### Deployment
 - [Production Deployment](docs/deployment/production.md)
 - [CI/CD](docs/deployment/ci-cd.md)
 - [Security](docs/security.md)
