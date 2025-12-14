@@ -33,6 +33,7 @@ nbproject/
 *.swp
 *.swo
 *~
+.claude
 ###< IDE ###
 
 ###> PHP Tooling ###
