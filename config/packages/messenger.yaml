@@ -12,10 +12,11 @@ framework:
                 retry_strategy:
                     max_retries: 3
                     multiplier: 2
-            test_runner:
-                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+            # Per-environment test runner transport
+            test_runner_per_env:
+                dsn: 'per-env-doctrine://default'
                 options:
-                    queue_name: test_runner
+                    table_name: messenger_messages
                 retry_strategy:
                     max_retries: 2
                     delay: 10000
@@ -30,7 +31,9 @@ framework:
         default_bus: messenger.bus.default
 
         buses:
-            messenger.bus.default: []
+            messenger.bus.default:
+                middleware:
+                    - App\Messenger\Middleware\EnvironmentQueueMiddleware
 
         routing:
             Symfony\Component\Mailer\Messenger\SendEmailMessage: async
@@ -38,5 +41,5 @@ framework:
             Symfony\Component\Notifier\Message\SmsMessage: async
 
             # Test Runner messages
-            App\Message\TestRunMessage: test_runner
+            App\Message\TestRunMessage: test_runner_per_env
             App\Message\ScheduledTestRunMessage: scheduler_test_runner

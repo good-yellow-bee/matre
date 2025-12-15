@@ -17,7 +17,6 @@ export default defineConfig({
     outDir: 'public/build',
     rollupOptions: {
       input: {
-        app: './assets/app.js',
         admin: './assets/admin.js',
         admin_vue: './assets/vue/admin-dashboard-app.js',
         admin_users_vue: './assets/vue/admin-users-app.js',
@@ -26,6 +25,7 @@ export default defineConfig({
         'test-run-grid-app': './assets/vue/test-run-grid-app.js',
         'env-variable-grid-app': './assets/vue/env-variable-grid-app.js',
         'environment-variables-app': './assets/vue/environment-variables-app.js',
+        'test-pattern-selector-app': './assets/vue/test-pattern-selector-app.js',
       },
     },
   },

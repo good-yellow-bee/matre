@@ -115,6 +115,26 @@ class ArtifactCollectorService
     }
 
     /**
+     * Clear source directories to prevent artifact contamination between runs.
+     */
+    public function clearSourceDirectories(): void
+    {
+        $filesystem = new Filesystem();
+        $dirs = [
+            $this->projectDir . '/' . $this->mftfResultsDir,
+            $this->projectDir . '/var/playwright-results',
+        ];
+
+        foreach ($dirs as $dir) {
+            if ($filesystem->exists($dir)) {
+                $this->logger->info('Clearing artifact source directory', ['path' => $dir]);
+                $filesystem->remove($dir);
+                $filesystem->mkdir($dir);
+            }
+        }
+    }
+
+    /**
      * Get web-accessible path for an artifact.
      */
     public function getArtifactWebPath(TestRun $run, string $filename): string

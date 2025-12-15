@@ -115,4 +115,28 @@ class TestSuiteController extends AbstractController
 
         return $this->redirectToRoute('admin_test_suite_index');
     }
+
+    #[Route('/{id}/duplicate', name: 'admin_test_suite_duplicate', methods: ['POST'])]
+    public function duplicate(TestSuite $suite, Request $request): Response
+    {
+        if (!$this->isCsrfTokenValid('duplicate'.$suite->getId(), $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token');
+        }
+
+        $copy = new TestSuite();
+        $copy->setName($this->testSuiteRepository->findNextAvailableCopyName($suite->getName()));
+        $copy->setType($suite->getType());
+        $copy->setDescription($suite->getDescription());
+        $copy->setTestPattern($suite->getTestPattern());
+        $copy->setCronExpression($suite->getCronExpression());
+        $copy->setEstimatedDuration($suite->getEstimatedDuration());
+        $copy->setIsActive(true);
+
+        $this->entityManager->persist($copy);
+        $this->entityManager->flush();
+
+        $this->addFlash('success', 'Test suite duplicated. Edit below to customize.');
+
+        return $this->redirectToRoute('admin_test_suite_edit', ['id' => $copy->getId()]);
+    }
 }

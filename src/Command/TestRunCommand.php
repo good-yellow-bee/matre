@@ -176,6 +176,7 @@ class TestRunCommand extends Command
             // Dispatch async execution
             $this->messageBus->dispatch(new TestRunMessage(
                 $run->getId(),
+                $run->getEnvironment()->getId(),
                 TestRunMessage::PHASE_PREPARE,
             ));
 

@@ -22,6 +22,7 @@ class AllureReportService
         private readonly HttpClientInterface $httpClient,
         private readonly string $projectDir,
         private readonly string $allureUrl,
+        private readonly string $allurePublicUrl,
     ) {
         $this->filesystem = new Filesystem();
     }
@@ -102,7 +103,7 @@ class AllureReportService
      */
     public function getReportUrl(string $projectId): string
     {
-        return $this->allureUrl . '/allure-docker-service/projects/' . $projectId . '/reports/latest';
+        return $this->allurePublicUrl . '/allure-docker-service/projects/' . $projectId . '/reports/latest/index.html';
     }
 
     /**

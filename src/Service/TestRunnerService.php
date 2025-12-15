@@ -105,12 +105,32 @@ class TestRunnerService
         $output = '';
 
         try {
+            // Clear old artifacts to prevent contamination between runs
+            $this->artifactCollector->clearSourceDirectories();
+
             $type = $run->getType();
 
             // Execute MFTF tests
             if ($type === TestRun::TYPE_MFTF || $type === TestRun::TYPE_BOTH) {
                 $mftfResult = $this->mftfExecutor->execute($run);
                 $output .= "=== MFTF Output ===\n" . $mftfResult['output'] . "\n\n";
+
+                // Check for execution failure
+                if ($mftfResult['exitCode'] !== 0) {
+                    $run->setOutput($output);
+
+                    // Determine specific error message
+                    if (preg_match('/ERROR: \d+ Test\(s\) failed to generate/i', $mftfResult['output'])) {
+                        $run->markFailed('MFTF test generation failed - see output log');
+                    } elseif (preg_match('/is not available under/i', $mftfResult['output'])) {
+                        $run->markFailed('Generated test file not found - see output log');
+                    } else {
+                        $run->markFailed('MFTF execution failed with exit code ' . $mftfResult['exitCode']);
+                    }
+                    $this->entityManager->flush();
+
+                    return;
+                }
 
                 $mftfResults = $this->mftfExecutor->parseResults($run, $mftfResult['output']);
                 foreach ($mftfResults as $result) {
@@ -126,6 +146,15 @@ class TestRunnerService
             if ($type === TestRun::TYPE_PLAYWRIGHT || $type === TestRun::TYPE_BOTH) {
                 $playwrightResult = $this->playwrightExecutor->execute($run);
                 $output .= "=== Playwright Output ===\n" . $playwrightResult['output'] . "\n\n";
+
+                // Check for execution failure
+                if ($playwrightResult['exitCode'] !== 0) {
+                    $run->setOutput($output);
+                    $run->markFailed('Playwright execution failed with exit code ' . $playwrightResult['exitCode']);
+                    $this->entityManager->flush();
+
+                    return;
+                }
 
                 $playwrightResults = $this->playwrightExecutor->parseResults($run, $playwrightResult['output']);
                 foreach ($playwrightResults as $result) {
