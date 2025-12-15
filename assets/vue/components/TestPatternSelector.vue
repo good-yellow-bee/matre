@@ -1,48 +1,56 @@
 <template>
   <div class="test-pattern-selector">
-    <div class="input-group">
-      <!-- Text input for Playwright (fallback) -->
+    <!-- Text input for Playwright (fallback) -->
+    <div v-if="isPlaywrightType" class="input-wrapper">
       <input
-        v-if="isPlaywrightType"
         type="text"
         class="form-control"
         :value="selectedValue"
         @input="handleTextInput"
         :placeholder="placeholder"
       />
+      <button
+        type="button"
+        class="btn btn-outline-secondary refresh-btn"
+        disabled
+        title="Playwright discovery not available"
+      >
+        &#8635;
+      </button>
+    </div>
 
-      <!-- Searchable dropdown for MFTF -->
-      <div v-else class="searchable-select" :class="{ 'is-open': isOpen }">
-        <div class="search-input-wrapper">
-          <input
-            ref="searchInput"
-            type="text"
-            class="form-control"
-            v-model="searchQuery"
-            @focus="openDropdown"
-            @blur="handleBlur"
-            @keydown="handleKeydown"
-            :placeholder="inputPlaceholder"
-            :disabled="loading"
-          />
-          <span v-if="selectedValue && !isOpen" class="selected-badge" @click="clearSelection">
-            {{ selectedValue }}
-            <span class="clear-btn">&times;</span>
-          </span>
+    <!-- Searchable dropdown for MFTF -->
+    <div v-else class="input-wrapper">
+      <div class="searchable-select" ref="selectContainer">
+        <input
+          ref="searchInput"
+          type="text"
+          class="form-control search-input"
+          v-model="searchQuery"
+          @focus="openDropdown"
+          @blur="handleBlur"
+          @keydown="handleKeydown"
+          :placeholder="inputPlaceholder"
+          :disabled="loading"
+        />
+
+        <div v-if="selectedValue && !isOpen" class="selected-value" @click="clearAndFocus">
+          <span class="value-text">{{ selectedValue }}</span>
+          <span class="clear-icon">&times;</span>
         </div>
 
-        <div v-show="isOpen && !loading" class="dropdown-list" ref="dropdownList">
+        <div v-if="isOpen && !loading" class="dropdown-list">
           <div
             v-for="(item, index) in filteredItems"
             :key="item.value"
-            class="dropdown-item"
-            :class="{ 'is-highlighted': index === highlightedIndex }"
+            class="dropdown-option"
+            :class="{ active: index === highlightedIndex }"
             @mousedown.prevent="selectItem(item)"
             @mouseenter="highlightedIndex = index"
           >
             {{ item.label }}
           </div>
-          <div v-if="filteredItems.length === 0" class="dropdown-empty">
+          <div v-if="filteredItems.length === 0" class="dropdown-option disabled">
             No matches found
           </div>
         </div>
@@ -50,22 +58,20 @@
 
       <button
         type="button"
-        class="btn btn-outline-secondary"
+        class="btn btn-outline-secondary refresh-btn"
         @click="refresh"
-        :disabled="refreshing || isPlaywrightType"
-        :title="refreshTitle"
+        :disabled="refreshing"
+        title="Refresh test list from repository"
       >
         <span v-if="refreshing" class="spinner-border spinner-border-sm"></span>
         <span v-else>&#8635;</span>
       </button>
     </div>
 
-    <div v-if="message" class="form-text text-muted small">
-      {{ message }}
-    </div>
-    <div v-if="lastUpdated && !isPlaywrightType && cached" class="form-text text-muted small">
+    <small v-if="message" class="text-muted d-block mt-1">{{ message }}</small>
+    <small v-if="lastUpdated && !isPlaywrightType && cached" class="text-muted d-block mt-1">
       Updated: {{ formatDate(lastUpdated) }}
-    </div>
+    </small>
   </div>
 </template>
 
@@ -92,17 +98,14 @@ const searchQuery = ref('');
 const isOpen = ref(false);
 const highlightedIndex = ref(0);
 const searchInput = ref(null);
-const dropdownList = ref(null);
+const selectContainer = ref(null);
 
 const isPlaywrightType = computed(() => currentType.value.startsWith('playwright_'));
 
 const placeholder = computed(() => {
-  if (isPlaywrightType.value) {
-    return currentType.value === 'playwright_group'
-      ? 'Enter tag pattern (e.g., @checkout)'
-      : 'Enter test name';
-  }
-  return 'Search...';
+  return currentType.value === 'playwright_group'
+    ? 'Enter tag pattern (e.g., @checkout)'
+    : 'Enter test name';
 });
 
 const inputPlaceholder = computed(() => {
@@ -112,17 +115,10 @@ const inputPlaceholder = computed(() => {
   return `Search ${items.value.length} items...`;
 });
 
-const refreshTitle = computed(() => {
-  if (isPlaywrightType.value) return 'Playwright discovery not available';
-  return 'Refresh test list from repository';
-});
-
 const filteredItems = computed(() => {
   if (!searchQuery.value) return items.value;
   const query = searchQuery.value.toLowerCase();
-  return items.value.filter(item =>
-    item.label.toLowerCase().includes(query)
-  );
+  return items.value.filter(item => item.label.toLowerCase().includes(query));
 });
 
 const getPatternField = () => document.getElementById(props.patternFieldId);
@@ -154,10 +150,7 @@ const closeDropdown = () => {
 };
 
 const handleBlur = () => {
-  // Delay to allow click on dropdown item
-  setTimeout(() => {
-    closeDropdown();
-  }, 150);
+  setTimeout(() => closeDropdown(), 200);
 };
 
 const selectItem = (item) => {
@@ -166,12 +159,10 @@ const selectItem = (item) => {
   closeDropdown();
 };
 
-const clearSelection = () => {
+const clearAndFocus = () => {
   selectedValue.value = '';
   syncToHiddenField('');
-  nextTick(() => {
-    searchInput.value?.focus();
-  });
+  nextTick(() => searchInput.value?.focus());
 };
 
 const handleKeydown = (event) => {
@@ -186,10 +177,7 @@ const handleKeydown = (event) => {
   switch (event.key) {
     case 'ArrowDown':
       event.preventDefault();
-      highlightedIndex.value = Math.min(
-        highlightedIndex.value + 1,
-        filteredItems.value.length - 1
-      );
+      highlightedIndex.value = Math.min(highlightedIndex.value + 1, filteredItems.value.length - 1);
       scrollToHighlighted();
       break;
     case 'ArrowUp':
@@ -211,9 +199,9 @@ const handleKeydown = (event) => {
 
 const scrollToHighlighted = () => {
   nextTick(() => {
-    const list = dropdownList.value;
-    const highlighted = list?.querySelector('.is-highlighted');
-    if (highlighted && list) {
+    const container = selectContainer.value;
+    const highlighted = container?.querySelector('.dropdown-option.active');
+    if (highlighted) {
       highlighted.scrollIntoView({ block: 'nearest' });
     }
   });
@@ -243,7 +231,6 @@ const fetchItems = async (type) => {
     }
   } catch (err) {
     message.value = 'Error loading tests';
-    console.error('Failed to fetch test discovery:', err);
   } finally {
     loading.value = false;
   }
@@ -274,7 +261,6 @@ const refresh = async () => {
     }
   } catch (err) {
     message.value = 'Error refreshing';
-    console.error('Failed to refresh cache:', err);
   } finally {
     refreshing.value = false;
   }
@@ -306,20 +292,19 @@ onMounted(() => {
   }
 });
 
-// Reset highlight when search changes
 watch(searchQuery, () => {
   highlightedIndex.value = 0;
 });
 </script>
 
-<style scoped>
+<style>
 .test-pattern-selector {
   width: 100%;
 }
 
-.input-group {
+.input-wrapper {
   display: flex;
-  width: 100%;
+  gap: 0;
 }
 
 .searchable-select {
@@ -327,46 +312,49 @@ watch(searchQuery, () => {
   position: relative;
 }
 
-.search-input-wrapper {
-  position: relative;
-}
-
-.search-input-wrapper input {
+.search-input {
   width: 100%;
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
 }
 
-.selected-badge {
+.selected-value {
   position: absolute;
-  left: 8px;
   top: 50%;
+  left: 10px;
   transform: translateY(-50%);
-  background: #e9ecef;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 0.875rem;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
+  background: #4f46e5;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  max-width: calc(100% - 20px);
+  max-width: calc(100% - 60px);
+  z-index: 1;
+  box-shadow: 0 1px 3px rgba(79, 70, 229, 0.3);
+}
+
+.selected-value:hover {
+  background: #4338ca;
+}
+
+.value-text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.selected-badge:hover {
-  background: #dee2e6;
-}
-
-.clear-btn {
-  font-size: 1rem;
+.clear-icon {
+  font-size: 16px;
   line-height: 1;
-  opacity: 0.7;
+  opacity: 0.6;
 }
 
-.clear-btn:hover {
+.clear-icon:hover {
   opacity: 1;
 }
 
@@ -375,45 +363,47 @@ watch(searchQuery, () => {
   top: 100%;
   left: 0;
   right: 0;
-  max-height: 250px;
+  max-height: 240px;
   overflow-y: auto;
-  background: white;
-  border: 1px solid #ced4da;
+  background: #fff;
+  border: 1px solid #dee2e6;
   border-top: none;
-  border-radius: 0 0 4px 4px;
-  z-index: 1000;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 0 0 6px 6px;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1050;
+  padding: 4px 0;
 }
 
-.dropdown-item {
+.dropdown-option {
   padding: 8px 12px;
-  cursor: pointer;
-  font-size: 0.875rem;
+  cursor: pointer !important;
+  font-size: 14px;
+  color: #374151;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.dropdown-item:hover,
-.dropdown-item.is-highlighted {
-  background: #f8f9fa;
+.dropdown-option:hover,
+.dropdown-option.active {
+  background: #e0e7ff;
+  color: #1e40af;
 }
 
-.dropdown-empty {
-  padding: 12px;
+.dropdown-option.disabled {
+  color: #9ca3af;
+  cursor: default !important;
   text-align: center;
-  color: #6c757d;
-  font-size: 0.875rem;
+  font-style: italic;
 }
 
-.form-text {
-  margin-top: 0.25rem;
+.refresh-btn {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: none;
+  min-width: 42px;
 }
 
 .spinner-border-sm {
-  width: 1rem;
-  height: 1rem;
-}
-
-.btn-outline-secondary {
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
+  width: 14px;
+  height: 14px;
 }
 </style>

@@ -56,10 +56,7 @@
             <div class="form-section">
                 <h3 class="form-section-title">Schedule</h3>
 
-                <div class="form-grid">
-                    <div>{{ form_row(form.cronExpression) }}</div>
-                    <div>{{ form_row(form.estimatedDuration) }}</div>
-                </div>
+                {{ form_row(form.cronExpression) }}
             </div>
 
             <div class="form-section">
@@ -82,6 +79,11 @@
         {{ form_end(form) }}
     </div>
 </div>
+{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    {{ vite_entry_link_tags('test-pattern-selector-app') }}
 {% endblock %}
 
 {% block javascripts %}

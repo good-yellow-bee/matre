@@ -48,7 +48,7 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
                  WHERE queue_name LIKE :prefix
                  AND delivered_at IS NULL
                  AND available_at <= :now',
-                $this->tableName
+                $this->tableName,
             ),
             [
                 'prefix' => self::QUEUE_PREFIX . '%',
@@ -56,7 +56,7 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
             ],
             [
                 'now' => 'datetime_immutable',
-            ]
+            ],
         );
 
         foreach ($queues as $queueName) {
@@ -130,7 +130,7 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
                      ORDER BY created_at ASC
                      LIMIT 1
                      FOR UPDATE SKIP LOCKED',
-                    $this->tableName
+                    $this->tableName,
                 ),
                 [
                     'queue' => $queueName,
@@ -138,7 +138,7 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
                 ],
                 [
                     'now' => 'datetime_immutable',
-                ]
+                ],
             );
 
             if (!$row) {
@@ -152,7 +152,7 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
                 $this->tableName,
                 ['delivered_at' => new \DateTimeImmutable()],
                 ['id' => $row['id']],
-                ['delivered_at' => 'datetime_immutable']
+                ['delivered_at' => 'datetime_immutable'],
             );
 
             // Store lock reference for ack/reject

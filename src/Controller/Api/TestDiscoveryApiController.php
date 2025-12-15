@@ -86,7 +86,7 @@ class TestDiscoveryApiController extends AbstractController
             'type' => $type,
             'items' => array_map(
                 fn (string $item) => ['value' => $item, 'label' => $item],
-                $items
+                $items,
             ),
             'cached' => true,
             'lastUpdated' => $lastUpdated?->format('c'),

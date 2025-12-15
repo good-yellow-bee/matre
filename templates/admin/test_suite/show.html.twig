@@ -41,12 +41,6 @@
                             {% endif %}
                         </td>
                     </tr>
-                    {% if suite.estimatedDuration %}
-                    <tr>
-                        <th>Est. Duration</th>
-                        <td>{{ suite.estimatedDuration }} minutes</td>
-                    </tr>
-                    {% endif %}
                     <tr>
                         <th>Created</th>
                         <td>{{ suite.createdAt|date('Y-m-d H:i:s') }}</td>

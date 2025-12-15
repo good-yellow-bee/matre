@@ -80,10 +80,7 @@ class TestDiscoveryService
                 return $path;
             }
 
-            throw new \RuntimeException(sprintf(
-                'Dev module path does not exist: %s',
-                $this->devModulePath
-            ));
+            throw new \RuntimeException(sprintf('Dev module path does not exist: %s', $this->devModulePath));
         }
 
         $cachePath = $this->projectDir . '/' . self::CACHE_DIR;
@@ -142,7 +139,7 @@ class TestDiscoveryService
         // Reset to remote branch
         $process = new Process(
             ['git', 'reset', '--hard', 'origin/' . $this->moduleBranch],
-            $cachePath
+            $cachePath,
         );
         $process->setTimeout(60);
 
@@ -244,7 +241,7 @@ class TestDiscoveryService
         // Get last commit time
         $process = new Process(
             ['git', 'log', '-1', '--format=%ci'],
-            $cachePath
+            $cachePath,
         );
         $process->run();
 
@@ -341,9 +338,9 @@ class TestDiscoveryService
      */
     private function getAuthenticatedRepoUrl(): string
     {
-        if (!str_starts_with($this->moduleRepo, 'https://') ||
-            empty($this->repoUsername) ||
-            empty($this->repoPassword)) {
+        if (!str_starts_with($this->moduleRepo, 'https://')
+            || empty($this->repoUsername)
+            || empty($this->repoPassword)) {
             return $this->moduleRepo;
         }
 
@@ -370,7 +367,7 @@ class TestDiscoveryService
             $output = str_replace(
                 urlencode($this->repoUsername) . ':' . urlencode($this->repoPassword) . '@',
                 '***:***@',
-                $output
+                $output,
             );
             $output = str_replace($this->repoPassword, '***', $output);
         }
