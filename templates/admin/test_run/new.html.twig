@@ -12,7 +12,7 @@
             </div>
             <div>
                 <h1 class="text-xl font-semibold text-slate-900">Start Test Run</h1>
-                <p class="text-sm text-slate-500 mt-0.5">Execute MFTF or Playwright tests against an environment</p>
+                <p class="text-sm text-slate-500 mt-0.5">Select a test suite to execute against an environment</p>
             </div>
         </div>
         <a href="{{ path('admin_test_run_index') }}"
@@ -31,11 +31,8 @@
 
                 <div class="form-grid">
                     <div>{{ form_row(form.environment) }}</div>
-                    <div>{{ form_row(form.type) }}</div>
+                    <div>{{ form_row(form.suite) }}</div>
                 </div>
-
-                {{ form_row(form.suite) }}
-                {{ form_row(form.testFilter) }}
             </div>
 
             <div class="form-actions">

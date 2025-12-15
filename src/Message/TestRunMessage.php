@@ -17,6 +17,7 @@ readonly class TestRunMessage
 
     public function __construct(
         public int $testRunId,
+        public int $environmentId,
         public string $phase = self::PHASE_PREPARE,
     ) {
     }

@@ -139,7 +139,7 @@ class MftfExecutorService
         $mftfBin = $this->magentoRoot . '/vendor/bin/mftf';
         $testsJson = json_encode(['tests' => explode(' ', $filter)]);
         // Use ; instead of && since generate may have non-fatal annotation warnings
-        $parts[] = sprintf('%s generate:tests --tests %s --force || true', $mftfBin, escapeshellarg($testsJson));
+        $parts[] = sprintf('%s generate:tests --tests %s --force', $mftfBin, escapeshellarg($testsJson));
 
         // Build MFTF run command
         $mftfParts = [$mftfBin . ' run:test'];

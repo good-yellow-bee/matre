@@ -46,6 +46,15 @@ services:
             $repoPassword: '%env(REPO_PASSWORD)%'
             $devModulePath: '%env(DEV_MODULE_PATH)%'
 
+    App\Service\TestDiscoveryService:
+        arguments:
+            $moduleRepo: '%env(TEST_MODULE_REPO)%'
+            $moduleBranch: '%env(TEST_MODULE_BRANCH)%'
+            $projectDir: '%kernel.project_dir%'
+            $repoUsername: '%env(REPO_USERNAME)%'
+            $repoPassword: '%env(REPO_PASSWORD)%'
+            $devModulePath: '%env(DEV_MODULE_PATH)%'
+
     App\Service\MftfExecutorService:
         arguments:
             $projectDir: '%kernel.project_dir%'
@@ -63,6 +72,7 @@ services:
         arguments:
             $projectDir: '%kernel.project_dir%'
             $allureUrl: '%env(ALLURE_URL)%'
+            $allurePublicUrl: '%env(ALLURE_PUBLIC_URL)%'
 
     App\Service\ArtifactCollectorService:
         arguments:
@@ -87,6 +97,10 @@ services:
         arguments:
             $magentoRoot: '%env(MAGENTO_ROOT)%'
             $magentoContainer: '%env(MAGENTO_CONTAINER)%'
+
+    # Per-environment Doctrine transport factory
+    App\Messenger\Transport\PerEnvironmentDoctrineTransportFactory:
+        tags: ['messenger.transport_factory']
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones

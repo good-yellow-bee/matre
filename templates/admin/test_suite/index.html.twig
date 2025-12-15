@@ -49,6 +49,12 @@
                     </td>
                     <td>
                         <div class="btn-group btn-group-sm">
+                            <form action="{{ path('admin_test_suite_duplicate', {id: suite.id}) }}" method="post" class="d-inline">
+                                <input type="hidden" name="_token" value="{{ csrf_token('duplicate' ~ suite.id) }}">
+                                <button type="submit" class="btn btn-outline-secondary" title="Duplicate">
+                                    <i class="bi bi-copy"></i>
+                                </button>
+                            </form>
                             <a href="{{ path('admin_test_suite_edit', {id: suite.id}) }}" class="btn btn-outline-warning" title="Edit">
                                 <i class="bi bi-pencil"></i>
                             </a>

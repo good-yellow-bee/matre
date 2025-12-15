@@ -82,6 +82,7 @@ class ScheduledTestRunMessageHandler
             // Dispatch execution
             $this->messageBus->dispatch(new TestRunMessage(
                 $run->getId(),
+                $environment->getId(),
                 TestRunMessage::PHASE_PREPARE,
             ));
         }

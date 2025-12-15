@@ -105,6 +105,7 @@ class TestRunApiController extends AbstractController
 
         $this->messageBus->dispatch(new TestRunMessage(
             $newRun->getId(),
+            $newRun->getEnvironment()->getId(),
             TestRunMessage::PHASE_PREPARE,
         ));
 

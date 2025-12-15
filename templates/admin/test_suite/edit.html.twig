@@ -34,7 +34,22 @@
                     <div>{{ form_row(form.type) }}</div>
                 </div>
 
-                {{ form_row(form.testPattern) }}
+                {# Hidden field for form submission #}
+                <div style="display: none;">
+                    {{ form_widget(form.testPattern) }}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Test/Group</label>
+                    <div data-vue-island="test-pattern-selector"
+                         data-type-field-id="test_suite_type"
+                         data-pattern-field-id="test_suite_testPattern"
+                         data-api-url="{{ path('api_test_discovery') }}"
+                         data-csrf-token="{{ csrf_token('test_discovery') }}"
+                         data-initial-value="{{ suite.testPattern }}">
+                    </div>
+                </div>
+
                 {{ form_row(form.description) }}
             </div>
 
@@ -67,4 +82,9 @@
         {{ form_end(form) }}
     </div>
 </div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {{ vite_entry_script_tags('test-pattern-selector-app') }}
 {% endblock %}

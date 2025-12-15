@@ -136,4 +136,23 @@ class TestSuiteRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * Generate a unique copy name with auto-increment.
+     * "Suite A" → "Suite A (Copy)" → "Suite A (Copy 2)" → etc
+     */
+    public function findNextAvailableCopyName(string $baseName): string
+    {
+        $name = $baseName . ' (Copy)';
+        if (!$this->findByName($name)) {
+            return $name;
+        }
+
+        $i = 2;
+        while ($this->findByName($baseName . " (Copy $i)")) {
+            $i++;
+        }
+
+        return $baseName . " (Copy $i)";
+    }
 }

@@ -47,18 +47,27 @@ class TestRunController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             $data = $form->getData();
+            $suite = $data['suite'];
+
+            // Derive test type from suite type
+            $type = match (true) {
+                str_starts_with($suite->getType(), 'mftf') => TestRun::TYPE_MFTF,
+                str_starts_with($suite->getType(), 'playwright') => TestRun::TYPE_PLAYWRIGHT,
+                default => TestRun::TYPE_MFTF,
+            };
 
             $run = $this->testRunnerService->createRun(
                 $data['environment'],
-                $data['type'],
-                $data['testFilter'],
-                $data['suite'],
+                $type,
+                $suite->getTestPattern(),
+                $suite,
                 TestRun::TRIGGER_MANUAL,
             );
 
             // Dispatch async execution
             $this->messageBus->dispatch(new TestRunMessage(
                 $run->getId(),
+                $run->getEnvironment()->getId(),
                 TestRunMessage::PHASE_PREPARE,
             ));
 
@@ -135,6 +144,7 @@ class TestRunController extends AbstractController
             // Dispatch async execution
             $this->messageBus->dispatch(new TestRunMessage(
                 $newRun->getId(),
+                $newRun->getEnvironment()->getId(),
                 TestRunMessage::PHASE_PREPARE,
             ));
 

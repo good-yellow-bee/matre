@@ -87,6 +87,7 @@ class TestRunMessageHandler
         // Dispatch next phase
         $this->messageBus->dispatch(new TestRunMessage(
             $run->getId(),
+            $run->getEnvironment()->getId(),
             TestRunMessage::PHASE_EXECUTE,
         ));
     }
@@ -98,6 +99,7 @@ class TestRunMessageHandler
         // Dispatch next phase
         $this->messageBus->dispatch(new TestRunMessage(
             $run->getId(),
+            $run->getEnvironment()->getId(),
             TestRunMessage::PHASE_REPORT,
         ));
     }
@@ -109,6 +111,7 @@ class TestRunMessageHandler
         // Dispatch next phase
         $this->messageBus->dispatch(new TestRunMessage(
             $run->getId(),
+            $run->getEnvironment()->getId(),
             TestRunMessage::PHASE_NOTIFY,
         ));
     }
@@ -120,6 +123,7 @@ class TestRunMessageHandler
         // Dispatch cleanup phase
         $this->messageBus->dispatch(new TestRunMessage(
             $run->getId(),
+            $run->getEnvironment()->getId(),
             TestRunMessage::PHASE_CLEANUP,
         ));
     }

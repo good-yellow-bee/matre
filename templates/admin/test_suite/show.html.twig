@@ -74,6 +74,12 @@
                 <a href="{{ path('admin_test_suite_edit', {id: suite.id}) }}" class="btn btn-warning">
                     <i class="bi bi-pencil"></i> Edit
                 </a>
+                <form action="{{ path('admin_test_suite_duplicate', {id: suite.id}) }}" method="post">
+                    <input type="hidden" name="_token" value="{{ csrf_token('duplicate' ~ suite.id) }}">
+                    <button type="submit" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-copy"></i> Duplicate
+                    </button>
+                </form>
                 <form action="{{ path('admin_test_suite_toggle_active', {id: suite.id}) }}" method="post">
                     <input type="hidden" name="_token" value="{{ csrf_token('toggle' ~ suite.id) }}">
                     <button type="submit" class="btn btn-{{ suite.isActive ? 'secondary' : 'primary' }} w-100">
