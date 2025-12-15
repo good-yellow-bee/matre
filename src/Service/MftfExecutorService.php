@@ -202,6 +202,22 @@ class MftfExecutorService
     }
 
     /**
+     * Get path to MFTF output directory.
+     */
+    public function getOutputPath(): string
+    {
+        return $this->projectDir . '/var/mftf-results';
+    }
+
+    /**
+     * Get path to Allure results from MFTF.
+     */
+    public function getAllureResultsPath(): string
+    {
+        return $this->projectDir . '/var/mftf-results/allure-results';
+    }
+
+    /**
      * Fallback parser when block matching fails.
      * Uses Signature lines to identify tests and OK/FAILURES summary for status.
      *
@@ -275,22 +291,6 @@ class MftfExecutorService
         foreach ($results as $result) {
             $result->setDuration($perTest);
         }
-    }
-
-    /**
-     * Get path to MFTF output directory.
-     */
-    public function getOutputPath(): string
-    {
-        return $this->projectDir . '/var/mftf-results';
-    }
-
-    /**
-     * Get path to Allure results from MFTF.
-     */
-    public function getAllureResultsPath(): string
-    {
-        return $this->projectDir . '/var/mftf-results/allure-results';
     }
 
     /**

@@ -84,13 +84,6 @@ class TestSuite
     #[ValidCronExpression]
     private ?string $cronExpression = null;
 
-    /**
-     * Estimated duration in minutes.
-     */
-    #[ORM\Column(type: Types::INTEGER, nullable: true)]
-    #[Assert\PositiveOrZero]
-    private ?int $estimatedDuration = null;
-
     #[ORM\Column(name: 'is_active', type: Types::BOOLEAN)]
     private bool $isActive = true;
 
@@ -176,18 +169,6 @@ class TestSuite
     public function setCronExpression(?string $cronExpression): static
     {
         $this->cronExpression = $cronExpression;
-
-        return $this;
-    }
-
-    public function getEstimatedDuration(): ?int
-    {
-        return $this->estimatedDuration;
-    }
-
-    public function setEstimatedDuration(?int $estimatedDuration): static
-    {
-        $this->estimatedDuration = $estimatedDuration;
 
         return $this;
     }

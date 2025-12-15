@@ -8,7 +8,6 @@ use App\Entity\TestSuite;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
-use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -44,11 +43,6 @@ class TestSuiteType extends AbstractType
                 'required' => false,
                 'help' => 'Schedule (e.g., "0 2 * * *" for 2 AM daily). Leave empty for manual runs only.',
                 'attr' => ['class' => 'form-control', 'placeholder' => '0 2 * * *'],
-            ])
-            ->add('estimatedDuration', IntegerType::class, [
-                'label' => 'Estimated Duration (minutes)',
-                'required' => false,
-                'attr' => ['class' => 'form-control', 'min' => 1],
             ])
             ->add('description', TextareaType::class, [
                 'label' => 'Description',

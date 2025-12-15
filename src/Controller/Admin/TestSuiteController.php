@@ -119,7 +119,7 @@ class TestSuiteController extends AbstractController
     #[Route('/{id}/duplicate', name: 'admin_test_suite_duplicate', methods: ['POST'])]
     public function duplicate(TestSuite $suite, Request $request): Response
     {
-        if (!$this->isCsrfTokenValid('duplicate'.$suite->getId(), $request->request->get('_token'))) {
+        if (!$this->isCsrfTokenValid('duplicate' . $suite->getId(), $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token');
         }
 
