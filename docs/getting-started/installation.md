@@ -1,5 +1,7 @@
 # Installation Guide
 
+> **Want to run your first test quickly?** See the [Quick Start Guide](./quick-start.md) for a streamlined walkthrough.
+
 ## Prerequisites
 
 **Docker (Recommended):**

@@ -19,6 +19,7 @@ class CheckMagentoCommand extends Command
 {
     public function __construct(
         private readonly string $magentoRoot,
+        private readonly string $magentoContainer,
     ) {
         parent::__construct();
     }
@@ -34,7 +35,7 @@ class CheckMagentoCommand extends Command
         // Check if Magento container is running
         $io->section('Docker Container Status');
 
-        $process = new Process(['docker', 'ps', '--filter', 'name=atr_magento', '--format', '{{.Status}}']);
+        $process = new Process(['docker', 'ps', '--filter', 'name=' . $this->magentoContainer, '--format', '{{.Status}}']);
         $process->run();
 
         if ($process->isSuccessful() && !empty(trim($process->getOutput()))) {
@@ -51,7 +52,7 @@ class CheckMagentoCommand extends Command
         $io->section('Magento Installation');
 
         $process = new Process([
-            'docker', 'exec', 'atr_magento',
+            'docker', 'exec', $this->magentoContainer,
             'php', 'bin/magento', '--version',
         ]);
         $process->run();
@@ -64,7 +65,7 @@ class CheckMagentoCommand extends Command
             $checks['magento'] = ['Magento Version', 'Not installed', 'warning'];
             $io->warning([
                 'Magento is not installed.',
-                'Run: docker exec atr_magento /usr/local/bin/install-magento.sh',
+                sprintf('Run: docker exec %s /usr/local/bin/install-magento.sh', $this->magentoContainer),
             ]);
         }
 
@@ -72,8 +73,8 @@ class CheckMagentoCommand extends Command
         $io->section('MFTF Status');
 
         $process = new Process([
-            'docker', 'exec', 'atr_magento',
-            'bash', '-c', 'test -f dev/tests/acceptance/vendor/bin/mftf && echo "installed"',
+            'docker', 'exec', $this->magentoContainer,
+            'bash', '-c', 'test -f vendor/bin/mftf && echo "installed"',
         ]);
         $process->run();
 
@@ -82,8 +83,8 @@ class CheckMagentoCommand extends Command
 
             // Check MFTF version
             $versionProcess = new Process([
-                'docker', 'exec', 'atr_magento',
-                'bash', '-c', 'cd dev/tests/acceptance && vendor/bin/mftf --version',
+                'docker', 'exec', $this->magentoContainer,
+                'bash', '-c', 'vendor/bin/mftf --version',
             ]);
             $versionProcess->run();
             $io->text(trim($versionProcess->getOutput()));

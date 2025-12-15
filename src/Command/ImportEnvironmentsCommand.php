@@ -69,9 +69,9 @@ class ImportEnvironmentsCommand extends Command
         $io->title('Import Environment Configurations');
         $io->text(sprintf('Scanning: %s', $path));
 
-        // Find .env.* files
+        // Find .env.* files (must disable ignoreDotFiles since .env files are hidden)
         $finder = new Finder();
-        $finder->files()->in($path)->name('.env.*');
+        $finder->files()->in($path)->ignoreDotFiles(false)->name('.env.*');
 
         if (!$finder->hasResults()) {
             $io->warning('No .env.* files found in the directory.');

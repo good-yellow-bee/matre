@@ -22,6 +22,7 @@ class MftfExecutorService
         private readonly string $seleniumHost,
         private readonly int $seleniumPort,
         private readonly string $magentoRoot,
+        private readonly string $magentoContainer,
         private readonly string $testModulePath = 'app/code/SiiPoland/Catalog',
     ) {
     }
@@ -44,7 +45,7 @@ class MftfExecutorService
         // Execute via docker
         $process = new Process([
             'docker', 'exec',
-            'atr_magento',
+            $this->magentoContainer,
             'bash', '-c',
             $mftfCommand,
         ]);
@@ -108,7 +109,8 @@ class MftfExecutorService
         if (!empty($globalVars)) {
             $globalContent = "# Global variables (from ATR database)\n";
             foreach ($globalVars as $key => $value) {
-                $globalContent .= sprintf("%s=%s\n", $key, $value);
+                $quotedValue = $this->quoteEnvValue($value);
+                $globalContent .= sprintf("%s=%s\n", $key, $quotedValue);
             }
             $parts[] = sprintf('echo %s > %s', escapeshellarg($globalContent), escapeshellarg($mftfEnvFile));
             $parts[] = sprintf('cat %s >> %s', escapeshellarg($moduleEnvFile), escapeshellarg($mftfEnvFile));
@@ -119,7 +121,9 @@ class MftfExecutorService
         // Layer 3: Override with TestEnvironment values if present
         $envVars = $env->getEnvVariables();
         foreach ($envVars as $key => $value) {
-            $parts[] = sprintf('echo "%s=%s" >> %s', $key, $value, escapeshellarg($mftfEnvFile));
+            // Quote values with spaces/special chars for .env compatibility
+            $quotedValue = $this->quoteEnvValue($value);
+            $parts[] = sprintf('echo %s >> %s', escapeshellarg("{$key}={$quotedValue}"), escapeshellarg($mftfEnvFile));
         }
 
         // Layer 4: Override Selenium configuration (ATR infra)
@@ -134,7 +138,8 @@ class MftfExecutorService
         // MFTF expects JSON format for --tests: {"tests":["TEST_NAME1","TEST_NAME2"]}
         $mftfBin = $this->magentoRoot . '/vendor/bin/mftf';
         $testsJson = json_encode(['tests' => explode(' ', $filter)]);
-        $parts[] = sprintf('%s generate:tests --tests %s --force', $mftfBin, escapeshellarg($testsJson));
+        // Use ; instead of && since generate may have non-fatal annotation warnings
+        $parts[] = sprintf('%s generate:tests --tests %s --force || true', $mftfBin, escapeshellarg($testsJson));
 
         // Build MFTF run command
         $mftfParts = [$mftfBin . ' run:test'];
@@ -149,34 +154,96 @@ class MftfExecutorService
     /**
      * Parse MFTF output to extract test results.
      *
+     * Handles Codeception output format where test results appear as:
+     * - Test header: "MOEC5157Cest: Moec5157"
+     * - Test steps
+     * - Result: "PASSED" or "FAIL" on its own line
+     *
      * @return TestResult[]
      */
     public function parseResults(TestRun $run, string $output): array
     {
         $results = [];
 
-        // Parse Codeception output format
-        // Example: "PASSED TestName (1.23s)"
-        // Example: "FAIL TestName (0.56s)"
-        preg_match_all(
-            '/^(PASSED|FAIL|ERROR|SKIP)\s+([^\s]+)(?:\s+\(([0-9.]+)s\))?/m',
-            $output,
-            $matches,
-            PREG_SET_ORDER,
-        );
+        // Strip ANSI escape codes for clean parsing
+        $cleanOutput = preg_replace('/\x1b\[[0-9;]*m/', '', $output);
 
-        foreach ($matches as $match) {
+        // Pattern to match test blocks in Codeception output
+        // Format: "TestCest: MethodName" ... (steps) ... "PASSED/FAIL"
+        $pattern = '/^([A-Z][A-Za-z0-9]+Cest):\s*(\w+).*?^\s*(PASSED|FAIL|ERROR|SKIP)\s*$/ms';
+
+        if (preg_match_all($pattern, $cleanOutput, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $match) {
+                $result = new TestResult();
+                $result->setTestRun($run);
+                $result->setTestName($match[1] . ':' . $match[2]); // e.g., "MOEC5157Cest:Moec5157"
+                $result->setStatus($this->mapStatus($match[3]));
+
+                // Extract test ID from Cest name (e.g., MOEC5157Cest -> MOEC5157)
+                if (preg_match('/^([A-Z]+\d+)/', $match[1], $idMatch)) {
+                    $result->setTestId($idMatch[1]);
+                }
+
+                $results[] = $result;
+            }
+        }
+
+        // Fallback: Parse from Signature lines if block matching fails
+        if (empty($results)) {
+            $results = $this->parseResultsFallback($run, $cleanOutput);
+        }
+
+        // Extract duration from timing line and apply to results
+        if (preg_match('/Time:\s*([0-9:.]+)/', $cleanOutput, $timeMatch)) {
+            $this->applyDurationToResults($results, $timeMatch[1]);
+        }
+
+        return $results;
+    }
+
+    /**
+     * Fallback parser when block matching fails.
+     * Uses Signature lines to identify tests and OK/FAILURES summary for status.
+     *
+     * @return TestResult[]
+     */
+    private function parseResultsFallback(TestRun $run, string $output): array
+    {
+        $results = [];
+
+        // Look for Signature lines to get test names
+        $testNames = [];
+        if (preg_match_all('/Signature:\s*[^\s]+\\\\([A-Z][A-Za-z0-9]+Cest):(\w+)/m', $output, $sigMatches, PREG_SET_ORDER)) {
+            foreach ($sigMatches as $m) {
+                $testNames[] = ['cest' => $m[1], 'method' => $m[2]];
+            }
+        }
+
+        // Count results from summary
+        $passedCount = 0;
+        $failedCount = 0;
+
+        // Check for OK summary: "OK (1 test, 7 assertions)"
+        if (preg_match('/OK\s*\((\d+)\s*test/', $output, $okMatch)) {
+            $passedCount = (int) $okMatch[1];
+        }
+        // Check for failures summary: "Tests: 5, Failures: 2"
+        if (preg_match('/Tests:\s*(\d+).*?Failures:\s*(\d+)/s', $output, $failMatch)) {
+            $failedCount = (int) $failMatch[2];
+            $passedCount = (int) $failMatch[1] - $failedCount;
+        }
+
+        // Create results from parsed data
+        foreach ($testNames as $i => $test) {
             $result = new TestResult();
             $result->setTestRun($run);
-            $result->setTestName($match[2]);
-            $result->setStatus($this->mapStatus($match[1]));
+            $result->setTestName($test['cest'] . ':' . $test['method']);
 
-            if (!empty($match[3])) {
-                $result->setDuration((float) $match[3]);
-            }
+            // Determine status based on position vs counts
+            $status = ($i < $passedCount) ? TestResult::STATUS_PASSED : TestResult::STATUS_FAILED;
+            $result->setStatus($status);
 
-            // Extract test ID from test name (e.g., MOEC1625Test -> MOEC1625)
-            if (preg_match('/^([A-Z]+\d+)/', $match[2], $idMatch)) {
+            if (preg_match('/^([A-Z]+\d+)/', $test['cest'], $idMatch)) {
                 $result->setTestId($idMatch[1]);
             }
 
@@ -184,6 +251,30 @@ class MftfExecutorService
         }
 
         return $results;
+    }
+
+    /**
+     * Apply duration from timing line to results.
+     * Distributes total time evenly if multiple tests.
+     *
+     * @param TestResult[] $results
+     */
+    private function applyDurationToResults(array $results, string $timeStr): void
+    {
+        // Parse time format "MM:SS.mmm" or "SS.mmm"
+        $parts = explode(':', $timeStr);
+        $seconds = 0.0;
+        if (count($parts) === 2) {
+            $seconds = (int) $parts[0] * 60 + (float) $parts[1];
+        } else {
+            $seconds = (float) $parts[0];
+        }
+
+        // Distribute evenly if multiple tests
+        $perTest = count($results) > 0 ? $seconds / count($results) : 0;
+        foreach ($results as $result) {
+            $result->setDuration($perTest);
+        }
     }
 
     /**
@@ -243,5 +334,24 @@ class MftfExecutorService
             'SKIP' => TestResult::STATUS_SKIPPED,
             default => TestResult::STATUS_BROKEN,
         };
+    }
+
+    /**
+     * Quote env value if it contains spaces or special characters.
+     */
+    private function quoteEnvValue(string $value): string
+    {
+        // Already quoted
+        if (preg_match('/^([\'"]).*\1$/', $value)) {
+            return $value;
+        }
+
+        // Needs quoting (spaces, special chars, or empty)
+        if ($value === '' || preg_match('/[\s$"\'\\\\#]/', $value)) {
+            // Use single quotes and escape existing single quotes
+            return "'" . str_replace("'", "'\\''", $value) . "'";
+        }
+
+        return $value;
     }
 }

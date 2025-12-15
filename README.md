@@ -247,6 +247,7 @@ docker-compose logs -f matre_test_worker
 ## Documentation
 
 ### Getting Started
+- [Quick Start Guide](docs/getting-started/quick-start.md) - Run your first test in minutes
 - [Installation Guide](docs/getting-started/installation.md)
 - [Configuration](docs/getting-started/configuration.md)
 
