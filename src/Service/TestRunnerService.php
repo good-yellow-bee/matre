@@ -114,6 +114,7 @@ class TestRunnerService
 
                 $mftfResults = $this->mftfExecutor->parseResults($run, $mftfResult['output']);
                 foreach ($mftfResults as $result) {
+                    $run->addResult($result);
                     $this->entityManager->persist($result);
                     $allResults[] = $result;
                 }
@@ -128,6 +129,7 @@ class TestRunnerService
 
                 $playwrightResults = $this->playwrightExecutor->parseResults($run, $playwrightResult['output']);
                 foreach ($playwrightResults as $result) {
+                    $run->addResult($result);
                     $this->entityManager->persist($result);
                     $allResults[] = $result;
                 }

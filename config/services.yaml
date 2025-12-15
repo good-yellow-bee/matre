@@ -52,6 +52,7 @@ services:
             $seleniumHost: '%env(SELENIUM_HOST)%'
             $seleniumPort: '%env(int:SELENIUM_PORT)%'
             $magentoRoot: '%env(MAGENTO_ROOT)%'
+            $magentoContainer: '%env(MAGENTO_CONTAINER)%'
             $testModulePath: '%env(TEST_MODULE_PATH)%'
 
     App\Service\PlaywrightExecutorService:
@@ -85,6 +86,7 @@ services:
     App\Command\CheckMagentoCommand:
         arguments:
             $magentoRoot: '%env(MAGENTO_ROOT)%'
+            $magentoContainer: '%env(MAGENTO_CONTAINER)%'
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
