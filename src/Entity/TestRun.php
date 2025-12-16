@@ -22,6 +22,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ORM\Index(name: 'IDX_TEST_RUN_STATUS', columns: ['status'])]
 #[ORM\Index(name: 'IDX_TEST_RUN_ENV', columns: ['environment_id'])]
 #[ORM\Index(name: 'IDX_TEST_RUN_CREATED', columns: ['created_at'])]
+#[ORM\Index(name: 'IDX_TEST_RUN_ENV_STATUS', columns: ['environment_id', 'status'])]
+#[ORM\Index(name: 'IDX_TEST_RUN_SUITE', columns: ['suite_id'])]
 #[ORM\HasLifecycleCallbacks]
 class TestRun
 {
@@ -112,6 +114,18 @@ class TestRun
      */
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $output = null;
+
+    /**
+     * Process ID for async execution tracking.
+     */
+    #[ORM\Column(type: Types::INTEGER, nullable: true)]
+    private ?int $processPid = null;
+
+    /**
+     * Path to output file for async execution.
+     */
+    #[ORM\Column(type: Types::STRING, length: 500, nullable: true)]
+    private ?string $outputFilePath = null;
 
     /**
      * @var Collection<int, TestResult>
@@ -280,6 +294,38 @@ class TestRun
         $this->output = $output;
 
         return $this;
+    }
+
+    public function getProcessPid(): ?int
+    {
+        return $this->processPid;
+    }
+
+    public function setProcessPid(?int $processPid): static
+    {
+        $this->processPid = $processPid;
+
+        return $this;
+    }
+
+    public function getOutputFilePath(): ?string
+    {
+        return $this->outputFilePath;
+    }
+
+    public function setOutputFilePath(?string $outputFilePath): static
+    {
+        $this->outputFilePath = $outputFilePath;
+
+        return $this;
+    }
+
+    /**
+     * Check if this run has an active async process.
+     */
+    public function hasActiveProcess(): bool
+    {
+        return $this->processPid !== null && $this->isRunning();
     }
 
     public function appendOutput(string $text): static

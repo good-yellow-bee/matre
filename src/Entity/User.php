@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\UserRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Scheb\TwoFactorBundle\Model\Totp\TotpConfiguration;
@@ -102,10 +104,46 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, TwoFact
     #[ORM\Column(type: Types::BOOLEAN)]
     private bool $isTotpEnabled = false;
 
+    // ========== Notification Preferences ==========
+
+    /**
+     * Master toggle for all notifications.
+     */
+    #[ORM\Column(type: Types::BOOLEAN)]
+    private bool $notificationsEnabled = false;
+
+    /**
+     * When to send notifications: 'all' or 'failures'.
+     */
+    #[ORM\Column(type: Types::STRING, length: 20)]
+    private string $notificationTrigger = 'failures';
+
+    /**
+     * Whether to receive email notifications.
+     */
+    #[ORM\Column(type: Types::BOOLEAN)]
+    private bool $notifyByEmail = true;
+
+    /**
+     * Whether to trigger Slack notifications.
+     */
+    #[ORM\Column(type: Types::BOOLEAN)]
+    private bool $notifyBySlack = true;
+
+    /**
+     * Environments this user wants notifications for.
+     *
+     * @var Collection<int, TestEnvironment>
+     */
+    #[ORM\ManyToMany(targetEntity: TestEnvironment::class)]
+    #[ORM\JoinTable(name: 'matre_user_notification_environments')]
+    private Collection $notificationEnvironments;
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
-        $this->roles = ['ROLE_USER']; // Default role
+        $this->roles = ['ROLE_USER'];
+        $this->notificationEnvironments = new ArrayCollection();
     }
 
     /**
@@ -358,5 +396,84 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, TwoFact
         $this->isTotpEnabled = $isTotpEnabled;
 
         return $this;
+    }
+
+    // ========== Notification Preferences Accessors ==========
+
+    public function isNotificationsEnabled(): bool
+    {
+        return $this->notificationsEnabled;
+    }
+
+    public function setNotificationsEnabled(bool $notificationsEnabled): static
+    {
+        $this->notificationsEnabled = $notificationsEnabled;
+
+        return $this;
+    }
+
+    public function getNotificationTrigger(): string
+    {
+        return $this->notificationTrigger;
+    }
+
+    public function setNotificationTrigger(string $notificationTrigger): static
+    {
+        $this->notificationTrigger = $notificationTrigger;
+
+        return $this;
+    }
+
+    public function isNotifyByEmail(): bool
+    {
+        return $this->notifyByEmail;
+    }
+
+    public function setNotifyByEmail(bool $notifyByEmail): static
+    {
+        $this->notifyByEmail = $notifyByEmail;
+
+        return $this;
+    }
+
+    public function isNotifyBySlack(): bool
+    {
+        return $this->notifyBySlack;
+    }
+
+    public function setNotifyBySlack(bool $notifyBySlack): static
+    {
+        $this->notifyBySlack = $notifyBySlack;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, TestEnvironment>
+     */
+    public function getNotificationEnvironments(): Collection
+    {
+        return $this->notificationEnvironments;
+    }
+
+    public function addNotificationEnvironment(TestEnvironment $environment): static
+    {
+        if (!$this->notificationEnvironments->contains($environment)) {
+            $this->notificationEnvironments->add($environment);
+        }
+
+        return $this;
+    }
+
+    public function removeNotificationEnvironment(TestEnvironment $environment): static
+    {
+        $this->notificationEnvironments->removeElement($environment);
+
+        return $this;
+    }
+
+    public function hasNotificationEnvironment(TestEnvironment $environment): bool
+    {
+        return $this->notificationEnvironments->contains($environment);
     }
 }

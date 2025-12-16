@@ -109,7 +109,7 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 import { useDashboardStats } from '../composables/useDashboardStats.js';
 
 const props = defineProps({
@@ -129,14 +129,25 @@ const props = defineProps({
 
 const { stats, loading, error, fetchStats, refresh } = useDashboardStats(props.apiUrl);
 
+// Store interval ID for cleanup
+const refreshIntervalId = ref(null);
+
 onMounted(() => {
   fetchStats();
 
   // Auto-refresh if enabled
   if (props.autoRefresh) {
-    setInterval(() => {
+    refreshIntervalId.value = setInterval(() => {
       fetchStats();
     }, props.refreshInterval);
+  }
+});
+
+// Clean up interval to prevent memory leak
+onUnmounted(() => {
+  if (refreshIntervalId.value) {
+    clearInterval(refreshIntervalId.value);
+    refreshIntervalId.value = null;
   }
 });
 </script>

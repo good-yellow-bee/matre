@@ -15,6 +15,9 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 class AllureReportService
 {
+    private const MAX_RETRIES = 3;
+    private const INITIAL_RETRY_DELAY_MS = 500;
+
     private readonly Filesystem $filesystem;
 
     public function __construct(
@@ -25,6 +28,39 @@ class AllureReportService
         private readonly string $allurePublicUrl,
     ) {
         $this->filesystem = new Filesystem();
+    }
+
+    /**
+     * Execute HTTP request with exponential backoff retry.
+     *
+     * @throws \Throwable On final failure after all retries
+     */
+    private function executeWithRetry(callable $requestFn, string $operation): mixed
+    {
+        $lastException = null;
+
+        for ($attempt = 0; $attempt < self::MAX_RETRIES; ++$attempt) {
+            try {
+                return $requestFn();
+            } catch (\Throwable $e) {
+                $lastException = $e;
+                $delayMs = self::INITIAL_RETRY_DELAY_MS * (2 ** $attempt); // Exponential backoff
+
+                $this->logger->warning('HTTP request failed, retrying', [
+                    'operation' => $operation,
+                    'attempt' => $attempt + 1,
+                    'maxRetries' => self::MAX_RETRIES,
+                    'delayMs' => $delayMs,
+                    'error' => $e->getMessage(),
+                ]);
+
+                if ($attempt < self::MAX_RETRIES - 1) {
+                    usleep($delayMs * 1000); // Convert ms to microseconds
+                }
+            }
+        }
+
+        throw $lastException;
     }
 
     /**
@@ -148,10 +184,13 @@ class AllureReportService
         $projectId = 'run-' . $runId;
 
         try {
-            // Create project if not exists
-            $this->httpClient->request('POST', $this->allureUrl . '/allure-docker-service/projects', [
-                'json' => ['id' => $projectId],
-            ]);
+            // Create project if not exists (with retry)
+            $this->executeWithRetry(
+                fn () => $this->httpClient->request('POST', $this->allureUrl . '/allure-docker-service/projects', [
+                    'json' => ['id' => $projectId],
+                ]),
+                'create_allure_project',
+            );
         } catch (\Throwable $e) {
             // Project might already exist, that's ok
             $this->logger->debug('Project creation response', ['error' => $e->getMessage()]);
@@ -163,15 +202,19 @@ class AllureReportService
             $this->sendResultsToAllure($projectId, $resultsPath);
         }
 
-        // Generate report
+        // Generate report (with retry)
         try {
-            $this->httpClient->request(
-                'GET',
-                $this->allureUrl . '/allure-docker-service/generate-report',
-                ['query' => ['project_id' => $projectId]],
+            $this->executeWithRetry(
+                fn () => $this->httpClient->request(
+                    'GET',
+                    $this->allureUrl . '/allure-docker-service/generate-report',
+                    ['query' => ['project_id' => $projectId]],
+                ),
+                'generate_allure_report',
             );
         } catch (\Throwable $e) {
-            $this->logger->warning('Failed to generate Allure report', [
+            $this->logger->error('Failed to generate Allure report after retries', [
+                'runId' => $runId,
                 'error' => $e->getMessage(),
             ]);
         }
@@ -201,14 +244,24 @@ class AllureReportService
         }
 
         if (!empty($results)) {
-            $this->httpClient->request(
-                'POST',
-                $this->allureUrl . '/allure-docker-service/send-results',
-                [
-                    'query' => ['project_id' => $projectId],
-                    'json' => ['results' => $results],
-                ],
-            );
+            try {
+                $this->executeWithRetry(
+                    fn () => $this->httpClient->request(
+                        'POST',
+                        $this->allureUrl . '/allure-docker-service/send-results',
+                        [
+                            'query' => ['project_id' => $projectId],
+                            'json' => ['results' => $results],
+                        ],
+                    ),
+                    'send_allure_results',
+                );
+            } catch (\Throwable $e) {
+                $this->logger->error('Failed to send results to Allure after retries', [
+                    'projectId' => $projectId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
     }
 }

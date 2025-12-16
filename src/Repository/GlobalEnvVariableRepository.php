@@ -7,14 +7,21 @@ namespace App\Repository;
 use App\Entity\GlobalEnvVariable;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Symfony\Contracts\Cache\CacheInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 
 /**
  * @extends ServiceEntityRepository<GlobalEnvVariable>
  */
 class GlobalEnvVariableRepository extends ServiceEntityRepository
 {
-    public function __construct(ManagerRegistry $registry)
-    {
+    private const CACHE_KEY = 'global_env_vars_kv';
+    private const CACHE_TTL = 3600; // 1 hour
+
+    public function __construct(
+        ManagerRegistry $registry,
+        private readonly CacheInterface $cache,
+    ) {
         parent::__construct($registry, GlobalEnvVariable::class);
     }
 
@@ -24,6 +31,7 @@ class GlobalEnvVariableRepository extends ServiceEntityRepository
 
         if ($flush) {
             $this->getEntityManager()->flush();
+            $this->invalidateCache();
         }
     }
 
@@ -33,7 +41,16 @@ class GlobalEnvVariableRepository extends ServiceEntityRepository
 
         if ($flush) {
             $this->getEntityManager()->flush();
+            $this->invalidateCache();
         }
+    }
+
+    /**
+     * Invalidate the key-value cache after modifications.
+     */
+    public function invalidateCache(): void
+    {
+        $this->cache->delete(self::CACHE_KEY);
     }
 
     /**
@@ -63,18 +80,23 @@ class GlobalEnvVariableRepository extends ServiceEntityRepository
 
     /**
      * Get all variables as key-value array for merging.
+     * Results are cached for 1 hour to reduce DB queries during test runs.
      *
      * @return array<string, string>
      */
     public function getAllAsKeyValue(): array
     {
-        $variables = $this->findAllOrdered();
-        $result = [];
+        return $this->cache->get(self::CACHE_KEY, function (ItemInterface $item): array {
+            $item->expiresAfter(self::CACHE_TTL);
 
-        foreach ($variables as $var) {
-            $result[$var->getName()] = $var->getValue();
-        }
+            $variables = $this->findAllOrdered();
+            $result = [];
 
-        return $result;
+            foreach ($variables as $var) {
+                $result[$var->getName()] = $var->getValue();
+            }
+
+            return $result;
+        });
     }
 }

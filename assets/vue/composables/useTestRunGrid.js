@@ -11,7 +11,31 @@ export function useTestRunGrid(apiUrl, csrfToken) {
   const loading = ref(false);
   const error = ref(null);
 
+  // Request deduplication state
+  let currentAbortController = null;
+  let lastRequestKey = null;
+  const DEDUP_WINDOW_MS = 2000; // Ignore duplicate requests within 2s
+  let lastRequestTime = 0;
+
   const fetchRuns = async (filters = {}, page = 1) => {
+    // Build request key for deduplication
+    const requestKey = JSON.stringify({ filters, page });
+    const now = Date.now();
+
+    // Skip if same request within dedup window
+    if (requestKey === lastRequestKey && now - lastRequestTime < DEDUP_WINDOW_MS) {
+      return;
+    }
+
+    // Abort previous in-flight request
+    if (currentAbortController) {
+      currentAbortController.abort();
+    }
+
+    currentAbortController = new AbortController();
+    lastRequestKey = requestKey;
+    lastRequestTime = now;
+
     loading.value = true;
     error.value = null;
 
@@ -35,6 +59,7 @@ export function useTestRunGrid(apiUrl, csrfToken) {
         headers: {
           'Accept': 'application/json',
         },
+        signal: currentAbortController.signal,
       });
 
       if (!response.ok) {
@@ -45,10 +70,14 @@ export function useTestRunGrid(apiUrl, csrfToken) {
       runs.value = data.data;
       meta.value = data.meta;
     } catch (err) {
+      // Ignore abort errors (expected when cancelling)
+      if (err.name === 'AbortError') {
+        return;
+      }
       error.value = err.message;
-      console.error('Error fetching test runs:', err);
     } finally {
       loading.value = false;
+      currentAbortController = null;
     }
   };
 

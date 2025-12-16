@@ -53,6 +53,42 @@ class TestRunRepository extends ServiceEntityRepository
     }
 
     /**
+     * Find paginated test runs with eager-loaded relations.
+     * Prevents N+1 queries on environment and suite.
+     *
+     * @param array<string, mixed> $criteria
+     *
+     * @return TestRun[]
+     */
+    public function findPaginatedWithRelations(
+        array $criteria = [],
+        int $limit = 20,
+        int $offset = 0,
+    ): array {
+        $qb = $this->createQueryBuilder('r')
+            ->addSelect('e', 's')
+            ->join('r.environment', 'e')
+            ->leftJoin('r.suite', 's');
+
+        foreach ($criteria as $field => $value) {
+            if ($field === 'environment') {
+                $qb->andWhere('e.id = :envId')->setParameter('envId', $value);
+            } elseif ($field === 'status') {
+                $qb->andWhere('r.status = :status')->setParameter('status', $value);
+            } elseif ($field === 'type') {
+                $qb->andWhere('r.type = :type')->setParameter('type', $value);
+            }
+        }
+
+        return $qb
+            ->orderBy('r.createdAt', 'DESC')
+            ->setMaxResults($limit)
+            ->setFirstResult($offset)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * Find test runs by status.
      *
      * @return TestRun[]

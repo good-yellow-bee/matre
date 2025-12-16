@@ -18,6 +18,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ORM\Table(name: 'matre_test_results')]
 #[ORM\Index(name: 'IDX_TEST_RESULT_RUN', columns: ['test_run_id'])]
 #[ORM\Index(name: 'IDX_TEST_RESULT_STATUS', columns: ['status'])]
+#[ORM\Index(name: 'IDX_TEST_RESULT_CREATED', columns: ['created_at'])]
 class TestResult
 {
     public const STATUS_PASSED = 'passed';

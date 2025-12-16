@@ -83,7 +83,6 @@ services:
     App\Service\NotificationService:
         arguments:
             $slackWebhookUrl: '%env(SLACK_WEBHOOK_URL)%'
-            $slackChannel: '%env(SLACK_CHANNEL)%'
 
     App\Command\CleanupTestsCommand:
         arguments:

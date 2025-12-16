@@ -330,12 +330,21 @@ const showToast = (message, type = 'success') => {
   }, 3000);
 };
 
+// Visibility API handler - pause polling when tab is hidden
+const isTabVisible = ref(true);
+const handleVisibilityChange = () => {
+  isTabVisible.value = !document.hidden;
+};
+
 onMounted(() => {
   fetchRuns(filters.value);
 
-  // Auto-refresh
+  // Listen for tab visibility changes
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+
+  // Auto-refresh - only when tab is visible
   refreshInterval = setInterval(() => {
-    if (autoRefresh.value) {
+    if (autoRefresh.value && isTabVisible.value) {
       fetchRuns(filters.value);
     }
   }, 30000);
@@ -345,6 +354,7 @@ onUnmounted(() => {
   if (refreshInterval) {
     clearInterval(refreshInterval);
   }
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
 </script>
 
