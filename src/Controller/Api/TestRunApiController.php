@@ -6,6 +6,7 @@ namespace App\Controller\Api;
 
 use App\Entity\TestRun;
 use App\Message\TestRunMessage;
+use App\Repository\TestResultRepository;
 use App\Repository\TestRunRepository;
 use App\Service\TestRunnerService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -22,6 +23,7 @@ class TestRunApiController extends AbstractController
 {
     public function __construct(
         private readonly TestRunRepository $testRunRepository,
+        private readonly TestResultRepository $testResultRepository,
         private readonly TestRunnerService $testRunnerService,
         private readonly EntityManagerInterface $entityManager,
         private readonly MessageBusInterface $messageBus,
@@ -48,16 +50,23 @@ class TestRunApiController extends AbstractController
             $criteria['environment'] = $environmentId;
         }
 
-        $runs = $this->testRunRepository->findBy(
+        // Use eager loading to prevent N+1 on environment/suite
+        $runs = $this->testRunRepository->findPaginatedWithRelations(
             $criteria,
-            ['createdAt' => 'DESC'],
             $limit,
             ($page - 1) * $limit,
         );
 
         $total = $this->testRunRepository->count($criteria);
 
-        $data = array_map(fn (TestRun $run) => $this->serializeRun($run), $runs);
+        // Batch fetch result counts to prevent N+1 on results collection
+        $runIds = array_map(fn (TestRun $run) => $run->getId(), $runs);
+        $resultCounts = $this->testResultRepository->getResultCountsForRuns($runIds);
+
+        $data = array_map(
+            fn (TestRun $run) => $this->serializeRun($run, false, $resultCounts[$run->getId()] ?? null),
+            $runs,
+        );
 
         return $this->json([
             'data' => $data,
@@ -115,7 +124,12 @@ class TestRunApiController extends AbstractController
         ]);
     }
 
-    private function serializeRun(TestRun $run, bool $includeDetails = false): array
+    /**
+     * Serialize a test run to array.
+     *
+     * @param array{passed: int, failed: int, skipped: int, broken: int, total: int}|null $resultCounts Pre-fetched result counts (prevents N+1)
+     */
+    private function serializeRun(TestRun $run, bool $includeDetails = false, ?array $resultCounts = null): array
     {
         $data = [
             'id' => $run->getId(),
@@ -137,7 +151,8 @@ class TestRunApiController extends AbstractController
                 'id' => $run->getSuite()->getId(),
                 'name' => $run->getSuite()->getName(),
             ] : null,
-            'resultCounts' => $run->getResultCounts(),
+            // Use pre-fetched counts if provided, otherwise fall back to entity method
+            'resultCounts' => $resultCounts ?? $run->getResultCounts(),
             'canBeCancelled' => $run->canBeCancelled(),
         ];
 

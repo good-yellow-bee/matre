@@ -29,6 +29,7 @@ class MftfExecutorService
 
     /**
      * Execute MFTF tests for a test run.
+     * Output is streamed to a file to prevent memory bloat on long-running tests.
      *
      * @return array{output: string, exitCode: int}
      */
@@ -42,6 +43,16 @@ class MftfExecutorService
         // Build the MFTF command
         $mftfCommand = $this->buildCommand($run);
 
+        // Create output file for streaming (prevents memory bloat)
+        $outputFile = $this->getOutputFilePath($run);
+        $outputDir = dirname($outputFile);
+        if (!is_dir($outputDir)) {
+            mkdir($outputDir, 0755, true);
+        }
+
+        // Store output path on run for async tracking
+        $run->setOutputFilePath($outputFile);
+
         // Execute via docker
         $process = new Process([
             'docker', 'exec',
@@ -51,20 +62,57 @@ class MftfExecutorService
         ]);
         $process->setTimeout(3600); // 1 hour timeout
 
-        $output = '';
-        $process->run(function ($type, $buffer) use (&$output) {
-            $output .= $buffer;
+        // Stream output to file instead of buffering in memory
+        $handle = fopen($outputFile, 'w');
+        $process->run(function ($type, $buffer) use ($handle) {
+            fwrite($handle, $buffer);
         });
+        fclose($handle);
+
+        // Read final output (truncated for entity storage)
+        $output = $this->readOutputFile($outputFile);
 
         $this->logger->info('MFTF execution completed', [
             'runId' => $run->getId(),
             'exitCode' => $process->getExitCode(),
+            'outputFile' => $outputFile,
         ]);
 
         return [
             'output' => $output,
             'exitCode' => $process->getExitCode() ?? 1,
         ];
+    }
+
+    /**
+     * Get output file path for a test run.
+     */
+    public function getOutputFilePath(TestRun $run): string
+    {
+        return $this->projectDir . '/var/test-output/mftf-run-' . $run->getId() . '.log';
+    }
+
+    /**
+     * Read output file content (truncated to prevent memory issues).
+     */
+    private function readOutputFile(string $path, int $maxBytes = 102400): string
+    {
+        if (!file_exists($path)) {
+            return '';
+        }
+
+        $size = filesize($path);
+        if ($size <= $maxBytes) {
+            return file_get_contents($path);
+        }
+
+        // Read last N bytes for large files
+        $handle = fopen($path, 'r');
+        fseek($handle, -$maxBytes, SEEK_END);
+        $content = "... [truncated - showing last " . round($maxBytes / 1024) . "KB]\n" . fread($handle, $maxBytes);
+        fclose($handle);
+
+        return $content;
     }
 
     /**

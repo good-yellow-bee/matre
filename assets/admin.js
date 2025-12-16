@@ -3,7 +3,21 @@
  * Enhanced admin area functionality
  */
 
+import './styles/tailwind.css';
 import './styles/admin.css';
+
+// Debounce utility for performance optimization
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
 
 // Slug Auto-Generation
 class SlugGenerator {
@@ -137,7 +151,7 @@ class FlashMessages {
     }
 }
 
-// Search Filter (Client-side)
+// Search Filter (Client-side) with debounce for performance
 class TableSearch {
     constructor() {
         this.init();
@@ -149,8 +163,13 @@ class TableSearch {
             const tableId = input.dataset.tableSearch;
             const table = document.getElementById(tableId);
             if (table) {
+                // Debounce to 150ms to prevent rapid re-renders
+                const debouncedFilter = debounce((value) => {
+                    this.filterTable(table, value);
+                }, 150);
+
                 input.addEventListener('input', (e) => {
-                    this.filterTable(table, e.target.value);
+                    debouncedFilter(e.target.value);
                 });
             }
         });

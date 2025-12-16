@@ -164,4 +164,53 @@ class TestResultRepository extends ServiceEntityRepository
 
         return $averages;
     }
+
+    /**
+     * Batch get result counts for multiple test runs.
+     * Returns array keyed by testRun ID with counts.
+     *
+     * @param int[] $testRunIds
+     *
+     * @return array<int, array{passed: int, failed: int, skipped: int, broken: int, total: int}>
+     */
+    public function getResultCountsForRuns(array $testRunIds): array
+    {
+        if (empty($testRunIds)) {
+            return [];
+        }
+
+        $result = $this->createQueryBuilder('r')
+            ->select('IDENTITY(r.testRun) as runId, r.status, COUNT(r.id) as count')
+            ->andWhere('r.testRun IN (:runIds)')
+            ->setParameter('runIds', $testRunIds)
+            ->groupBy('r.testRun, r.status')
+            ->getQuery()
+            ->getResult();
+
+        // Initialize all runs with zero counts
+        $counts = [];
+        foreach ($testRunIds as $id) {
+            $counts[$id] = [
+                'passed' => 0,
+                'failed' => 0,
+                'skipped' => 0,
+                'broken' => 0,
+                'total' => 0,
+            ];
+        }
+
+        // Fill in actual counts
+        foreach ($result as $row) {
+            $runId = (int) $row['runId'];
+            $status = $row['status'];
+            $count = (int) $row['count'];
+
+            if (isset($counts[$runId][$status])) {
+                $counts[$runId][$status] = $count;
+            }
+            $counts[$runId]['total'] += $count;
+        }
+
+        return $counts;
+    }
 }

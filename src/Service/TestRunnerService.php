@@ -105,9 +105,6 @@ class TestRunnerService
         $output = '';
 
         try {
-            // Clear old artifacts to prevent contamination between runs
-            $this->artifactCollector->clearSourceDirectories();
-
             $type = $run->getType();
 
             // Execute MFTF tests
@@ -173,6 +170,9 @@ class TestRunnerService
             if (!empty($artifacts['screenshots'])) {
                 $this->artifactCollector->associateScreenshotsWithResults($allResults, $artifacts['screenshots']);
             }
+
+            // Clear source directories AFTER collection to prevent data loss in concurrent runs
+            $this->artifactCollector->clearSourceDirectories();
 
             $this->entityManager->flush();
 
