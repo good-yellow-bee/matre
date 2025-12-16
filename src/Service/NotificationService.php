@@ -15,17 +15,19 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 class NotificationService
 {
+    private const MAX_RETRIES = 3;
+    private const INITIAL_RETRY_DELAY_MS = 500;
+
     public function __construct(
         private readonly HttpClientInterface $httpClient,
         private readonly MailerInterface $mailer,
         private readonly LoggerInterface $logger,
         private readonly string $slackWebhookUrl,
-        private readonly string $slackChannel,
     ) {
     }
 
     /**
-     * Send Slack notification for test run.
+     * Send Slack notification for test run (with retry).
      */
     public function sendSlackNotification(TestRun $run): void
     {
@@ -40,16 +42,53 @@ class NotificationService
         $message = $this->buildSlackMessage($run);
 
         try {
-            $this->httpClient->request('POST', $this->slackWebhookUrl, [
-                'json' => $message,
-            ]);
+            $this->executeWithRetry(
+                fn () => $this->httpClient->request('POST', $this->slackWebhookUrl, [
+                    'json' => $message,
+                ]),
+                'slack_notification',
+            );
 
             $this->logger->info('Slack notification sent');
         } catch (\Throwable $e) {
-            $this->logger->error('Failed to send Slack notification', [
+            $this->logger->error('Failed to send Slack notification after retries', [
+                'runId' => $run->getId(),
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Execute HTTP request with exponential backoff retry.
+     *
+     * @throws \Throwable On final failure after all retries
+     */
+    private function executeWithRetry(callable $requestFn, string $operation): mixed
+    {
+        $lastException = null;
+
+        for ($attempt = 0; $attempt < self::MAX_RETRIES; ++$attempt) {
+            try {
+                return $requestFn();
+            } catch (\Throwable $e) {
+                $lastException = $e;
+                $delayMs = self::INITIAL_RETRY_DELAY_MS * (2 ** $attempt);
+
+                $this->logger->warning('HTTP request failed, retrying', [
+                    'operation' => $operation,
+                    'attempt' => $attempt + 1,
+                    'maxRetries' => self::MAX_RETRIES,
+                    'delayMs' => $delayMs,
+                    'error' => $e->getMessage(),
+                ]);
+
+                if ($attempt < self::MAX_RETRIES - 1) {
+                    usleep($delayMs * 1000);
+                }
+            }
+        }
+
+        throw $lastException;
     }
 
     /**
@@ -168,7 +207,6 @@ class NotificationService
         }
 
         return [
-            'channel' => $this->slackChannel,
             'attachments' => [
                 [
                     'color' => $color,

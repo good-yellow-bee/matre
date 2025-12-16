@@ -126,7 +126,6 @@ MAGENTO_PRIVATE_KEY=your-private-key
 
 # Notifications
 SLACK_WEBHOOK_URL=https://hooks.slack.com/...
-SLACK_CHANNEL=#test-results
 ```
 
 ### TestEnvironment Configuration

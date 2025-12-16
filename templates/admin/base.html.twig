@@ -6,50 +6,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Admin{% endblock %} - {{ site_settings.adminPanelTitle }}</title>
 
-    {# Google Fonts - Inter #}
+    {# Google Fonts - Inter (optimized loading) #}
     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     {# Bootstrap 5 CSS (for Vue components) #}
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
 
-    {# Tailwind CDN for layout #}
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                    colors: {
-                        border: "hsl(240 5.9% 90%)",
-                        input: "hsl(240 5.9% 90%)",
-                        ring: "hsl(240 5.9% 10%)",
-                        background: "hsl(0 0% 100%)",
-                        foreground: "hsl(240 10% 3.9%)",
-                        primary: {
-                            DEFAULT: "hsl(240 5.9% 10%)",
-                            foreground: "hsl(0 0% 98%)",
-                        },
-                        secondary: {
-                            DEFAULT: "hsl(240 4.8% 95.9%)",
-                            foreground: "hsl(240 5.9% 10%)",
-                        },
-                        muted: {
-                            DEFAULT: "hsl(240 4.8% 95.9%)",
-                            foreground: "hsl(240 3.8% 46.1%)",
-                        },
-                        accent: {
-                            DEFAULT: "hsl(240 4.8% 95.9%)",
-                            foreground: "hsl(240 5.9% 10%)",
-                        },
-                    }
-                }
-            }
-        }
-    </script>
+    {# Tailwind CSS via Vite (built from tailwind.css) #}
+    {{ vite_entry_link_tags('admin') }}
+
     <style>
         body { font-family: 'Inter', sans-serif; }
         /* Ensure Bootstrap components render inside Tailwind layout */
@@ -140,6 +108,9 @@
                     <div class="font-medium text-slate-900 truncate">{{ app.user.username }}</div>
                     <div class="text-xs text-slate-500 truncate">{{ app.user.email }}</div>
                 </div>
+                <a href="{{ path('admin_profile_notifications') }}" class="text-slate-400 hover:text-slate-600 p-1" title="Notification Settings">
+                    <i class="bi bi-bell text-lg"></i>
+                </a>
                 <a href="{{ path('app_logout') }}" class="text-slate-400 hover:text-slate-600 p-1" title="Logout">
                     <i class="bi bi-box-arrow-right text-lg"></i>
                 </a>
@@ -162,6 +133,7 @@
                     {% elseif app.request.get('_route') starts with 'admin_settings' %}Settings
                     {% elseif app.request.get('_route') starts with 'admin_cron_job' %}Cron Jobs
                     {% elseif app.request.get('_route') starts with 'admin_env_variable' %}Env Variables
+                    {% elseif app.request.get('_route') starts with 'admin_profile' %}Profile
                     {% else %}Overview{% endif %}
                 </span>
             </div>

@@ -1,0 +1,108 @@
+{% extends 'admin/base.html.twig' %}
+{% form_theme form 'form/bootstrap_5_custom.html.twig' %}
+
+{% block title %}Notification Settings{% endblock %}
+
+{% block body %}
+{# Page Header #}
+<div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm mb-6">
+    <div class="flex items-center gap-4">
+        <div class="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center">
+            <i class="bi bi-bell text-xl text-slate-600"></i>
+        </div>
+        <div>
+            <h1 class="text-xl font-semibold text-slate-900">Notification Settings</h1>
+            <p class="text-sm text-slate-500 mt-0.5">Configure when and how you receive test run notifications</p>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {{ form_start(form, {'attr': {'novalidate': 'novalidate'}}) }}
+
+            <div class="form-section">
+                <h3 class="form-section-title">Enable Notifications</h3>
+
+                <div class="form-check mb-3">
+                    {{ form_widget(form.notificationsEnabled) }}
+                    {{ form_label(form.notificationsEnabled) }}
+                </div>
+                <div class="text-sm text-slate-500 mb-4">
+                    {{ form_help(form.notificationsEnabled) }}
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3 class="form-section-title">Notification Trigger</h3>
+
+                {{ form_row(form.notificationTrigger) }}
+            </div>
+
+            <div class="form-section">
+                <h3 class="form-section-title">Notification Channels</h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="p-4 border border-slate-200 rounded-lg">
+                        <div class="form-check mb-2">
+                            {{ form_widget(form.notifyByEmail) }}
+                            {{ form_label(form.notifyByEmail) }}
+                        </div>
+                        <div class="text-sm text-slate-500">
+                            Receive individual email notifications to <strong>{{ app.user.email }}</strong>
+                        </div>
+                    </div>
+
+                    <div class="p-4 border border-slate-200 rounded-lg">
+                        <div class="form-check mb-2">
+                            {{ form_widget(form.notifyBySlack) }}
+                            {{ form_label(form.notifyBySlack) }}
+                        </div>
+                        <div class="text-sm text-slate-500">
+                            Trigger notification to shared Slack channel
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3 class="form-section-title">Environments</h3>
+                <p class="text-sm text-slate-500 mb-4">Select which test environments you want to receive notifications for</p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                    {% for child in form.notificationEnvironments %}
+                        <div class="form-check p-3 border border-slate-200 rounded-lg hover:bg-slate-50">
+                            {{ form_widget(child, {'attr': {'class': 'form-check-input'}}) }}
+                            {{ form_label(child, null, {'label_attr': {'class': 'form-check-label ms-2'}}) }}
+                        </div>
+                    {% else %}
+                        <div class="col-span-full p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-700">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            No test environments configured. Create environments first to enable notifications.
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Save Preferences
+                </button>
+                <a href="{{ path('admin_dashboard') }}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </a>
+            </div>
+        {{ form_end(form) }}
+    </div>
+</div>
+
+<div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+    <h4 class="text-sm font-medium text-blue-900 mb-2"><i class="bi bi-info-circle me-2"></i>How notifications work</h4>
+    <ul class="text-sm text-blue-700 space-y-1">
+        <li><strong>Email:</strong> You receive individual emails when test runs complete for your selected environments.</li>
+        <li><strong>Slack:</strong> A message is posted to the shared Slack channel if any subscribed user has Slack enabled.</li>
+        <li><strong>Failures only:</strong> Only notified when tests fail or the run itself fails.</li>
+        <li><strong>All runs:</strong> Notified for all completed test runs regardless of status.</li>
+    </ul>
+</div>
+{% endblock %}

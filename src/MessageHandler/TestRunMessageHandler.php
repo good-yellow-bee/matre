@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\MessageHandler;
 
 use App\Entity\TestRun;
+use App\Entity\User;
 use App\Message\TestRunMessage;
 use App\Repository\TestRunRepository;
+use App\Repository\UserRepository;
 use App\Service\NotificationService;
 use App\Service\TestRunnerService;
 use Psr\Log\LoggerInterface;
@@ -19,6 +21,7 @@ class TestRunMessageHandler
 {
     public function __construct(
         private readonly TestRunRepository $testRunRepository,
+        private readonly UserRepository $userRepository,
         private readonly TestRunnerService $testRunnerService,
         private readonly NotificationService $notificationService,
         private readonly MessageBusInterface $messageBus,
@@ -118,7 +121,18 @@ class TestRunMessageHandler
 
     private function handleNotify(TestRun $run): void
     {
-        $this->notificationService->sendSlackNotification($run);
+        // Slack: send if ANY subscribed user has Slack enabled
+        if ($this->userRepository->shouldSendSlackNotification($run)) {
+            $this->notificationService->sendSlackNotification($run);
+        }
+
+        // Email: individual emails to each subscribed user
+        $usersToEmail = $this->userRepository->findUsersToNotifyByEmail($run);
+        $recipients = array_map(static fn (User $u) => $u->getEmail(), $usersToEmail);
+
+        if (!empty($recipients)) {
+            $this->notificationService->sendEmailNotification($run, $recipients);
+        }
 
         // Dispatch cleanup phase
         $this->messageBus->dispatch(new TestRunMessage(

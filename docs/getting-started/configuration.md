@@ -59,7 +59,6 @@ MAGENTO_PRIVATE_KEY=
 
 # Notifications
 SLACK_WEBHOOK_URL=
-SLACK_CHANNEL=#test-results
 ```
 
 ---

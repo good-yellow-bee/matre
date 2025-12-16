@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\TestRun;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -237,5 +238,53 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
             ->orderBy('u.createdAt', 'DESC')
             ->getQuery()
             ->getResult();
+    }
+
+    // ========== Notification Queries ==========
+
+    /**
+     * Find users who should receive email notifications for a test run.
+     *
+     * @return User[]
+     */
+    public function findUsersToNotifyByEmail(TestRun $run): array
+    {
+        return $this->findSubscribedUsers($run, 'notifyByEmail');
+    }
+
+    /**
+     * Check if any user wants Slack notifications for a test run.
+     */
+    public function shouldSendSlackNotification(TestRun $run): bool
+    {
+        return \count($this->findSubscribedUsers($run, 'notifyBySlack')) > 0;
+    }
+
+    /**
+     * Find users subscribed to notifications for a test run.
+     *
+     * @return User[]
+     */
+    private function findSubscribedUsers(TestRun $run, string $channelField): array
+    {
+        $hasFailed = ($run->getResultCounts()['failed'] ?? 0) > 0
+            || $run->getStatus() === TestRun::STATUS_FAILED;
+
+        $qb = $this->createQueryBuilder('u')
+            ->join('u.notificationEnvironments', 'env')
+            ->where('u.notificationsEnabled = true')
+            ->andWhere('u.isActive = true')
+            ->andWhere('u.'.$channelField.' = true')
+            ->andWhere('env = :environment')
+            ->setParameter('environment', $run->getEnvironment());
+
+        if (!$hasFailed) {
+            // Only users who want ALL notifications
+            $qb->andWhere('u.notificationTrigger = :all')
+                ->setParameter('all', 'all');
+        }
+        // For failures: both 'all' and 'failures' users qualify (no extra filter needed)
+
+        return $qb->getQuery()->getResult();
     }
 }
