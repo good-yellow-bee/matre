@@ -4,13 +4,30 @@
 
 | Layer | Technology |
 |-------|------------|
-| Backend | Symfony 7.3, PHP 8.5 |
+| Backend | Symfony 7.4, PHP 8.5 |
 | ORM | Doctrine ORM 3 |
 | Frontend | Vue 3, Tailwind CSS |
 | Build | Vite |
 | Database | MariaDB 11 / MySQL 8 |
 | Server | Nginx, PHP-FPM |
 | Container | Docker |
+
+---
+
+## Performance Optimizations
+
+### Database Query Optimization
+- **N+1 Prevention:** Eager loading via `JOIN FETCH` in DQL for related entities
+- **Batch Processing:** Chunked operations for large datasets
+- **Query Caching:** Symfony cache for frequently accessed data (e.g., env variables with 1hr TTL)
+
+### Real-time Output
+- **Streaming Responses:** Test execution logs streamed via `StreamedResponse`
+- **SSE (Server-Sent Events):** Live status updates without polling
+
+### Request Deduplication
+- **Debounced API Calls:** Frontend prevents duplicate requests during rapid interactions
+- **Optimistic UI Updates:** Immediate visual feedback while awaiting server confirmation
 
 ---
 

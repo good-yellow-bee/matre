@@ -297,8 +297,11 @@ MAGENTO_VERSION=2.4.6"
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { useEnvVariableGrid } from '../composables/useEnvVariableGrid.js';
+
+// Bootstrap is loaded globally via CDN
+const Dropdown = window.bootstrap?.Dropdown;
 
 const props = defineProps({
   apiUrl: {
@@ -420,8 +423,51 @@ const showToast = (message, type = 'success') => {
   }, 3000);
 };
 
+// Initialize Bootstrap dropdowns with fixed positioning to escape overflow containers
+const dropdownInstances = ref([]);
+
+const initDropdowns = () => {
+  if (!Dropdown) return; // Bootstrap not loaded yet
+
+  // Dispose old instances
+  dropdownInstances.value.forEach(instance => instance.dispose());
+  dropdownInstances.value = [];
+
+  // Initialize new instances with Popper config
+  nextTick(() => {
+    const dropdownToggles = document.querySelectorAll('.env-dropdown .dropdown-toggle');
+    dropdownToggles.forEach(toggle => {
+      const instance = new Dropdown(toggle, {
+        popperConfig: {
+          strategy: 'fixed',
+          modifiers: [
+            {
+              name: 'preventOverflow',
+              options: {
+                boundary: 'viewport',
+              },
+            },
+          ],
+        },
+      });
+      dropdownInstances.value.push(instance);
+    });
+  });
+};
+
+// Reinitialize dropdowns when variables change
+watch(filteredVariables, () => {
+  initDropdowns();
+}, { flush: 'post' });
+
 onMounted(() => {
   fetchVariables();
+});
+
+onUnmounted(() => {
+  dropdownInstances.value.forEach(instance => {
+    if (instance?.dispose) instance.dispose();
+  });
 });
 </script>
 
@@ -504,6 +550,7 @@ onMounted(() => {
   min-width: 200px;
   max-height: 300px;
   overflow-y: auto;
+  z-index: 1055; /* High z-index for fixed positioning via Popper */
 }
 
 .env-dropdown-menu .dropdown-item {
