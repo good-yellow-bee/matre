@@ -174,12 +174,8 @@ class MftfExecutorService
         $credentialsFile = $acceptanceDir . '/.credentials';
         $parts[] = $this->buildCredentialsCommand($mftfEnvFile, $credentialsFile);
 
-        // Generate tests from module XML (required for MFTF to discover tests)
-        // MFTF expects JSON format for --tests: {"tests":["TEST_NAME1","TEST_NAME2"]}
+        // MFTF binary path
         $mftfBin = $this->magentoRoot . '/vendor/bin/mftf';
-        $testsJson = json_encode(['tests' => explode(' ', $filter)]);
-        // Use ; instead of && since generate may have non-fatal annotation warnings
-        $parts[] = sprintf('%s generate:tests --tests %s --force', $mftfBin, escapeshellarg($testsJson));
 
         // Build MFTF run command
         $mftfParts = [$mftfBin . ' run:test'];
