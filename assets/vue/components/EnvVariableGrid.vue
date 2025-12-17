@@ -3,7 +3,7 @@
     <!-- Header with Search and Actions -->
     <div class="grid-header mb-4">
       <div class="row align-items-center g-3">
-        <div class="col-md-4">
+        <div class="col-md-3">
           <div class="input-group">
             <span class="input-group-text">
               <i class="bi bi-search"></i>
@@ -18,6 +18,13 @@
               <i class="bi bi-x-lg"></i>
             </button>
           </div>
+        </div>
+        <div class="col-md-2">
+          <select v-model="selectedEnvironment" class="form-select">
+            <option value="all">All Environments</option>
+            <option value="global">Global Only</option>
+            <option v-for="env in environments" :key="env" :value="env">{{ env }}</option>
+          </select>
         </div>
         <div class="col-md-8 text-end">
           <div class="btn-group me-2">
@@ -78,9 +85,13 @@
         <table class="table table-hover mb-0 align-middle">
           <thead class="table-light">
             <tr>
-              <th @click="sort('name')" class="sortable" style="width: 220px">
+              <th @click="sort('name')" class="sortable" style="width: 200px">
                 Name
                 <i :class="getSortIcon('name')"></i>
+              </th>
+              <th @click="sort('environments')" class="sortable" style="width: 160px">
+                Environments
+                <i :class="getSortIcon('environments')"></i>
               </th>
               <th>Value</th>
               <th @click="sort('usedInTests')" class="sortable" style="width: 180px">
@@ -109,6 +120,55 @@
                 />
                 <div v-if="!isValidName(variable.name) && variable.name" class="invalid-feedback">
                   Must be UPPERCASE with underscores
+                </div>
+              </td>
+              <td>
+                <div class="dropdown env-dropdown" :class="{ 'disabled': variable._deleted }">
+                  <button
+                    class="btn btn-sm btn-outline-secondary dropdown-toggle w-100 text-start"
+                    type="button"
+                    :data-bs-toggle="variable._deleted ? '' : 'dropdown'"
+                    aria-expanded="false"
+                    :disabled="variable._deleted"
+                  >
+                    <span v-if="!variable.environments || variable.environments.length === 0" class="text-success">
+                      <i class="bi bi-globe me-1"></i>Global
+                    </span>
+                    <span v-else-if="variable.environments.length === 1">
+                      {{ variable.environments[0] }}
+                    </span>
+                    <span v-else>
+                      {{ variable.environments.length }} envs
+                    </span>
+                  </button>
+                  <ul class="dropdown-menu env-dropdown-menu">
+                    <li>
+                      <a
+                        class="dropdown-item"
+                        href="#"
+                        @click.prevent="handleSetGlobal(index)"
+                        :class="{ 'active': !variable.environments || variable.environments.length === 0 }"
+                      >
+                        <i class="bi bi-globe me-2"></i>Global (all environments)
+                      </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li v-for="env in environments" :key="env">
+                      <a
+                        class="dropdown-item d-flex align-items-center"
+                        href="#"
+                        @click.prevent="handleToggleEnvironment(index, env)"
+                      >
+                        <input
+                          type="checkbox"
+                          class="form-check-input me-2"
+                          :checked="variable.environments && variable.environments.includes(env)"
+                          @click.stop="handleToggleEnvironment(index, env)"
+                        />
+                        {{ env }}
+                      </a>
+                    </li>
+                  </ul>
                 </div>
               </td>
               <td>
@@ -161,7 +221,7 @@
               </td>
             </tr>
             <tr v-if="filteredVariables.length === 0">
-              <td colspan="5" class="text-center py-4 text-muted">
+              <td colspan="6" class="text-center py-4 text-muted">
                 {{ searchQuery ? 'No variables match your search.' : 'No variables yet. Click "Add Variable" to create one.' }}
               </td>
             </tr>
@@ -237,8 +297,11 @@ MAGENTO_VERSION=2.4.6"
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { useEnvVariableGrid } from '../composables/useEnvVariableGrid.js';
+
+// Bootstrap is loaded globally via CDN
+const Dropdown = window.bootstrap?.Dropdown;
 
 const props = defineProps({
   apiUrl: {
@@ -254,6 +317,8 @@ const props = defineProps({
 const {
   variables,
   filteredVariables,
+  environments,
+  selectedEnvironment,
   loading,
   saving,
   error,
@@ -263,11 +328,13 @@ const {
   hasChanges,
   fetchVariables,
   sort: doSort,
-  addVariable,
+  addVariable: doAddVariable,
   removeVariable: doRemoveVariable,
   saveAll,
   importFromEnv,
   discardChanges,
+  toggleEnvironment,
+  setGlobal,
 } = useEnvVariableGrid(props.apiUrl, props.csrfToken);
 
 const showImportModal = ref(false);
@@ -276,6 +343,13 @@ const toast = ref({ show: false, message: '', type: 'success' });
 
 const sort = (field) => {
   doSort(field);
+};
+
+const addVariable = () => {
+  // When adding a new variable, use selected environment (unless "all" is selected)
+  const env = selectedEnvironment.value === 'all' ? null :
+              selectedEnvironment.value === 'global' ? null : selectedEnvironment.value;
+  doAddVariable(env);
 };
 
 const getSortIcon = (field) => {
@@ -311,6 +385,14 @@ const undoDelete = (index) => {
   }
 };
 
+const handleToggleEnvironment = (index, env) => {
+  toggleEnvironment(index, env);
+};
+
+const handleSetGlobal = (index) => {
+  setGlobal(index);
+};
+
 const handleSave = async () => {
   // Validate all variables
   const invalid = filteredVariables.value.filter(v => v.name && !isValidName(v.name));
@@ -341,8 +423,51 @@ const showToast = (message, type = 'success') => {
   }, 3000);
 };
 
+// Initialize Bootstrap dropdowns with fixed positioning to escape overflow containers
+const dropdownInstances = ref([]);
+
+const initDropdowns = () => {
+  if (!Dropdown) return; // Bootstrap not loaded yet
+
+  // Dispose old instances
+  dropdownInstances.value.forEach(instance => instance.dispose());
+  dropdownInstances.value = [];
+
+  // Initialize new instances with Popper config
+  nextTick(() => {
+    const dropdownToggles = document.querySelectorAll('.env-dropdown .dropdown-toggle');
+    dropdownToggles.forEach(toggle => {
+      const instance = new Dropdown(toggle, {
+        popperConfig: {
+          strategy: 'fixed',
+          modifiers: [
+            {
+              name: 'preventOverflow',
+              options: {
+                boundary: 'viewport',
+              },
+            },
+          ],
+        },
+      });
+      dropdownInstances.value.push(instance);
+    });
+  });
+};
+
+// Reinitialize dropdowns when variables change
+watch(filteredVariables, () => {
+  initDropdowns();
+}, { flush: 'post' });
+
 onMounted(() => {
   fetchVariables();
+});
+
+onUnmounted(() => {
+  dropdownInstances.value.forEach(instance => {
+    if (instance?.dispose) instance.dispose();
+  });
 });
 </script>
 
@@ -411,5 +536,42 @@ onMounted(() => {
     transform: translateX(0);
     opacity: 1;
   }
+}
+
+/* Environment dropdown styles */
+.env-dropdown .dropdown-toggle {
+  min-width: 120px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.env-dropdown-menu {
+  min-width: 200px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1055; /* High z-index for fixed positioning via Popper */
+}
+
+.env-dropdown-menu .dropdown-item {
+  cursor: pointer;
+}
+
+.env-dropdown-menu .dropdown-item:hover {
+  background-color: var(--bs-gray-100);
+}
+
+.env-dropdown-menu .dropdown-item.active {
+  background-color: var(--bs-primary);
+  color: white;
+}
+
+.env-dropdown-menu .form-check-input {
+  margin-top: 0;
+}
+
+.env-dropdown.disabled .dropdown-toggle {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 </style>

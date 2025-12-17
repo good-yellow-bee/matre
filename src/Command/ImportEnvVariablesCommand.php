@@ -64,6 +64,7 @@ class ImportEnvVariablesCommand extends Command
             ->addOption('clone', 'c', InputOption::VALUE_NONE, 'Clone fresh test module from TEST_MODULE_REPO')
             ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Preview without saving changes')
             ->addOption('overwrite', null, InputOption::VALUE_NONE, 'Update existing variables')
+            ->addOption('global', 'g', InputOption::VALUE_NONE, 'Import as global variables (apply to all environments)')
             ->setHelp(
                 <<<'HELP'
                     The <info>%command.name%</info> command imports environment variables from TEST_MODULE_REPO:
@@ -72,13 +73,13 @@ class ImportEnvVariablesCommand extends Command
 
                         <info>php %command.full_name% --clone</info>
 
-                    Clone and import specific environment:
+                    Clone and import as environment-specific variables:
 
                         <info>php %command.full_name% stage-us --clone</info>
 
-                    Import from already cloned module:
+                    Import as global variables (apply to all environments):
 
-                        <info>php %command.full_name% stage-us</info>
+                        <info>php %command.full_name% stage-us --clone --global</info>
 
                     Update existing variables:
 
@@ -90,6 +91,7 @@ class ImportEnvVariablesCommand extends Command
                       3. Parse the selected .env file
                       4. Scan MFTF test XML files for {{_ENV.VAR}} patterns
                       5. Create or update GlobalEnvVariable entities
+                      6. Set environment field (null for --global, else environment name)
                     HELP
             );
     }
@@ -102,6 +104,7 @@ class ImportEnvVariablesCommand extends Command
         $clone = $input->getOption('clone');
         $dryRun = $input->getOption('dry-run');
         $overwrite = $input->getOption('overwrite');
+        $asGlobal = $input->getOption('global');
 
         $modulePath = $this->analyzerService->getDefaultModulePath();
 
@@ -165,9 +168,9 @@ class ImportEnvVariablesCommand extends Command
 
         $io->title('Import Environment Variables');
         $io->text([
-            sprintf('Environment: %s', $environment),
-            sprintf('File: %s', $envFile),
-            sprintf('Mode: %s', $dryRun ? 'Dry run' : ($overwrite ? 'Overwrite' : 'Create new only')),
+            sprintf('Source file: .env.%s', $environment),
+            sprintf('Target: %s', $asGlobal ? 'Global (all environments)' : sprintf('Environment "%s"', $environment)),
+            sprintf('Mode: %s', $dryRun ? 'Dry run' : ($overwrite ? 'Overwrite' : 'Create new / Merge')),
         ]);
         $io->newLine();
 
@@ -197,56 +200,93 @@ class ImportEnvVariablesCommand extends Command
 
         // Process variables
         $io->section('Processing variables...');
-        $stats = ['new' => 0, 'updated' => 0, 'unchanged' => 0];
+        $stats = ['new' => 0, 'updated' => 0, 'merged' => 0, 'unchanged' => 0];
         $rows = [];
 
         foreach ($envVars as $name => $value) {
             $name = strtoupper($name);
             $usedInTests = $testUsage[$name] ?? [];
             $usedInTestsStr = implode(',', $usedInTests);
-            $existing = $this->globalEnvRepository->findByName($name);
 
-            if ($existing !== null && !$overwrite) {
-                $status = 'unchanged';
-                ++$stats['unchanged'];
-            } elseif ($existing !== null) {
-                $existing->setValue($value);
-                $existing->setUsedInTests($usedInTestsStr);
-                $status = 'updated';
-                ++$stats['updated'];
+            // Target environments for this variable
+            $targetEnvs = $asGlobal ? null : [$environment];
+
+            // Try to find existing by name+value (for merge)
+            $existingByNameValue = $this->globalEnvRepository->findByNameAndValue($name, $value);
+
+            if ($existingByNameValue !== null && !$asGlobal) {
+                // Same name+value exists, add environment to it
+                if (!$existingByNameValue->appliesToEnvironment($environment)) {
+                    $existingByNameValue->addEnvironment($environment);
+                    if ($usedInTestsStr) {
+                        $existingByNameValue->setUsedInTests($usedInTestsStr);
+                    }
+                    $status = 'merged';
+                    ++$stats['merged'];
+                } else {
+                    $status = 'unchanged';
+                    ++$stats['unchanged'];
+                }
             } else {
-                $entity = new GlobalEnvVariable();
-                $entity->setName($name);
-                $entity->setValue($value);
-                $entity->setUsedInTests($usedInTestsStr);
-                $this->entityManager->persist($entity);
-                $status = 'new';
-                ++$stats['new'];
+                // Check if same name exists (different value)
+                $existingByName = $this->globalEnvRepository->findByName($name);
+
+                if ($existingByName !== null && $overwrite) {
+                    // Overwrite existing
+                    $existingByName->setValue($value);
+                    $existingByName->setEnvironments($targetEnvs);
+                    $existingByName->setUsedInTests($usedInTestsStr);
+                    $status = 'updated';
+                    ++$stats['updated'];
+                } elseif ($existingByName !== null && !$overwrite) {
+                    // Different value but not overwriting - create new
+                    $entity = new GlobalEnvVariable();
+                    $entity->setName($name);
+                    $entity->setValue($value);
+                    $entity->setEnvironments($targetEnvs);
+                    $entity->setUsedInTests($usedInTestsStr);
+                    $this->entityManager->persist($entity);
+                    $status = 'new';
+                    ++$stats['new'];
+                } else {
+                    // No existing - create new
+                    $entity = new GlobalEnvVariable();
+                    $entity->setName($name);
+                    $entity->setValue($value);
+                    $entity->setEnvironments($targetEnvs);
+                    $entity->setUsedInTests($usedInTestsStr);
+                    $this->entityManager->persist($entity);
+                    $status = 'new';
+                    ++$stats['new'];
+                }
             }
 
             $displayValue = strlen($value) > 40 ? substr($value, 0, 37) . '...' : $value;
             $displayTests = count($usedInTests) > 3
                 ? implode(', ', array_slice($usedInTests, 0, 3)) . sprintf(' (+%d)', count($usedInTests) - 3)
                 : implode(', ', $usedInTests);
+            $displayEnv = $asGlobal ? 'Global' : $environment;
 
-            $rows[] = [$name, $displayValue, $displayTests ?: '-', $this->formatStatus($status)];
+            $rows[] = [$name, $displayEnv, $displayValue, $displayTests ?: '-', $this->formatStatus($status)];
         }
 
-        $io->table(['Variable', 'Value', 'Tests Using It', 'Status'], $rows);
+        $io->table(['Variable', 'Environment', 'Value', 'Tests Using It', 'Status'], $rows);
 
         if (!$dryRun) {
             $this->entityManager->flush();
             $io->success(sprintf(
-                'Import completed: %d new, %d updated, %d unchanged',
+                'Import completed: %d new, %d updated, %d merged, %d unchanged',
                 $stats['new'],
                 $stats['updated'],
+                $stats['merged'],
                 $stats['unchanged'],
             ));
         } else {
             $io->note(sprintf(
-                'Dry run: %d would be created, %d would be updated, %d unchanged',
+                'Dry run: %d would be created, %d would be updated, %d would be merged, %d unchanged',
                 $stats['new'],
                 $stats['updated'],
+                $stats['merged'],
                 $stats['unchanged'],
             ));
         }

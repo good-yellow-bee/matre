@@ -35,6 +35,7 @@ class EnvVariableApiController extends AbstractController
     public function list(Request $request): JsonResponse
     {
         $search = trim((string) $request->query->get('search', ''));
+        $environment = $request->query->get('environment');
         $sort = $request->query->get('sort', 'name');
         $order = $request->query->get('order', 'asc');
 
@@ -45,30 +46,64 @@ class EnvVariableApiController extends AbstractController
 
         $order = strtoupper($order) === 'DESC' ? 'DESC' : 'ASC';
 
-        $qb = $this->repository->createQueryBuilder('v')
-            ->orderBy('v.' . $sort, $order);
+        // Use native SQL for JSON filtering if environment specified
+        if ($environment !== null && $environment !== 'global') {
+            $conn = $this->entityManager->getConnection();
+            $sql = "SELECT * FROM matre_global_env_variables v
+                    WHERE JSON_CONTAINS(v.environments, :env)";
+            $params = ['env' => json_encode($environment)];
 
-        if ('' !== $search) {
-            $qb
-                ->andWhere('LOWER(v.name) LIKE :search OR LOWER(v.description) LIKE :search OR LOWER(v.usedInTests) LIKE :search')
-                ->setParameter('search', '%' . mb_strtolower($search) . '%');
+            if ('' !== $search) {
+                $sql .= " AND (LOWER(v.name) LIKE :search OR LOWER(v.description) LIKE :search OR LOWER(v.used_in_tests) LIKE :search)";
+                $params['search'] = '%' . mb_strtolower($search) . '%';
+            }
+
+            $sql .= " ORDER BY v.{$sort} {$order}";
+            $rawResults = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+            $data = array_map(static fn (array $row) => [
+                'id' => (int) $row['id'],
+                'name' => $row['name'],
+                'value' => $row['value'],
+                'environments' => json_decode($row['environments'], true),
+                'usedInTests' => $row['used_in_tests'],
+                'description' => $row['description'],
+                'createdAt' => $row['created_at'],
+                'updatedAt' => $row['updated_at'],
+            ], $rawResults);
+        } else {
+            $qb = $this->repository->createQueryBuilder('v')
+                ->orderBy('v.' . $sort, $order);
+
+            if ('' !== $search) {
+                $qb
+                    ->andWhere('LOWER(v.name) LIKE :search OR LOWER(v.description) LIKE :search OR LOWER(v.usedInTests) LIKE :search')
+                    ->setParameter('search', '%' . mb_strtolower($search) . '%');
+            }
+
+            // Filter global only (environments IS NULL)
+            if ($environment === 'global') {
+                $qb->andWhere('v.environments IS NULL');
+            }
+
+            $results = $qb->getQuery()->getResult();
+
+            $data = array_map(static fn (GlobalEnvVariable $var) => [
+                'id' => $var->getId(),
+                'name' => $var->getName(),
+                'value' => $var->getValue(),
+                'environments' => $var->getEnvironments(),
+                'usedInTests' => $var->getUsedInTests(),
+                'description' => $var->getDescription(),
+                'createdAt' => $var->getCreatedAt()->format('c'),
+                'updatedAt' => $var->getUpdatedAt()?->format('c'),
+            ], $results);
         }
-
-        $results = $qb->getQuery()->getResult();
-
-        $data = array_map(static fn (GlobalEnvVariable $var) => [
-            'id' => $var->getId(),
-            'name' => $var->getName(),
-            'value' => $var->getValue(),
-            'usedInTests' => $var->getUsedInTests(),
-            'description' => $var->getDescription(),
-            'createdAt' => $var->getCreatedAt()->format('c'),
-            'updatedAt' => $var->getUpdatedAt()?->format('c'),
-        ], $results);
 
         return $this->json([
             'data' => $data,
             'total' => count($data),
+            'environments' => $this->repository->getDistinctEnvironments(),
         ]);
     }
 
@@ -88,6 +123,7 @@ class EnvVariableApiController extends AbstractController
             'id' => $var->getId(),
             'name' => $var->getName(),
             'value' => $var->getValue(),
+            'environments' => $var->getEnvironments(),
             'usedInTests' => $var->getUsedInTests(),
             'description' => $var->getDescription(),
             'createdAt' => $var->getCreatedAt()->format('c'),
@@ -111,6 +147,7 @@ class EnvVariableApiController extends AbstractController
         $var = new GlobalEnvVariable();
         $var->setName(strtoupper(trim($data['name'] ?? '')));
         $var->setValue($data['value'] ?? '');
+        $var->setEnvironments($data['environments'] ?? null);
         $var->setUsedInTests($data['usedInTests'] ?? null);
         $var->setDescription($data['description'] ?? null);
 
@@ -158,6 +195,9 @@ class EnvVariableApiController extends AbstractController
         }
         if (array_key_exists('value', $data)) {
             $var->setValue($data['value'] ?? '');
+        }
+        if (array_key_exists('environments', $data)) {
+            $var->setEnvironments($data['environments']);
         }
         if (array_key_exists('usedInTests', $data)) {
             $var->setUsedInTests($data['usedInTests']);
@@ -231,6 +271,7 @@ class EnvVariableApiController extends AbstractController
 
         foreach ($variables as $index => $varData) {
             $name = strtoupper(trim($varData['name'] ?? ''));
+            $environments = $varData['environments'] ?? null;
 
             if (empty($name)) {
                 continue;
@@ -240,7 +281,7 @@ class EnvVariableApiController extends AbstractController
             $var = $id ? $this->repository->find($id) : null;
 
             if (!$var) {
-                // Check if exists by name
+                // Check if exists by name only (for updating)
                 $var = $this->repository->findByName($name);
             }
 
@@ -255,6 +296,7 @@ class EnvVariableApiController extends AbstractController
             }
 
             $var->setValue($varData['value'] ?? '');
+            $var->setEnvironments($environments);
             $var->setUsedInTests($varData['usedInTests'] ?? null);
             $var->setDescription($varData['description'] ?? null);
 

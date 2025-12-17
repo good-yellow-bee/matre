@@ -71,24 +71,5 @@
     </div>
 </div>
 
-{# Environment Variables Section (Vue Component) #}
-<div class="card mt-4">
-    <div class="card-header">
-        <h5 class="mb-0">
-            <i class="bi bi-braces me-2"></i>Environment Variables
-        </h5>
-    </div>
-    <div class="card-body">
-        <div
-            data-vue-island="environment-variables"
-            data-api-url="{{ path('api_test_environment_env_vars_list', {id: environment.id}) }}"
-            data-csrf-token="{{ csrf_token('env_variable_api') }}"
-        ></div>
-    </div>
-</div>
-{% endblock %}
 
-{% block javascripts %}
-    {{ parent() }}
-    {{ vite_entry_script_tags('environment-variables-app') }}
 {% endblock %}

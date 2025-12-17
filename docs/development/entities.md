@@ -113,7 +113,47 @@ class YourEntity
 | `string` | `Types::STRING` |
 | `?string` | `Types::TEXT` (nullable) |
 | `bool` | `Types::BOOLEAN` |
+| `array` | `Types::JSON` |
 | `\DateTimeImmutable` | `Types::DATETIME_IMMUTABLE` |
+
+### JSON Columns
+
+For storing arrays or objects, use JSON type:
+
+```php
+/**
+ * Target environments (e.g., ['stage-us', 'preprod-us']).
+ * Null = applies to ALL environments (global).
+ *
+ * @var string[]|null
+ */
+#[ORM\Column(type: Types::JSON, nullable: true)]
+private ?array $environments = null;
+
+public function getEnvironments(): ?array
+{
+    return $this->environments;
+}
+
+public function setEnvironments(?array $environments): static
+{
+    // Normalize empty array to null (both mean global)
+    $this->environments = empty($environments) ? null : array_values(array_unique($environments));
+    return $this;
+}
+```
+
+**Querying JSON columns (MySQL):**
+```php
+// In repository - find records containing a value in JSON array
+$sql = "SELECT * FROM table WHERE JSON_CONTAINS(environments, :env)";
+$params = ['env' => json_encode($environment)];
+
+// Extract unique values from JSON arrays
+$sql = "SELECT DISTINCT JSON_UNQUOTE(env.value) as env_name
+        FROM table v,
+        JSON_TABLE(v.environments, '$[*]' COLUMNS (value VARCHAR(50) PATH '$')) AS env";
+```
 
 ### Boolean Fields
 Use `is` prefix: `isActive`, `isPublished`, `isEnabled`

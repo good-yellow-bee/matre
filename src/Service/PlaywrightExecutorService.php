@@ -114,14 +114,14 @@ class PlaywrightExecutorService
     {
         $parts = ['cd /app/modules'];
 
-        // Layer 1: Export global variables (shared across all environments)
-        $globalVars = $this->globalEnvVariableRepository->getAllAsKeyValue();
+        // Layer 1: Export global + environment-specific variables from database
+        $env = $run->getEnvironment();
+        $globalVars = $this->globalEnvVariableRepository->getAllAsKeyValue($env->getName());
         foreach ($globalVars as $key => $value) {
             $parts[] = sprintf('export %s="%s"', $key, $value);
         }
 
-        // Layer 2: Set TestEnvironment variables (can override globals)
-        $env = $run->getEnvironment();
+        // Layer 2: Set TestEnvironment core variables (override globals)
         $parts[] = sprintf('export BASE_URL="%s"', $env->getBaseUrl());
 
         if ($env->getAdminUsername()) {
@@ -129,11 +129,6 @@ class PlaywrightExecutorService
         }
         if ($env->getAdminPassword()) {
             $parts[] = sprintf('export ADMIN_PASSWORD="%s"', $env->getAdminPassword());
-        }
-
-        // Layer 3: Add custom env variables from TestEnvironment (override all)
-        foreach ($env->getEnvVariables() as $key => $value) {
-            $parts[] = sprintf('export %s="%s"', $key, $value);
         }
 
         // Build Playwright command

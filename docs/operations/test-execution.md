@@ -162,6 +162,16 @@ See [API Reference](api-reference.md#test-runs) for programmatic access:
 - Tests stored in `TEST_MODULE_REPO` under `Test/Mftf/`
 - Results parsed from `TESTS.xml`
 
+#### Environment Variable Resolution
+
+MATRE analyzes which tests use which environment variables by scanning:
+1. Direct `{{_ENV.VAR_NAME}}` references in test XML files
+2. ActionGroup references - resolves `{{ActionGroupName.VAR}}` to actual test names
+
+**Example:** If `LoginTest.xml` uses `<actionGroup ref="AdminLogin"/>` and `AdminLogin` uses `{{_ENV.ADMIN_PASSWORD}}`, MATRE correctly associates `ADMIN_PASSWORD` with `LoginTest`.
+
+This allows the "Used in Tests" column in Admin → Environment Variables to show accurate test coverage.
+
 ### Playwright Tests
 
 - Executed via npx playwright
