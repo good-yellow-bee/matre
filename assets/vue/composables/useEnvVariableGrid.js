@@ -2,6 +2,8 @@ import { ref, computed } from 'vue';
 
 export function useEnvVariableGrid(apiUrl, csrfToken) {
   const variables = ref([]);
+  const environments = ref([]);
+  const selectedEnvironment = ref('all');
   const loading = ref(false);
   const saving = ref(false);
   const error = ref(null);
@@ -14,12 +16,24 @@ export function useEnvVariableGrid(apiUrl, csrfToken) {
   const filteredVariables = computed(() => {
     let result = [...variables.value];
 
+    // Filter by environment
+    if (selectedEnvironment.value !== 'all') {
+      if (selectedEnvironment.value === 'global') {
+        result = result.filter(v => !v.environments || v.environments.length === 0);
+      } else {
+        result = result.filter(v =>
+          v.environments && v.environments.includes(selectedEnvironment.value)
+        );
+      }
+    }
+
     // Filter by search query
     if (searchQuery.value) {
       const query = searchQuery.value.toLowerCase();
       result = result.filter(v =>
         v.name.toLowerCase().includes(query) ||
         (v.value && v.value.toLowerCase().includes(query)) ||
+        (v.environments && v.environments.some(e => e.toLowerCase().includes(query))) ||
         (v.usedInTests && v.usedInTests.toLowerCase().includes(query)) ||
         (v.description && v.description.toLowerCase().includes(query))
       );
@@ -27,8 +41,15 @@ export function useEnvVariableGrid(apiUrl, csrfToken) {
 
     // Sort
     result.sort((a, b) => {
-      const aVal = (a[sortField.value] || '').toString().toLowerCase();
-      const bVal = (b[sortField.value] || '').toString().toLowerCase();
+      let aVal, bVal;
+      if (sortField.value === 'environments') {
+        // Sort by first environment or empty string
+        aVal = (a.environments && a.environments[0]) || '';
+        bVal = (b.environments && b.environments[0]) || '';
+      } else {
+        aVal = (a[sortField.value] || '').toString().toLowerCase();
+        bVal = (b[sortField.value] || '').toString().toLowerCase();
+      }
       const cmp = aVal.localeCompare(bVal);
       return sortOrder.value === 'asc' ? cmp : -cmp;
     });
@@ -51,6 +72,7 @@ export function useEnvVariableGrid(apiUrl, csrfToken) {
 
       const data = await response.json();
       variables.value = data.data.map(v => ({ ...v, _dirty: false }));
+      environments.value = data.environments || [];
       hasChanges.value = false;
     } catch (err) {
       error.value = err.message;
@@ -69,11 +91,12 @@ export function useEnvVariableGrid(apiUrl, csrfToken) {
     }
   };
 
-  const addVariable = () => {
+  const addVariable = (environment = null) => {
     variables.value.unshift({
       id: null,
       name: '',
       value: '',
+      environments: environment ? [environment] : null,
       usedInTests: '',
       description: '',
       _dirty: true,
@@ -136,6 +159,7 @@ export function useEnvVariableGrid(apiUrl, csrfToken) {
               id: v.id,
               name: v.name,
               value: v.value,
+              environments: v.environments && v.environments.length > 0 ? v.environments : null,
               usedInTests: v.usedInTests || null,
               description: v.description || null,
             })),
@@ -186,6 +210,7 @@ export function useEnvVariableGrid(apiUrl, csrfToken) {
             id: null,
             name: v.name,
             value: v.value,
+            environments: null, // Global by default
             usedInTests: '',
             description: '',
             _dirty: true,
@@ -205,9 +230,45 @@ export function useEnvVariableGrid(apiUrl, csrfToken) {
     fetchVariables();
   };
 
+  // Toggle environment in environments array
+  const toggleEnvironment = (index, env) => {
+    const variable = filteredVariables.value[index];
+    if (!variable) return;
+
+    const realIndex = variables.value.indexOf(variable);
+    if (realIndex === -1) return;
+
+    let envs = variable.environments ? [...variable.environments] : [];
+
+    if (envs.includes(env)) {
+      envs = envs.filter(e => e !== env);
+    } else {
+      envs.push(env);
+    }
+
+    variables.value[realIndex].environments = envs.length > 0 ? envs : null;
+    variables.value[realIndex]._dirty = true;
+    hasChanges.value = true;
+  };
+
+  // Set as global (clear all environments)
+  const setGlobal = (index) => {
+    const variable = filteredVariables.value[index];
+    if (!variable) return;
+
+    const realIndex = variables.value.indexOf(variable);
+    if (realIndex === -1) return;
+
+    variables.value[realIndex].environments = null;
+    variables.value[realIndex]._dirty = true;
+    hasChanges.value = true;
+  };
+
   return {
     variables,
     filteredVariables,
+    environments,
+    selectedEnvironment,
     loading,
     saving,
     error,
@@ -223,5 +284,7 @@ export function useEnvVariableGrid(apiUrl, csrfToken) {
     saveAll,
     importFromEnv,
     discardChanges,
+    toggleEnvironment,
+    setGlobal,
   };
 }

@@ -44,11 +44,12 @@ class ImportEnvironmentsCommand extends Command
                     Files should be named: .env.{name} (e.g., .env.dev-us, .env.stage-es)
 
                     Expected variables in each file:
-                      - MAGENTO_BASE_URL
-                      - MAGENTO_BACKEND_NAME
+                      - MAGENTO_BASE_URL (required)
+                      - MAGENTO_BACKEND_NAME (optional, defaults to 'admin')
                       - MAGENTO_ADMIN_USERNAME (optional)
                       - MAGENTO_ADMIN_PASSWORD (optional)
-                      - Any other variables will be stored as custom env variables
+
+                    Note: Other variables are ignored. Use app:env:import to import env variables.
                     HELP
             );
     }
@@ -134,14 +135,6 @@ class ImportEnvironmentsCommand extends Command
                 $environment->setAdminPassword($envData['MAGENTO_ADMIN_PASSWORD']);
             }
 
-            // Store remaining variables as custom env
-            $customVars = array_diff_key($envData, array_flip([
-                'MAGENTO_BASE_URL',
-                'MAGENTO_BACKEND_NAME',
-                'MAGENTO_ADMIN_USERNAME',
-                'MAGENTO_ADMIN_PASSWORD',
-            ]));
-            $environment->setEnvVariables($customVars);
             $environment->setIsActive(true);
 
             $io->table(
@@ -152,7 +145,6 @@ class ImportEnvironmentsCommand extends Command
                     ['Region', $region],
                     ['Base URL', $envData['MAGENTO_BASE_URL']],
                     ['Backend', $envData['MAGENTO_BACKEND_NAME'] ?? 'admin'],
-                    ['Custom vars', count($customVars)],
                 ],
             );
 

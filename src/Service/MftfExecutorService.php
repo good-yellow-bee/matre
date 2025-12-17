@@ -152,8 +152,8 @@ class MftfExecutorService
         $moduleEnvFile = $runPath . '/Cron/data/' . $envFileName;
         $mftfEnvFile = $acceptanceDir . '/.env';
 
-        // Layer 1: Start with global variables from database
-        $globalVars = $this->globalEnvVariableRepository->getAllAsKeyValue();
+        // Layer 1: Start with global + environment-specific variables from database
+        $globalVars = $this->globalEnvVariableRepository->getAllAsKeyValue($env->getName());
         if (!empty($globalVars)) {
             $globalContent = "# Global variables (from ATR database)\n";
             foreach ($globalVars as $key => $value) {
@@ -166,15 +166,7 @@ class MftfExecutorService
             $parts[] = sprintf('cp %s %s', escapeshellarg($moduleEnvFile), escapeshellarg($mftfEnvFile));
         }
 
-        // Layer 3: Override with TestEnvironment values if present
-        $envVars = $env->getEnvVariables();
-        foreach ($envVars as $key => $value) {
-            // Quote values with spaces/special chars for .env compatibility
-            $quotedValue = $this->quoteEnvValue($value);
-            $parts[] = sprintf('echo %s >> %s', escapeshellarg("{$key}={$quotedValue}"), escapeshellarg($mftfEnvFile));
-        }
-
-        // Layer 4: Override Selenium configuration (ATR infra)
+        // Layer 2: Override Selenium configuration (ATR infra)
         $parts[] = sprintf('echo "SELENIUM_HOST=%s" >> %s', $this->seleniumHost, escapeshellarg($mftfEnvFile));
         $parts[] = sprintf('echo "SELENIUM_PORT=%d" >> %s', $this->seleniumPort, escapeshellarg($mftfEnvFile));
 
