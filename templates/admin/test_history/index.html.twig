@@ -1,0 +1,38 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Test History{% if testId %}: {{ testId }}{% endif %}{% endblock %}
+
+{% block body %}
+<div class="dashboard-welcome mb-4">
+    <h1>Test History</h1>
+    {% if testId and environment %}
+        <p class="subtitle">
+            Test <code>{{ testId }}</code> on {{ environment.name }}
+        </p>
+    {% else %}
+        <p class="subtitle">View execution history for a specific test</p>
+    {% endif %}
+</div>
+
+{% if testId and environmentId %}
+    <div
+        data-vue-island="test-history"
+        data-api-url="{{ path('api_test_history') }}"
+        data-test-id="{{ testId }}"
+        data-environment-id="{{ environmentId }}"
+        data-test-run-base-url="/admin/test-runs/__ID__"
+    ></div>
+{% else %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>
+        Use the history link from a test result row to view execution history.
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {% if testId and environmentId %}
+        {{ vite_entry_script_tags('test-history-app') }}
+    {% endif %}
+{% endblock %}

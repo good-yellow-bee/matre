@@ -12,6 +12,7 @@
     data-vue-island="test-run-grid"
     data-api-url="{{ path('api_test_runs_list') }}"
     data-csrf-token="{{ csrf_token('test_run_api') }}"
+    data-suites="{{ suites|json_encode|e('html_attr') }}"
 ></div>
 {% endblock %}
 

@@ -3,7 +3,7 @@
     <!-- Filters -->
     <div class="grid-header mb-4">
       <div class="row align-items-center g-3">
-        <div class="col-md-3">
+        <div class="col-md-2">
           <select v-model="filters.status" class="form-select" @change="applyFilters">
             <option value="">All Statuses</option>
             <option value="pending">Pending</option>
@@ -13,7 +13,7 @@
             <option value="cancelled">Cancelled</option>
           </select>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
           <select v-model="filters.type" class="form-select" @change="applyFilters">
             <option value="">All Types</option>
             <option value="mftf">MFTF</option>
@@ -22,7 +22,15 @@
           </select>
         </div>
         <div class="col-md-3">
-          <div class="form-check">
+          <select v-model="filters.suite" class="form-select" @change="applyFilters">
+            <option value="">All Suites</option>
+            <option v-for="suite in props.suites" :key="suite.id" :value="suite.id">
+              {{ suite.name }}
+            </option>
+          </select>
+        </div>
+        <div class="col-auto ms-auto d-flex align-items-center gap-3">
+          <div class="form-check mb-0">
             <input
               id="autoRefresh"
               v-model="autoRefresh"
@@ -33,9 +41,7 @@
               Auto-refresh (30s)
             </label>
           </div>
-        </div>
-        <div class="col-md-3 text-end">
-          <button class="btn btn-outline-secondary" @click="fetchRuns">
+          <button class="btn btn-outline-secondary" @click="fetchRuns(filters, meta.page)">
             <i class="bi bi-arrow-clockwise"></i> Refresh
           </button>
         </div>
@@ -54,7 +60,7 @@
     <div v-else-if="error" class="alert alert-danger" role="alert">
       <i class="bi bi-exclamation-triangle-fill me-2"></i>
       {{ error }}
-      <button class="btn btn-sm btn-outline-danger ms-3" @click="fetchRuns">
+      <button class="btn btn-sm btn-outline-danger ms-3" @click="fetchRuns(filters, meta.page)">
         Try Again
       </button>
     </div>
@@ -212,6 +218,10 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  suites: {
+    type: Array,
+    default: () => [],
+  },
 });
 
 const {
@@ -228,6 +238,7 @@ const {
 const filters = ref({
   status: '',
   type: '',
+  suite: '',
 });
 const autoRefresh = ref(true);
 const cancelling = ref(null);

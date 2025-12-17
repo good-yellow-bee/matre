@@ -166,6 +166,28 @@ class TestResultRepository extends ServiceEntityRepository
     }
 
     /**
+     * Find test execution history across runs for a specific testId and environment.
+     * Returns the last N results ordered by test run start time (newest first).
+     *
+     * @return TestResult[]
+     */
+    public function findHistoryByTestId(string $testId, int $environmentId, int $limit = 20): array
+    {
+        return $this->createQueryBuilder('r')
+            ->join('r.testRun', 'tr')
+            ->andWhere('r.testId = :testId')
+            ->andWhere('tr.environment = :environmentId')
+            ->andWhere('tr.status IN (:completedStatuses)')
+            ->setParameter('testId', $testId)
+            ->setParameter('environmentId', $environmentId)
+            ->setParameter('completedStatuses', [TestRun::STATUS_COMPLETED, TestRun::STATUS_FAILED])
+            ->orderBy('tr.startedAt', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * Batch get result counts for multiple test runs.
      * Returns array keyed by testRun ID with counts.
      *

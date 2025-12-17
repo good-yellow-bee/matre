@@ -15,6 +15,7 @@ const initTestRunGrid = () => {
 
   const apiUrl = container.dataset.apiUrl;
   const csrfToken = container.dataset.csrfToken;
+  const suites = JSON.parse(container.dataset.suites || '[]');
 
   if (!apiUrl) {
     console.error('TestRunGrid: Missing required data-api-url attribute');
@@ -24,6 +25,7 @@ const initTestRunGrid = () => {
   const app = createApp(TestRunGrid, {
     apiUrl,
     csrfToken: csrfToken || '',
+    suites,
   });
 
   app.mount(container);

@@ -8,6 +8,7 @@ use App\Entity\TestRun;
 use App\Form\TestRunType;
 use App\Message\TestRunMessage;
 use App\Repository\TestRunRepository;
+use App\Repository\TestSuiteRepository;
 use App\Service\ArtifactCollectorService;
 use App\Service\TestRunnerService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -30,13 +31,18 @@ class TestRunController extends AbstractController
         private readonly TestRunnerService $testRunnerService,
         private readonly ArtifactCollectorService $artifactCollector,
         private readonly MessageBusInterface $messageBus,
+        private readonly TestSuiteRepository $testSuiteRepository,
     ) {
     }
 
     #[Route('', name: 'admin_test_run_index', methods: ['GET'])]
     public function index(): Response
     {
-        return $this->render('admin/test_run/index.html.twig');
+        $suites = $this->testSuiteRepository->findAllOrdered();
+
+        return $this->render('admin/test_run/index.html.twig', [
+            'suites' => array_map(fn ($s) => ['id' => $s->getId(), 'name' => $s->getName()], $suites),
+        ]);
     }
 
     #[Route('/new', name: 'admin_test_run_new', methods: ['GET', 'POST'])]

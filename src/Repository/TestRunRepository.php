@@ -77,6 +77,8 @@ class TestRunRepository extends ServiceEntityRepository
                 $qb->andWhere('r.status = :status')->setParameter('status', $value);
             } elseif ($field === 'type') {
                 $qb->andWhere('r.type = :type')->setParameter('type', $value);
+            } elseif ($field === 'suite') {
+                $qb->andWhere('s.id = :suiteId')->setParameter('suiteId', $value);
             }
         }
 

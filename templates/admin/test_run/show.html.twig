@@ -150,7 +150,15 @@
                             <td>
                                 {{ result.testName }}
                                 {% if result.testId %}
-                                    <br><small class="text-muted">{{ result.testId }}</small>
+                                    <br>
+                                    <small class="text-muted">
+                                        {{ result.testId }}
+                                        <a href="{{ path('admin_test_history', {testId: result.testId, environmentId: run.environment.id}) }}"
+                                           class="ms-2 text-decoration-none"
+                                           title="View history for this test">
+                                            <i class="bi bi-clock-history"></i>
+                                        </a>
+                                    </small>
                                 {% endif %}
                             </td>
                             <td>
