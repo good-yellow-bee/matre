@@ -116,6 +116,7 @@ class ArtifactCollectorService
 
     /**
      * Clear source directories to prevent artifact contamination between runs.
+     * Only removes contents, not the directories themselves (they may be Docker volume mounts).
      */
     public function clearSourceDirectories(): void
     {
@@ -126,10 +127,13 @@ class ArtifactCollectorService
         ];
 
         foreach ($dirs as $dir) {
-            if ($filesystem->exists($dir)) {
-                $this->logger->info('Clearing artifact source directory', ['path' => $dir]);
-                $filesystem->remove($dir);
-                $filesystem->mkdir($dir);
+            if ($filesystem->exists($dir) && is_dir($dir)) {
+                $this->logger->info('Clearing artifact source directory contents', ['path' => $dir]);
+                // Remove contents only, not the directory itself (may be a Docker volume mount)
+                $iterator = new \FilesystemIterator($dir, \FilesystemIterator::SKIP_DOTS);
+                foreach ($iterator as $item) {
+                    $filesystem->remove($item->getPathname());
+                }
             }
         }
     }
