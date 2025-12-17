@@ -27,6 +27,7 @@ export default defineConfig({
         'env-variable-grid-app': './assets/vue/env-variable-grid-app.js',
         'environment-variables-app': './assets/vue/environment-variables-app.js',
         'test-pattern-selector-app': './assets/vue/test-pattern-selector-app.js',
+        'test-history-app': './assets/vue/test-history-app.js',
       },
     },
   },
