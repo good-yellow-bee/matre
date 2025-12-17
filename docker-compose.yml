@@ -71,6 +71,12 @@ services:
       MARIADB_ROOT_PASSWORD: matre_root
     volumes:
       - matre_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     networks:
       - matre_network
 
@@ -111,8 +117,10 @@ services:
       DB_USER: matre
       DB_PASS: matre
     depends_on:
-      - db
-      - php
+      db:
+        condition: service_healthy
+      php:
+        condition: service_started
     networks:
       - matre_network
 
@@ -301,10 +309,14 @@ services:
       ALLURE_URL: http://allure:5050
       ALLURE_PUBLIC_URL: http://matre.local:5050
     depends_on:
-      - db
-      - php
-      - selenium-hub
-      - magento
+      db:
+        condition: service_healthy
+      php:
+        condition: service_started
+      selenium-hub:
+        condition: service_started
+      magento:
+        condition: service_started
     networks:
       - matre_network
 
