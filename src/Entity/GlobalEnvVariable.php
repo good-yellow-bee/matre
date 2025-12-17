@@ -43,7 +43,7 @@ class GlobalEnvVariable
     #[Assert\NotBlank(message: 'Value cannot be blank.')]
     private string $value;
 
-    #[ORM\Column(type: Types::STRING, length: 500, nullable: true)]
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $usedInTests = null;
 
     #[ORM\Column(type: Types::STRING, length: 500, nullable: true)]
