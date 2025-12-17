@@ -38,6 +38,7 @@ class TestRunApiController extends AbstractController
         $status = $request->query->get('status');
         $type = $request->query->get('type');
         $environmentId = $request->query->getInt('environment');
+        $suiteId = $request->query->getInt('suite');
 
         $criteria = [];
         if ($status) {
@@ -48,6 +49,9 @@ class TestRunApiController extends AbstractController
         }
         if ($environmentId) {
             $criteria['environment'] = $environmentId;
+        }
+        if ($suiteId) {
+            $criteria['suite'] = $suiteId;
         }
 
         // Use eager loading to prevent N+1 on environment/suite

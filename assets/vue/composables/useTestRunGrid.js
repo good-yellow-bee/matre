@@ -54,6 +54,9 @@ export function useTestRunGrid(apiUrl, csrfToken) {
       if (filters.environment) {
         params.append('environment', filters.environment);
       }
+      if (filters.suite) {
+        params.append('suite', filters.suite);
+      }
 
       const response = await fetch(`${apiUrl}?${params}`, {
         headers: {
