@@ -60,6 +60,10 @@ class EnvVariableAnalyzerService
     /**
      * Scan MFTF XML test files for {{_ENV.VAR}} patterns.
      *
+     * This method resolves transitive dependencies:
+     * - Direct: Test uses {{_ENV.VAR}} directly
+     * - Indirect: Test uses ActionGroup that uses {{_ENV.VAR}}
+     *
      * @param string $modulePath Path to test module root
      *
      * @return array<string, string[]> Map of VAR_NAME => [TEST_ID1, TEST_ID2, ...]
@@ -73,16 +77,19 @@ class EnvVariableAnalyzerService
             return [];
         }
 
+        // Step 1: Direct env var usage in Test files
         $finder = new Finder();
         $finder->files()->in($testDir)->name('*.xml');
 
         foreach ($finder as $file) {
-            $testId = $this->extractTestId($file->getFilename());
-            if ($testId === null) {
+            $content = $file->getContents();
+
+            // Extract test name from <test name="...">
+            if (!preg_match('/<test\s+name="([^"]+)"/', $content, $nameMatch)) {
                 continue;
             }
+            $testName = $nameMatch[1];
 
-            $content = $file->getContents();
             // Match {{_ENV.VAR_NAME}} patterns
             preg_match_all('/\{\{_ENV\.([A-Z][A-Z0-9_]*)\}\}/', $content, $matches);
 
@@ -90,7 +97,26 @@ class EnvVariableAnalyzerService
                 if (!isset($usage[$varName])) {
                     $usage[$varName] = [];
                 }
-                $usage[$varName][] = $testId;
+                $usage[$varName][] = $testName;
+            }
+        }
+
+        // Step 2: Resolve ActionGroup → Test transitive dependencies
+        $actionGroupEnvVars = $this->parseActionGroupEnvVars($modulePath);
+        $testActionGroupRefs = $this->parseTestActionGroupRefs($modulePath);
+
+        // For each ActionGroup that uses env vars, find tests that use that ActionGroup
+        foreach ($actionGroupEnvVars as $actionGroupName => $envVars) {
+            foreach ($testActionGroupRefs as $testName => $usedActionGroups) {
+                if (in_array($actionGroupName, $usedActionGroups, true)) {
+                    // This test uses an ActionGroup that uses these env vars
+                    foreach ($envVars as $varName) {
+                        if (!isset($usage[$varName])) {
+                            $usage[$varName] = [];
+                        }
+                        $usage[$varName][] = $testName;
+                    }
+                }
             }
         }
 
@@ -161,5 +187,101 @@ class EnvVariableAnalyzerService
         }
 
         return null;
+    }
+
+
+    /**
+     * Find the MFTF ActionGroup directory within the module.
+     */
+    private function findActionGroupDirectory(string $modulePath): ?string
+    {
+        $patterns = [
+            '/Test/Mftf/ActionGroup',
+            '/Mftf/ActionGroup',
+            '/Test/ActionGroup',
+        ];
+
+        foreach ($patterns as $pattern) {
+            $dir = rtrim($modulePath, '/') . $pattern;
+            if (is_dir($dir)) {
+                return $dir;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Parse ActionGroup files to find env vars used by each ActionGroup.
+     *
+     * @return array<string, string[]> Map of ActionGroupName => [VAR1, VAR2, ...]
+     */
+    private function parseActionGroupEnvVars(string $modulePath): array
+    {
+        $actionGroupDir = $this->findActionGroupDirectory($modulePath);
+        if ($actionGroupDir === null) {
+            return [];
+        }
+
+        $usage = [];
+        $finder = new Finder();
+        $finder->files()->in($actionGroupDir)->name('*.xml');
+
+        foreach ($finder as $file) {
+            $content = $file->getContents();
+
+            // Extract ActionGroup name from <actionGroup name="...">
+            if (!preg_match('/<actionGroup\s+name="([^"]+)"/', $content, $nameMatch)) {
+                continue;
+            }
+            $actionGroupName = $nameMatch[1];
+
+            // Find {{_ENV.VAR_NAME}} patterns
+            preg_match_all('/\{\{_ENV\.([A-Z][A-Z0-9_]*)\}\}/', $content, $matches);
+            $envVars = array_unique($matches[1]);
+
+            if (!empty($envVars)) {
+                $usage[$actionGroupName] = array_values($envVars);
+            }
+        }
+
+        return $usage;
+    }
+
+    /**
+     * Parse Test files to find which ActionGroups each test references.
+     *
+     * @return array<string, string[]> Map of TestName => [ActionGroup1, ActionGroup2, ...]
+     */
+    private function parseTestActionGroupRefs(string $modulePath): array
+    {
+        $testDir = $this->findTestDirectory($modulePath);
+        if ($testDir === null) {
+            return [];
+        }
+
+        $refs = [];
+        $finder = new Finder();
+        $finder->files()->in($testDir)->name('*.xml');
+
+        foreach ($finder as $file) {
+            $content = $file->getContents();
+
+            // Extract test name from <test name="...">
+            if (!preg_match('/<test\s+name="([^"]+)"/', $content, $nameMatch)) {
+                continue;
+            }
+            $testName = $nameMatch[1];
+
+            // Find <actionGroup ref="..."> references
+            preg_match_all('/<actionGroup\s+ref="([^"]+)"/', $content, $matches);
+            $actionGroups = array_unique($matches[1]);
+
+            if (!empty($actionGroups)) {
+                $refs[$testName] = array_values($actionGroups);
+            }
+        }
+
+        return $refs;
     }
 }
