@@ -223,6 +223,7 @@ services:
       - matre_magento_code:/var/www/html
       - ./var/test-modules:/var/www/html/app/code/Test:ro
       - ./var/mftf-results:/var/www/html/dev/tests/acceptance/tests/_output
+      - ./var/mftf-results/allure-results:/var/www/html/dev/tests/acceptance/allure-results
       # Dev mode: mount local module for DEV_MODULE_PATH symlinks
       - ./abb-custom-mftf:/app/abb-custom-mftf:ro
     env_file: .env
