@@ -248,17 +248,21 @@
         </div>
         {% endif %}
 
-        {# Output Log #}
-        {% if run.output %}
+        {# Output Log - Live streaming for running tests #}
         <div class="card mb-4">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Output Log</h5>
+                {% if run.status in ['preparing', 'cloning', 'running'] %}
+                <span class="badge bg-warning" id="live-badge">
+                    <span class="spinner-border spinner-border-sm me-1"></span>
+                    Live
+                </span>
+                {% endif %}
             </div>
             <div class="card-body">
-                <pre class="bg-dark text-light p-3 rounded" style="max-height: 400px; overflow-y: auto; white-space: pre-wrap;">{{ run.output }}</pre>
+                <pre id="output-log" class="bg-dark text-light p-3 rounded" style="max-height: 400px; overflow-y: auto; white-space: pre-wrap;">{{ run.output|default('Waiting for output...') }}</pre>
             </div>
         </div>
-        {% endif %}
 
         {# Error Message #}
         {% if run.errorMessage %}
@@ -328,8 +332,40 @@
     {{ parent() }}
     {% if run.status in ['pending', 'preparing', 'cloning', 'running', 'reporting'] %}
     <script>
-        // Auto-refresh page every 10 seconds while run is in progress
-        setTimeout(() => location.reload(), 10000);
+        const outputEl = document.getElementById('output-log');
+        const liveBadge = document.getElementById('live-badge');
+        const apiUrl = '{{ path('admin_test_run_live_output', {id: run.id}) }}';
+        let lastStatus = '{{ run.status }}';
+
+        async function fetchLiveOutput() {
+            try {
+                const resp = await fetch(apiUrl);
+                const data = await resp.json();
+
+                if (data.output) {
+                    outputEl.textContent = data.output;
+                    outputEl.scrollTop = outputEl.scrollHeight; // Auto-scroll to bottom
+                }
+
+                // Update live badge visibility
+                if (liveBadge) {
+                    const isRunning = ['preparing', 'cloning', 'running'].includes(data.status);
+                    liveBadge.style.display = isRunning ? '' : 'none';
+                }
+
+                // Reload page when status changes to completed/failed/cancelled
+                if (['completed', 'failed', 'cancelled'].includes(data.status) && lastStatus !== data.status) {
+                    location.reload();
+                }
+                lastStatus = data.status;
+            } catch (e) {
+                console.error('Failed to fetch live output:', e);
+            }
+        }
+
+        // Poll every 2 seconds
+        setInterval(fetchLiveOutput, 2000);
+        fetchLiveOutput(); // Initial fetch
     </script>
     {% endif %}
 
