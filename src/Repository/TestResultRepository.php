@@ -235,4 +235,23 @@ class TestResultRepository extends ServiceEntityRepository
 
         return $counts;
     }
+
+    /**
+     * Find all distinct test IDs.
+     *
+     * @return string[]
+     */
+    public function findDistinctTestIds(): array
+    {
+        $result = $this->createQueryBuilder('r')
+            ->select('DISTINCT r.testId')
+            ->andWhere('r.testId IS NOT NULL')
+            ->andWhere('r.testId != :empty')
+            ->setParameter('empty', '')
+            ->orderBy('r.testId', 'ASC')
+            ->getQuery()
+            ->getScalarResult();
+
+        return array_column($result, 'testId');
+    }
 }

@@ -32,9 +32,12 @@
             <form method="get" action="{{ path('admin_test_history') }}">
                 <div class="row g-3 align-items-end">
                     <div class="col-md-5">
-                        <label for="testId" class="form-label">Test ID</label>
-                        <input type="text" class="form-control" id="testId" name="testId"
-                               placeholder="e.g., MOEC5157" required>
+                        <label class="form-label">Test ID</label>
+                        <div data-vue-island="test-id-selector"
+                             data-api-url="{{ path('api_test_history_test_ids') }}"
+                             data-field-name="testId"
+                             data-required="true">
+                        </div>
                     </div>
                     <div class="col-md-5">
                         <label for="environmentId" class="form-label">Environment</label>
@@ -65,5 +68,7 @@
     {{ parent() }}
     {% if testId and environmentId %}
         {{ vite_entry_script_tags('test-history-app') }}
+    {% else %}
+        {{ vite_entry_script_tags('test-id-selector-app') }}
     {% endif %}
 {% endblock %}

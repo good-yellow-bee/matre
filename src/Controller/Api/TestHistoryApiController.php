@@ -73,4 +73,15 @@ class TestHistoryApiController extends AbstractController
             ],
         ]);
     }
+
+    #[Route('/test-ids', name: 'api_test_history_test_ids', methods: ['GET'])]
+    public function testIds(): JsonResponse
+    {
+        $testIds = $this->testResultRepository->findDistinctTestIds();
+
+        return $this->json([
+            'data' => $testIds,
+            'count' => count($testIds),
+        ]);
+    }
 }
