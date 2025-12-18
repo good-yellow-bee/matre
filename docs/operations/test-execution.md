@@ -50,6 +50,16 @@ pending → preparing → cloning → running → reporting → completed
 | failed | Execution error occurred |
 | canceled | Manually stopped |
 
+### Live Browser Preview
+
+Watch test execution in real-time via browser-based VNC viewer:
+
+1. While test is in `preparing`, `cloning`, or `running` status
+2. Click **Watch Live** button in Actions panel
+3. New tab opens with noVNC showing the browser automation
+
+> **Note:** Requires `NOVNC_URL` configured in `.env`. See [Configuration](../getting-started/configuration.md#live-browser-preview).
+
 ### View Results
 
 - **Summary:** Pass/fail/skipped counts, total duration

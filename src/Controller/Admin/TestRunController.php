@@ -33,6 +33,7 @@ class TestRunController extends AbstractController
         private readonly ArtifactCollectorService $artifactCollector,
         private readonly MessageBusInterface $messageBus,
         private readonly TestSuiteRepository $testSuiteRepository,
+        private readonly string $noVncUrl,
     ) {
     }
 
@@ -96,6 +97,7 @@ class TestRunController extends AbstractController
         return $this->render('admin/test_run/show.html.twig', [
             'run' => $run,
             'artifacts' => $artifacts,
+            'vnc_url' => $this->noVncUrl,
         ]);
     }
 

@@ -167,10 +167,13 @@ services:
       - matre_network
 
   # Chrome Node - Browser for MFTF tests (scalable)
+  # noVNC live preview available at https://{APP_DOMAIN}:7900
   chrome-node:
     image: selenium/node-chrome:4.15
     container_name: matre_chrome_node
     shm_size: 2gb
+    ports:
+      - "7900:7900"  # noVNC web viewer for live test preview
     depends_on:
       - selenium-hub
     environment:
@@ -179,6 +182,7 @@ services:
       SE_EVENT_BUS_SUBSCRIBE_PORT: 4443
       SE_NODE_MAX_SESSIONS: 2
       SE_NODE_SESSION_TIMEOUT: 300
+      SE_VNC_NO_PASSWORD: ${SE_VNC_NO_PASSWORD:-true}
     networks:
       - matre_network
 

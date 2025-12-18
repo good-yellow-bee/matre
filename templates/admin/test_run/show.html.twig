@@ -284,6 +284,12 @@
                 <h5 class="mb-0">Actions</h5>
             </div>
             <div class="card-body d-grid gap-2">
+                {% if run.status in ['preparing', 'cloning', 'running'] and vnc_url %}
+                <a href="{{ vnc_url }}" target="_blank" rel="noopener" class="btn btn-info w-100">
+                    <i class="bi bi-display"></i> Watch Live
+                </a>
+                {% endif %}
+
                 {% if run.canBeCancelled %}
                 <form action="{{ path('admin_test_run_cancel', {id: run.id}) }}" method="post">
                     <input type="hidden" name="_token" value="{{ csrf_token('cancel' ~ run.id) }}">
