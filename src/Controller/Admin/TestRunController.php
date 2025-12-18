@@ -167,7 +167,6 @@ class TestRunController extends AbstractController
         return $this->redirectToRoute('admin_test_run_show', ['id' => $run->getId()]);
     }
 
-
     /**
      * Get live output for a running test.
      */
@@ -207,6 +206,6 @@ class TestRunController extends AbstractController
         $content = fread($handle, $maxBytes);
         fclose($handle);
 
-        return "... [truncated - showing last " . round($maxBytes / 1024) . "KB]\n" . $content;
+        return '... [truncated - showing last ' . round($maxBytes / 1024) . "KB]\n" . $content;
     }
 }

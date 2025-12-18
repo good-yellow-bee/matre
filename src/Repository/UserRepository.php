@@ -274,7 +274,7 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
             ->join('u.notificationEnvironments', 'env')
             ->where('u.notificationsEnabled = true')
             ->andWhere('u.isActive = true')
-            ->andWhere('u.'.$channelField.' = true')
+            ->andWhere('u.' . $channelField . ' = true')
             ->andWhere('env = :environment')
             ->setParameter('environment', $run->getEnvironment());
 
