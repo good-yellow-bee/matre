@@ -16,6 +16,7 @@ const initTestHistory = () => {
   const apiUrl = container.dataset.apiUrl;
   const testId = container.dataset.testId;
   const environmentId = container.dataset.environmentId;
+  const environmentsJson = container.dataset.environments;
   const testRunBaseUrl = container.dataset.testRunBaseUrl;
 
   if (!apiUrl || !testId || !environmentId) {
@@ -23,10 +24,18 @@ const initTestHistory = () => {
     return;
   }
 
+  let environments = [];
+  try {
+    environments = environmentsJson ? JSON.parse(environmentsJson) : [];
+  } catch (e) {
+    console.error('TestHistory: Failed to parse environments', e);
+  }
+
   const app = createApp(TestHistory, {
     apiUrl,
     testId,
     environmentId: parseInt(environmentId, 10),
+    environments,
     testRunBaseUrl,
   });
 

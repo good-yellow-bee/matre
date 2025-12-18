@@ -232,6 +232,47 @@ If you see "Environment is locked":
 
 ---
 
+## Test History
+
+Track a specific test's execution across multiple runs to identify flaky tests, regressions, or performance trends.
+
+### Access Test History
+
+**Option 1: From sidebar**
+1. Navigate to **Test History** in sidebar
+2. Select a test ID from the searchable dropdown
+3. Choose an environment
+4. Click **Search**
+
+**Option 2: From test results**
+1. Open any **Test Run** detail page
+2. Find the test in results table
+3. Click **History** button next to the test ID
+
+### History View
+
+Displays a timeline of the selected test's executions:
+
+| Column | Description |
+|--------|-------------|
+| Status | Pass/Fail/Skipped/Broken badge |
+| Test Run | Link to the full test run |
+| Duration | Execution time in seconds |
+| Date | When the test ran |
+
+### Switch Environment
+
+Use the environment dropdown in the history view header to compare the same test's performance across different environments without leaving the page.
+
+### Use Cases
+
+- **Flaky test detection** - Tests that intermittently fail
+- **Regression tracking** - When a previously passing test starts failing
+- **Performance monitoring** - Duration trends over time
+- **Environment comparison** - Same test behaving differently per environment
+
+---
+
 ## Troubleshooting
 
 See [Troubleshooting Guide](troubleshooting.md#test-execution) for common issues:

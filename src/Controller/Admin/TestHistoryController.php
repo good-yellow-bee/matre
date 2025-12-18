@@ -31,10 +31,13 @@ class TestHistoryController extends AbstractController
             $environment = $this->environmentRepository->find($environmentId);
         }
 
+        $environments = $this->environmentRepository->findBy(['isActive' => true], ['name' => 'ASC']);
+
         return $this->render('admin/test_history/index.html.twig', [
             'testId' => $testId,
             'environmentId' => $environmentId,
             'environment' => $environment,
+            'environments' => $environments,
         ]);
     }
 }
