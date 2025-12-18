@@ -176,10 +176,10 @@ class GlobalEnvVariableRepository extends ServiceEntityRepository
             if ($environment !== null) {
                 // Use native SQL for JSON_CONTAINS
                 $conn = $this->getEntityManager()->getConnection();
-                $sql = "SELECT name, value FROM matre_global_env_variables
+                $sql = 'SELECT name, value FROM matre_global_env_variables
                         WHERE environments IS NOT NULL
                         AND JSON_CONTAINS(environments, :env)
-                        ORDER BY name ASC";
+                        ORDER BY name ASC';
 
                 $envVars = $conn->executeQuery($sql, ['env' => json_encode($environment)])->fetchAllAssociative();
 

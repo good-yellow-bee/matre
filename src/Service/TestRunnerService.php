@@ -184,7 +184,6 @@ class TestRunnerService
                 $this->artifactCollector->associateScreenshotsWithResults($allResults, $artifacts['screenshots']);
             }
 
-
             $this->entityManager->flush();
 
             $this->logger->info('Test execution completed', [
