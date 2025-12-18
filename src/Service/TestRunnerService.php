@@ -100,6 +100,10 @@ class TestRunnerService
         $run->markStarted();
         $this->entityManager->flush();
 
+        // Set status to RUNNING before test execution
+        $run->setStatus(TestRun::STATUS_RUNNING);
+        $this->entityManager->flush();
+
         $allResults = [];
         $allurePaths = [];
         $output = '';
