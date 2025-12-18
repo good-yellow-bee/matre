@@ -100,8 +100,16 @@ class TestRunnerService
         $run->markStarted();
         $this->entityManager->flush();
 
-        // Set status to RUNNING before test execution
+        // Set status to RUNNING and output file path before test execution
         $run->setStatus(TestRun::STATUS_RUNNING);
+        $type = $run->getType();
+
+        // Set output file path so live streaming can find it
+        if ($type === TestRun::TYPE_MFTF || $type === TestRun::TYPE_BOTH) {
+            $run->setOutputFilePath($this->mftfExecutor->getOutputFilePath($run));
+        } elseif ($type === TestRun::TYPE_PLAYWRIGHT) {
+            $run->setOutputFilePath($this->playwrightExecutor->getOutputFilePath($run));
+        }
         $this->entityManager->flush();
 
         $allResults = [];
@@ -109,8 +117,6 @@ class TestRunnerService
         $output = '';
 
         try {
-            $type = $run->getType();
-
             // Execute MFTF tests
             if ($type === TestRun::TYPE_MFTF || $type === TestRun::TYPE_BOTH) {
                 $mftfResult = $this->mftfExecutor->execute($run);
