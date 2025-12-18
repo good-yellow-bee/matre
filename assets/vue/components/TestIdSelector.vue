@@ -4,17 +4,17 @@
       <input
         ref="searchInput"
         type="text"
-        class="form-control"
-        :name="fieldName"
-        v-model="displayValue"
+        class="form-control search-input"
+        v-model="searchQuery"
         @focus="openDropdown"
         @blur="handleBlur"
         @keydown="handleKeydown"
-        @input="handleInput"
         :placeholder="inputPlaceholder"
         :disabled="loading"
-        :required="required"
       />
+
+      <!-- Hidden input for form submission -->
+      <input type="hidden" :name="fieldName" :value="selectedValue" :required="required" />
 
       <div v-if="selectedValue && !isOpen" class="selected-value" @click="clearAndFocus">
         <span class="value-text">{{ selectedValue }}</span>
@@ -42,7 +42,6 @@
     </div>
 
     <small v-if="loading" class="text-muted d-block mt-1">Loading test IDs...</small>
-    <small v-else-if="items.length > 0" class="text-muted d-block mt-1">{{ items.length }} tests available</small>
   </div>
 </template>
 
@@ -65,19 +64,6 @@ const highlightedIndex = ref(0);
 const searchInput = ref(null);
 const selectContainer = ref(null);
 
-const displayValue = computed({
-  get() {
-    return isOpen.value ? searchQuery.value : selectedValue.value;
-  },
-  set(val) {
-    if (isOpen.value) {
-      searchQuery.value = val;
-    } else {
-      selectedValue.value = val;
-    }
-  },
-});
-
 const inputPlaceholder = computed(() => {
   if (loading.value) return 'Loading...';
   if (items.value.length === 0) return 'No tests available';
@@ -86,7 +72,7 @@ const inputPlaceholder = computed(() => {
 });
 
 const filteredItems = computed(() => {
-  if (!searchQuery.value) return items.value.slice(0, 100); // Limit initial display
+  if (!searchQuery.value) return items.value.slice(0, 100);
   const query = searchQuery.value.toLowerCase();
   return items.value.filter(item => item.toLowerCase().includes(query)).slice(0, 100);
 });
@@ -106,15 +92,6 @@ const closeDropdown = () => {
 
 const handleBlur = () => {
   setTimeout(() => closeDropdown(), 200);
-};
-
-const handleInput = (event) => {
-  if (!isOpen.value && items.value.length > 0) {
-    isOpen.value = true;
-  }
-  searchQuery.value = event.target.value;
-  // Also allow typing custom values
-  selectedValue.value = event.target.value;
 };
 
 const selectItem = (item) => {
@@ -196,16 +173,21 @@ watch(searchQuery, () => {
 });
 </script>
 
-<style scoped>
+<style>
 .test-id-selector {
   width: 100%;
 }
 
-.searchable-select {
+.test-id-selector .searchable-select {
+  flex: 1;
   position: relative;
 }
 
-.selected-value {
+.test-id-selector .search-input {
+  width: 100%;
+}
+
+.test-id-selector .selected-value {
   position: absolute;
   top: 50%;
   left: 10px;
@@ -225,27 +207,27 @@ watch(searchQuery, () => {
   box-shadow: 0 1px 3px rgba(79, 70, 229, 0.3);
 }
 
-.selected-value:hover {
+.test-id-selector .selected-value:hover {
   background: #4338ca;
 }
 
-.value-text {
+.test-id-selector .value-text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.clear-icon {
+.test-id-selector .clear-icon {
   font-size: 16px;
   line-height: 1;
   opacity: 0.6;
 }
 
-.clear-icon:hover {
+.test-id-selector .clear-icon:hover {
   opacity: 1;
 }
 
-.dropdown-list {
+.test-id-selector .dropdown-list {
   position: absolute;
   top: 100%;
   left: 0;
@@ -261,7 +243,7 @@ watch(searchQuery, () => {
   padding: 4px 0;
 }
 
-.dropdown-option {
+.test-id-selector .dropdown-option {
   padding: 8px 12px;
   cursor: pointer !important;
   font-size: 14px;
@@ -269,13 +251,13 @@ watch(searchQuery, () => {
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.dropdown-option:hover,
-.dropdown-option.active {
+.test-id-selector .dropdown-option:hover,
+.test-id-selector .dropdown-option.active {
   background: #e0e7ff;
   color: #1e40af;
 }
 
-.dropdown-option.disabled {
+.test-id-selector .dropdown-option.disabled {
   color: #9ca3af;
   cursor: default !important;
   text-align: center;
