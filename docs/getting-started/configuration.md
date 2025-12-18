@@ -251,6 +251,8 @@ docker-compose exec db mysql -u matre -pmatre matre
 
 Test environments are configured in the database via the Admin UI:
 
+![Test Environments](../images/test-environments.png)
+
 | Field | Description |
 |-------|-------------|
 | `name` | Display name (e.g., "Staging") |
@@ -278,6 +280,8 @@ These variables are exported to the test environment during execution.
 ## Live Browser Preview
 
 Watch test execution in real-time via browser-based VNC viewer (noVNC).
+
+![noVNC Preview](../images/novnc-preview.png)
 
 ### Configuration
 
