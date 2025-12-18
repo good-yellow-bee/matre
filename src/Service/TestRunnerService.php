@@ -69,6 +69,9 @@ class TestRunnerService
         $run->setStatus(TestRun::STATUS_PREPARING);
         $this->entityManager->flush();
 
+        // Clear artifact source directories to prevent contamination from previous runs
+        $this->artifactCollector->clearSourceDirectories();
+
         try {
             // Clone module to run-specific directory
             $run->setStatus(TestRun::STATUS_CLONING);
