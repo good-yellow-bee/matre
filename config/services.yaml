@@ -97,6 +97,10 @@ services:
             $magentoRoot: '%env(MAGENTO_ROOT)%'
             $magentoContainer: '%env(MAGENTO_CONTAINER)%'
 
+    App\Controller\Admin\TestRunController:
+        arguments:
+            $noVncUrl: '%env(NOVNC_URL)%'
+
     # Per-environment Doctrine transport factory
     App\Messenger\Transport\PerEnvironmentDoctrineTransportFactory:
         tags: ['messenger.transport_factory']

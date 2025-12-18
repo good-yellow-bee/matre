@@ -31,39 +31,6 @@ class AllureReportService
     }
 
     /**
-     * Execute HTTP request with exponential backoff retry.
-     *
-     * @throws \Throwable On final failure after all retries
-     */
-    private function executeWithRetry(callable $requestFn, string $operation): mixed
-    {
-        $lastException = null;
-
-        for ($attempt = 0; $attempt < self::MAX_RETRIES; ++$attempt) {
-            try {
-                return $requestFn();
-            } catch (\Throwable $e) {
-                $lastException = $e;
-                $delayMs = self::INITIAL_RETRY_DELAY_MS * (2 ** $attempt); // Exponential backoff
-
-                $this->logger->warning('HTTP request failed, retrying', [
-                    'operation' => $operation,
-                    'attempt' => $attempt + 1,
-                    'maxRetries' => self::MAX_RETRIES,
-                    'delayMs' => $delayMs,
-                    'error' => $e->getMessage(),
-                ]);
-
-                if ($attempt < self::MAX_RETRIES - 1) {
-                    usleep($delayMs * 1000); // Convert ms to microseconds
-                }
-            }
-        }
-
-        throw $lastException;
-    }
-
-    /**
      * Generate Allure report for a test run.
      */
     public function generateReport(TestRun $run, array $resultPaths = []): TestReport
@@ -80,7 +47,11 @@ class AllureReportService
         if (count($resultPaths) > 1) {
             $this->mergeResults($resultPaths, $allureResultsPath);
         } elseif (count($resultPaths) === 1) {
-            $this->filesystem->mirror($resultPaths[0], $allureResultsPath);
+            if ($this->filesystem->exists($resultPaths[0]) && is_dir($resultPaths[0])) {
+                $this->filesystem->mirror($resultPaths[0], $allureResultsPath);
+            } else {
+                $this->logger->warning('Allure results not found', ['path' => $resultPaths[0]]);
+            }
         }
 
         // Generate report via Allure service
@@ -177,11 +148,44 @@ class AllureReportService
     }
 
     /**
+     * Execute HTTP request with exponential backoff retry.
+     *
+     * @throws \Throwable On final failure after all retries
+     */
+    private function executeWithRetry(callable $requestFn, string $operation): mixed
+    {
+        $lastException = null;
+
+        for ($attempt = 0; $attempt < self::MAX_RETRIES; ++$attempt) {
+            try {
+                return $requestFn();
+            } catch (\Throwable $e) {
+                $lastException = $e;
+                $delayMs = self::INITIAL_RETRY_DELAY_MS * (2 ** $attempt); // Exponential backoff
+
+                $this->logger->warning('HTTP request failed, retrying', [
+                    'operation' => $operation,
+                    'attempt' => $attempt + 1,
+                    'maxRetries' => self::MAX_RETRIES,
+                    'delayMs' => $delayMs,
+                    'error' => $e->getMessage(),
+                ]);
+
+                if ($attempt < self::MAX_RETRIES - 1) {
+                    usleep($delayMs * 1000); // Convert ms to microseconds
+                }
+            }
+        }
+
+        throw $lastException;
+    }
+
+    /**
      * Trigger report generation via Allure Docker service.
      */
     private function triggerReportGeneration(int $runId): string
     {
-        $projectId = 'run-' . $runId;
+        $projectId = 'default';
 
         try {
             // Create project if not exists (with retry)

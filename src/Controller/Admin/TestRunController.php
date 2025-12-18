@@ -14,6 +14,7 @@ use App\Service\TestRunnerService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
@@ -32,6 +33,7 @@ class TestRunController extends AbstractController
         private readonly ArtifactCollectorService $artifactCollector,
         private readonly MessageBusInterface $messageBus,
         private readonly TestSuiteRepository $testSuiteRepository,
+        private readonly string $noVncUrl,
     ) {
     }
 
@@ -95,6 +97,7 @@ class TestRunController extends AbstractController
         return $this->render('admin/test_run/show.html.twig', [
             'run' => $run,
             'artifacts' => $artifacts,
+            'vnc_url' => $this->noVncUrl,
         ]);
     }
 
@@ -162,5 +165,47 @@ class TestRunController extends AbstractController
         $this->addFlash('error', 'Invalid CSRF token.');
 
         return $this->redirectToRoute('admin_test_run_show', ['id' => $run->getId()]);
+    }
+
+    /**
+     * Get live output for a running test.
+     */
+    #[Route('/{id}/live-output', name: 'admin_test_run_live_output', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function liveOutput(TestRun $run): JsonResponse
+    {
+        $outputPath = $run->getOutputFilePath();
+
+        if (!$outputPath || !file_exists($outputPath)) {
+            return new JsonResponse([
+                'output' => '',
+                'status' => $run->getStatus(),
+            ]);
+        }
+
+        // Read last 100KB to prevent huge responses
+        $content = $this->readTailOfFile($outputPath, 102400);
+
+        return new JsonResponse([
+            'output' => $content,
+            'status' => $run->getStatus(),
+        ]);
+    }
+
+    /**
+     * Read tail of file to prevent memory issues with large logs.
+     */
+    private function readTailOfFile(string $path, int $maxBytes): string
+    {
+        $size = filesize($path);
+        if ($size <= $maxBytes) {
+            return file_get_contents($path);
+        }
+
+        $handle = fopen($path, 'r');
+        fseek($handle, -$maxBytes, SEEK_END);
+        $content = fread($handle, $maxBytes);
+        fclose($handle);
+
+        return '... [truncated - showing last ' . round($maxBytes / 1024) . "KB]\n" . $content;
     }
 }

@@ -59,39 +59,6 @@ class NotificationService
     }
 
     /**
-     * Execute HTTP request with exponential backoff retry.
-     *
-     * @throws \Throwable On final failure after all retries
-     */
-    private function executeWithRetry(callable $requestFn, string $operation): mixed
-    {
-        $lastException = null;
-
-        for ($attempt = 0; $attempt < self::MAX_RETRIES; ++$attempt) {
-            try {
-                return $requestFn();
-            } catch (\Throwable $e) {
-                $lastException = $e;
-                $delayMs = self::INITIAL_RETRY_DELAY_MS * (2 ** $attempt);
-
-                $this->logger->warning('HTTP request failed, retrying', [
-                    'operation' => $operation,
-                    'attempt' => $attempt + 1,
-                    'maxRetries' => self::MAX_RETRIES,
-                    'delayMs' => $delayMs,
-                    'error' => $e->getMessage(),
-                ]);
-
-                if ($attempt < self::MAX_RETRIES - 1) {
-                    usleep($delayMs * 1000);
-                }
-            }
-        }
-
-        throw $lastException;
-    }
-
-    /**
      * Send email notification for test run.
      */
     public function sendEmailNotification(TestRun $run, array $recipients): void
@@ -125,6 +92,39 @@ class NotificationService
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Execute HTTP request with exponential backoff retry.
+     *
+     * @throws \Throwable On final failure after all retries
+     */
+    private function executeWithRetry(callable $requestFn, string $operation): mixed
+    {
+        $lastException = null;
+
+        for ($attempt = 0; $attempt < self::MAX_RETRIES; ++$attempt) {
+            try {
+                return $requestFn();
+            } catch (\Throwable $e) {
+                $lastException = $e;
+                $delayMs = self::INITIAL_RETRY_DELAY_MS * (2 ** $attempt);
+
+                $this->logger->warning('HTTP request failed, retrying', [
+                    'operation' => $operation,
+                    'attempt' => $attempt + 1,
+                    'maxRetries' => self::MAX_RETRIES,
+                    'delayMs' => $delayMs,
+                    'error' => $e->getMessage(),
+                ]);
+
+                if ($attempt < self::MAX_RETRIES - 1) {
+                    usleep($delayMs * 1000);
+                }
+            }
+        }
+
+        throw $lastException;
     }
 
     /**

@@ -2,6 +2,8 @@
 
 Complete guide for executing MFTF and Playwright tests.
 
+![Test Runs List](../images/test-runs-list.png)
+
 ---
 
 ## Prerequisites
@@ -50,7 +52,21 @@ pending → preparing → cloning → running → reporting → completed
 | failed | Execution error occurred |
 | canceled | Manually stopped |
 
+### Live Browser Preview
+
+Watch test execution in real-time via browser-based VNC viewer:
+
+1. While test is in `preparing`, `cloning`, or `running` status
+2. Click **Watch Live** button in Actions panel
+3. New tab opens with noVNC showing the browser automation
+
+![noVNC Live Preview](../images/novnc-preview.png)
+
+> **Note:** Requires `NOVNC_URL` configured in `.env`. See [Configuration](../getting-started/configuration.md#live-browser-preview).
+
 ### View Results
+
+![Test Run Detail](../images/test-run-detail.png)
 
 - **Summary:** Pass/fail/skipped counts, total duration
 - **Details:** Individual test outcomes with error messages
@@ -171,6 +187,8 @@ MATRE analyzes which tests use which environment variables by scanning:
 **Example:** If `LoginTest.xml` uses `<actionGroup ref="AdminLogin"/>` and `AdminLogin` uses `{{_ENV.ADMIN_PASSWORD}}`, MATRE correctly associates `ADMIN_PASSWORD` with `LoginTest`.
 
 This allows the "Used in Tests" column in Admin → Environment Variables to show accurate test coverage.
+
+![Environment Variables](../images/env-variables.png)
 
 ### Playwright Tests
 

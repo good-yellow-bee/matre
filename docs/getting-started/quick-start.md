@@ -4,6 +4,8 @@ Get MATRE running and execute your first MFTF test in minutes.
 
 > **Audience:** Developers familiar with MFTF who want to quickly set up and run tests.
 
+![MATRE Dashboard](../images/dashboard.png)
+
 ---
 
 ## Prerequisites
@@ -67,8 +69,7 @@ A Test Environment represents a target Magento instance where tests will run.
 1. Login to MATRE → Navigate to **Test Automation → Environments**
 2. Click **"+ Add Environment"**
 
-<!-- Screenshot: New Environment form -->
-<!-- ![New Environment Form](../assets/screenshots/quick-start-env-form.png) -->
+![Test Environments List](../images/test-environments.png)
 
 3. Fill required fields:
 
@@ -140,6 +141,10 @@ docker-compose exec php php bin/console app:env:import dev-us --clone
 - `--dry-run`: Preview without saving
 - `--overwrite`: Update existing variables
 
+You can also manage environment variables in the Admin UI:
+
+![Environment Variables](../images/env-variables.png)
+
 ---
 
 ## 4. Create Test Suite (Optional)
@@ -151,8 +156,7 @@ Test Suites group tests for reuse and scheduling. You can skip this and run test
 1. Navigate to **Test Automation → Test Suites**
 2. Click **"+ Add Suite"**
 
-<!-- Screenshot: New Suite form -->
-<!-- ![New Suite Form](../assets/screenshots/quick-start-suite-form.png) -->
+![Test Suites List](../images/test-suites.png)
 
 3. Configure:
 
@@ -182,8 +186,7 @@ Test Suites group tests for reuse and scheduling. You can skip this and run test
 1. Navigate to **Test Automation → Test Runs**
 2. Click **"Start New Run"**
 
-<!-- Screenshot: New Test Run form -->
-<!-- ![New Test Run Form](../assets/screenshots/quick-start-run-form.png) -->
+![Test Runs List](../images/test-runs-list.png)
 
 3. Configure:
    - **Environment:** Select your target (e.g., `dev-us`)
@@ -195,8 +198,7 @@ Test Suites group tests for reuse and scheduling. You can skip this and run test
 
 5. Monitor progress on the details page (auto-refreshes every 10s)
 
-<!-- Screenshot: Test Run in progress -->
-<!-- ![Test Run Progress](../assets/screenshots/quick-start-run-progress.png) -->
+![Test Run Detail](../images/test-run-detail.png)
 
 ### Option B: Via CLI
 
@@ -248,8 +250,7 @@ Test run completed successfully.
 
 Navigate to the test run or click the notification.
 
-<!-- Screenshot: Completed test run -->
-<!-- ![Test Results](../assets/screenshots/quick-start-results.png) -->
+![Test Run Results](../images/test-run-detail.png)
 
 **Results include:**
 - **Summary:** Pass/fail/broken/skipped counts with progress bar
@@ -261,9 +262,6 @@ Navigate to the test run or click the notification.
 ### Screenshots Gallery
 
 Failed tests automatically capture screenshots. Click any thumbnail to view full size.
-
-<!-- Screenshot: Screenshots gallery -->
-<!-- ![Screenshots Gallery](../assets/screenshots/quick-start-gallery.png) -->
 
 ### Allure Reports
 

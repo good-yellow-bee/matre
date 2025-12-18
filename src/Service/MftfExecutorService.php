@@ -47,7 +47,7 @@ class MftfExecutorService
         $outputFile = $this->getOutputFilePath($run);
         $outputDir = dirname($outputFile);
         if (!is_dir($outputDir)) {
-            mkdir($outputDir, 0755, true);
+            mkdir($outputDir, 0o755, true);
         }
 
         // Store output path on run for async tracking
@@ -90,29 +90,6 @@ class MftfExecutorService
     public function getOutputFilePath(TestRun $run): string
     {
         return $this->projectDir . '/var/test-output/mftf-run-' . $run->getId() . '.log';
-    }
-
-    /**
-     * Read output file content (truncated to prevent memory issues).
-     */
-    private function readOutputFile(string $path, int $maxBytes = 102400): string
-    {
-        if (!file_exists($path)) {
-            return '';
-        }
-
-        $size = filesize($path);
-        if ($size <= $maxBytes) {
-            return file_get_contents($path);
-        }
-
-        // Read last N bytes for large files
-        $handle = fopen($path, 'r');
-        fseek($handle, -$maxBytes, SEEK_END);
-        $content = "... [truncated - showing last " . round($maxBytes / 1024) . "KB]\n" . fread($handle, $maxBytes);
-        fclose($handle);
-
-        return $content;
     }
 
     /**
@@ -251,6 +228,29 @@ class MftfExecutorService
     public function getAllureResultsPath(): string
     {
         return $this->projectDir . '/var/mftf-results/allure-results';
+    }
+
+    /**
+     * Read output file content (truncated to prevent memory issues).
+     */
+    private function readOutputFile(string $path, int $maxBytes = 102400): string
+    {
+        if (!file_exists($path)) {
+            return '';
+        }
+
+        $size = filesize($path);
+        if ($size <= $maxBytes) {
+            return file_get_contents($path);
+        }
+
+        // Read last N bytes for large files
+        $handle = fopen($path, 'r');
+        fseek($handle, -$maxBytes, SEEK_END);
+        $content = '... [truncated - showing last ' . round($maxBytes / 1024) . "KB]\n" . fread($handle, $maxBytes);
+        fclose($handle);
+
+        return $content;
     }
 
     /**

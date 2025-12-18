@@ -636,8 +636,7 @@ small.form-text,
 
 /* Error Messages */
 .invalid-feedback,
-.form-error-message,
-.text-danger {
+.form-error-message {
     display: block;
     margin-top: var(--space-xs);
     font-size: 13px;

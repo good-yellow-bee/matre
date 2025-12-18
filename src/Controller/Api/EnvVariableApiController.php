@@ -49,12 +49,12 @@ class EnvVariableApiController extends AbstractController
         // Use native SQL for JSON filtering if environment specified
         if ($environment !== null && $environment !== 'global') {
             $conn = $this->entityManager->getConnection();
-            $sql = "SELECT * FROM matre_global_env_variables v
-                    WHERE JSON_CONTAINS(v.environments, :env)";
+            $sql = 'SELECT * FROM matre_global_env_variables v
+                    WHERE JSON_CONTAINS(v.environments, :env)';
             $params = ['env' => json_encode($environment)];
 
             if ('' !== $search) {
-                $sql .= " AND (LOWER(v.name) LIKE :search OR LOWER(v.description) LIKE :search OR LOWER(v.used_in_tests) LIKE :search)";
+                $sql .= ' AND (LOWER(v.name) LIKE :search OR LOWER(v.description) LIKE :search OR LOWER(v.used_in_tests) LIKE :search)';
                 $params['search'] = '%' . mb_strtolower($search) . '%';
             }
 

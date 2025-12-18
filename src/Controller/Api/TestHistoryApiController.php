@@ -41,7 +41,7 @@ class TestHistoryApiController extends AbstractController
         $results = $this->testResultRepository->findHistoryByTestId(
             $testId,
             $environmentId,
-            $limit
+            $limit,
         );
 
         $data = array_map(fn ($result) => [

@@ -50,6 +50,10 @@ REPO_PASSWORD=
 SELENIUM_HOST=selenium-hub
 SELENIUM_PORT=4444
 
+# Live Browser Preview (noVNC)
+NOVNC_URL=http://localhost:7900
+SE_VNC_NO_PASSWORD=true
+
 # Allure Reports
 ALLURE_URL=http://allure:5050
 
@@ -117,6 +121,7 @@ SLACK_WEBHOOK_URL=
 
 ### matre_chrome_node
 - **Image:** `selenium/node-chrome:4.15`
+- **Port:** 7900 (noVNC live browser preview)
 - **Purpose:** Chrome browser for MFTF tests
 - **Sessions:** 2 concurrent
 
@@ -246,6 +251,8 @@ docker-compose exec db mysql -u matre -pmatre matre
 
 Test environments are configured in the database via the Admin UI:
 
+![Test Environments](../images/test-environments.png)
+
 | Field | Description |
 |-------|-------------|
 | `name` | Display name (e.g., "Staging") |
@@ -267,3 +274,43 @@ Test environments are configured in the database via the Admin UI:
 ```
 
 These variables are exported to the test environment during execution.
+
+---
+
+## Live Browser Preview
+
+Watch test execution in real-time via browser-based VNC viewer (noVNC).
+
+![noVNC Preview](../images/novnc-preview.png)
+
+### Configuration
+
+```dotenv
+# noVNC viewer URL (Selenium chrome-node exposes port 7900)
+NOVNC_URL=http://localhost:7900
+
+# Disable VNC password for dev (set to false for prod)
+SE_VNC_NO_PASSWORD=true
+```
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `NOVNC_URL` | Full URL to noVNC viewer | `http://localhost:7900` |
+| `SE_VNC_NO_PASSWORD` | Disable password prompt | `true` (dev) |
+
+### Production
+
+For production, set password protection:
+
+```dotenv
+SE_VNC_NO_PASSWORD=false
+```
+
+Default VNC password: `secret`
+
+### Usage
+
+1. Start a test run
+2. Go to Test Run detail page
+3. Click **Watch Live** button (visible during execution)
+4. Browser tab opens with live view of Selenium browser

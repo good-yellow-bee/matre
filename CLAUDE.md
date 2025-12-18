@@ -174,3 +174,26 @@ DEV_MODULE_PATH=./test-module  # Relative or absolute path
 2. Set `DEV_MODULE_PATH=./test-module` in `.env`
 3. Run tests → uses local module, no git clone
 4. Edit module files → changes reflected immediately
+
+## Live Browser Preview (noVNC)
+
+Watch test execution in real-time via browser-based VNC viewer.
+
+```env
+# .env
+NOVNC_URL=http://matre.local:7900     # noVNC viewer URL (HTTP only)
+SE_VNC_NO_PASSWORD=true                # Disable VNC password (dev)
+```
+
+**Configuration:**
+- `NOVNC_URL`: Full URL to noVNC viewer (HTTP - Selenium noVNC doesn't support SSL)
+- `SE_VNC_NO_PASSWORD`: `true` for dev (no password), `false` for prod (password: "secret")
+- Port 7900 exposed from `chrome-node` container
+
+**Usage:**
+1. Start a test run
+2. Go to Test Run detail page (`/admin/test-runs/{id}`)
+3. Click **Watch Live** button (visible when test is running)
+4. New tab opens with live browser view
+
+**Note:** Button only appears during `preparing`, `cloning`, or `running` status.

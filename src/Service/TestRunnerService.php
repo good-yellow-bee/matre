@@ -69,6 +69,9 @@ class TestRunnerService
         $run->setStatus(TestRun::STATUS_PREPARING);
         $this->entityManager->flush();
 
+        // Clear artifact source directories to prevent contamination from previous runs
+        $this->artifactCollector->clearSourceDirectories();
+
         try {
             // Clone module to run-specific directory
             $run->setStatus(TestRun::STATUS_CLONING);
@@ -100,13 +103,23 @@ class TestRunnerService
         $run->markStarted();
         $this->entityManager->flush();
 
+        // Set status to RUNNING and output file path before test execution
+        $run->setStatus(TestRun::STATUS_RUNNING);
+        $type = $run->getType();
+
+        // Set output file path so live streaming can find it
+        if ($type === TestRun::TYPE_MFTF || $type === TestRun::TYPE_BOTH) {
+            $run->setOutputFilePath($this->mftfExecutor->getOutputFilePath($run));
+        } elseif ($type === TestRun::TYPE_PLAYWRIGHT) {
+            $run->setOutputFilePath($this->playwrightExecutor->getOutputFilePath($run));
+        }
+        $this->entityManager->flush();
+
         $allResults = [];
         $allurePaths = [];
         $output = '';
 
         try {
-            $type = $run->getType();
-
             // Execute MFTF tests
             if ($type === TestRun::TYPE_MFTF || $type === TestRun::TYPE_BOTH) {
                 $mftfResult = $this->mftfExecutor->execute($run);
@@ -171,9 +184,6 @@ class TestRunnerService
                 $this->artifactCollector->associateScreenshotsWithResults($allResults, $artifacts['screenshots']);
             }
 
-            // Clear source directories AFTER collection to prevent data loss in concurrent runs
-            $this->artifactCollector->clearSourceDirectories();
-
             $this->entityManager->flush();
 
             $this->logger->info('Test execution completed', [
@@ -219,7 +229,21 @@ class TestRunnerService
                 $allurePaths[] = $this->playwrightExecutor->getAllureResultsPath();
             }
 
-            $report = $this->allureReportService->generateReport($run, $allurePaths);
+            try {
+                $report = $this->allureReportService->generateReport($run, $allurePaths);
+            } catch (\Throwable $e) {
+                $this->logger->warning('Allure report generation failed, creating placeholder', [
+                    'id' => $run->getId(),
+                    'error' => $e->getMessage(),
+                ]);
+                // Create placeholder report - run still completes
+                $report = new TestReport();
+                $report->setTestRun($run);
+                $report->setReportType(TestReport::TYPE_ALLURE);
+                $report->setFilePath('');
+                $report->setPublicUrl('');
+                $report->setGeneratedAt(new \DateTimeImmutable());
+            }
             $this->entityManager->persist($report);
 
             // Mark run as completed
@@ -230,6 +254,9 @@ class TestRunnerService
                 'id' => $run->getId(),
                 'reportUrl' => $report->getPublicUrl(),
             ]);
+
+            // Clear source directories after report generation
+            $this->artifactCollector->clearSourceDirectories();
 
             return $report;
         } catch (\Throwable $e) {
