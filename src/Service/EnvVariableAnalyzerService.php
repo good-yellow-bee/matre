@@ -189,7 +189,6 @@ class EnvVariableAnalyzerService
         return null;
     }
 
-
     /**
      * Find the MFTF ActionGroup directory within the module.
      */
