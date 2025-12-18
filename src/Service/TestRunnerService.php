@@ -217,7 +217,21 @@ class TestRunnerService
                 $allurePaths[] = $this->playwrightExecutor->getAllureResultsPath();
             }
 
-            $report = $this->allureReportService->generateReport($run, $allurePaths);
+            try {
+                $report = $this->allureReportService->generateReport($run, $allurePaths);
+            } catch (\Throwable $e) {
+                $this->logger->warning('Allure report generation failed, creating placeholder', [
+                    'id' => $run->getId(),
+                    'error' => $e->getMessage(),
+                ]);
+                // Create placeholder report - run still completes
+                $report = new TestReport();
+                $report->setTestRun($run);
+                $report->setReportType(TestReport::TYPE_ALLURE);
+                $report->setFilePath('');
+                $report->setPublicUrl('');
+                $report->setGeneratedAt(new \DateTimeImmutable());
+            }
             $this->entityManager->persist($report);
 
             // Mark run as completed

@@ -80,7 +80,11 @@ class AllureReportService
         if (count($resultPaths) > 1) {
             $this->mergeResults($resultPaths, $allureResultsPath);
         } elseif (count($resultPaths) === 1) {
-            $this->filesystem->mirror($resultPaths[0], $allureResultsPath);
+            if ($this->filesystem->exists($resultPaths[0]) && is_dir($resultPaths[0])) {
+                $this->filesystem->mirror($resultPaths[0], $allureResultsPath);
+            } else {
+                $this->logger->warning('Allure results not found', ['path' => $resultPaths[0]]);
+            }
         }
 
         // Generate report via Allure service
