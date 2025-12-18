@@ -64,6 +64,15 @@
 {% endif %}
 {% endblock %}
 
+{% block stylesheets %}
+    {{ parent() }}
+    {% if testId and environmentId %}
+        {{ vite_entry_link_tags('test-history-app') }}
+    {% else %}
+        {{ vite_entry_link_tags('test-id-selector-app') }}
+    {% endif %}
+{% endblock %}
+
 {% block javascripts %}
     {{ parent() }}
     {% if testId and environmentId %}
