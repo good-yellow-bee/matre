@@ -647,6 +647,7 @@ small.form-text,
 .form-check {
     display: flex;
     align-items: flex-start;
+    gap: 8px;
     margin-bottom: var(--space-sm);
     padding-left: 0;
 }
