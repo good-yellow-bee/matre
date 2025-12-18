@@ -353,11 +353,10 @@
                     liveBadge.style.display = isRunning ? '' : 'none';
                 }
 
-                // Reload page when status changes to completed/failed/cancelled
-                if (['completed', 'failed', 'cancelled'].includes(data.status) && lastStatus !== data.status) {
+                // Reload page when status changes (so badge updates)
+                if (data.status !== lastStatus) {
                     location.reload();
                 }
-                lastStatus = data.status;
             } catch (e) {
                 console.error('Failed to fetch live output:', e);
             }
