@@ -55,6 +55,12 @@
                 Test Runs
             </a>
 
+            <a href="{{ path('admin_test_history') }}"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.get('_route') starts with 'admin_test_history' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
+                <i class="bi bi-clock-history text-base"></i>
+                Test History
+            </a>
+
             <a href="{{ path('admin_test_environment_index') }}"
                class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.get('_route') starts with 'admin_test_environment' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
                 <i class="bi bi-server text-base"></i>

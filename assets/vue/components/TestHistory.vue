@@ -24,7 +24,15 @@
           <i class="bi bi-clock-history me-2"></i>
           Last {{ history.length }} Executions
         </h5>
-        <span class="badge bg-secondary">{{ meta.environmentName }}</span>
+        <select
+          v-model="selectedEnvironmentId"
+          class="form-select form-select-sm w-auto"
+          @change="onEnvironmentChange"
+        >
+          <option v-for="env in environments" :key="env.id" :value="env.id">
+            {{ env.name }}
+          </option>
+        </select>
       </div>
 
       <div class="history-timeline">
@@ -139,6 +147,7 @@ const props = defineProps({
   apiUrl: { type: String, required: true },
   testId: { type: String, required: true },
   environmentId: { type: Number, required: true },
+  environments: { type: Array, default: () => [] },
   testRunBaseUrl: { type: String, required: true },
 });
 
@@ -147,6 +156,7 @@ const meta = ref({});
 const loading = ref(false);
 const error = ref(null);
 const expandedErrors = ref(new Set());
+const selectedEnvironmentId = ref(props.environmentId);
 
 const stats = computed(() => {
   const counts = { passed: 0, failed: 0, broken: 0, skipped: 0 };
@@ -169,7 +179,7 @@ const fetchHistory = async () => {
   try {
     const params = new URLSearchParams({
       testId: props.testId,
-      environmentId: props.environmentId.toString(),
+      environmentId: selectedEnvironmentId.value.toString(),
     });
 
     const response = await fetch(`${props.apiUrl}?${params}`, {
@@ -188,6 +198,13 @@ const fetchHistory = async () => {
   } finally {
     loading.value = false;
   }
+};
+
+const onEnvironmentChange = () => {
+  const url = new URL(window.location);
+  url.searchParams.set('environmentId', selectedEnvironmentId.value.toString());
+  window.history.pushState({}, '', url);
+  fetchHistory();
 };
 
 const getTestRunUrl = (runId) => {

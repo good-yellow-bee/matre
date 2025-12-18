@@ -20,6 +20,7 @@
         data-api-url="{{ path('api_test_history') }}"
         data-test-id="{{ testId }}"
         data-environment-id="{{ environmentId }}"
+        data-environments="{{ environments|map(e => {id: e.id, name: e.name})|json_encode|e('html_attr') }}"
         data-test-run-base-url="/admin/test-runs/__ID__"
     ></div>
 {% else %}

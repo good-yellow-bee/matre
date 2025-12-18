@@ -151,14 +151,12 @@
                                 {{ result.testName }}
                                 {% if result.testId %}
                                     <br>
-                                    <small class="text-muted">
-                                        {{ result.testId }}
-                                        <a href="{{ path('admin_test_history', {testId: result.testId, environmentId: run.environment.id}) }}"
-                                           class="ms-2 text-decoration-none"
-                                           title="View history for this test">
-                                            <i class="bi bi-clock-history"></i>
-                                        </a>
-                                    </small>
+                                    <small class="text-muted">{{ result.testId }}</small>
+                                    <a href="{{ path('admin_test_history', {testId: result.testId, environmentId: run.environment.id}) }}"
+                                       class="btn btn-sm btn-outline-secondary ms-2"
+                                       title="View execution history for this test">
+                                        <i class="bi bi-clock-history me-1"></i>History
+                                    </a>
                                 {% endif %}
                             </td>
                             <td>
