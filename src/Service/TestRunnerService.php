@@ -171,8 +171,6 @@ class TestRunnerService
                 $this->artifactCollector->associateScreenshotsWithResults($allResults, $artifacts['screenshots']);
             }
 
-            // Clear source directories AFTER collection to prevent data loss in concurrent runs
-            $this->artifactCollector->clearSourceDirectories();
 
             $this->entityManager->flush();
 
@@ -230,6 +228,9 @@ class TestRunnerService
                 'id' => $run->getId(),
                 'reportUrl' => $report->getPublicUrl(),
             ]);
+
+            // Clear source directories after report generation
+            $this->artifactCollector->clearSourceDirectories();
 
             return $report;
         } catch (\Throwable $e) {

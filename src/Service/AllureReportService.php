@@ -181,7 +181,7 @@ class AllureReportService
      */
     private function triggerReportGeneration(int $runId): string
     {
-        $projectId = 'run-' . $runId;
+        $projectId = 'default';
 
         try {
             // Create project if not exists (with retry)
