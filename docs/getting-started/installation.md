@@ -2,6 +2,8 @@
 
 > **Want to run your first test quickly?** See the [Quick Start Guide](./quick-start.md) for a streamlined walkthrough.
 
+> **Starting from scratch?** See the [MFTF Setup Guide](./mftf-setup.md) for complete end-to-end instructions including test module creation.
+
 ## Prerequisites
 
 **Docker (Recommended):**
