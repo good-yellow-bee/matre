@@ -4,6 +4,8 @@ Get MATRE running and execute your first MFTF test in minutes.
 
 > **Audience:** Developers familiar with MFTF who want to quickly set up and run tests.
 
+> **New to MFTF?** See the [MFTF Setup Guide](./mftf-setup.md) for complete end-to-end instructions including creating your first test module from scratch.
+
 ![MATRE Dashboard](../images/dashboard.png)
 
 ---
