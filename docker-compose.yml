@@ -34,8 +34,8 @@ services:
   nginx:
     image: nginx:1.25-alpine
     container_name: matre_nginx
-    ports:
-      - "8089:80"
+    # Port 8089 available for direct HTTP access (bypasses Traefik)
+    # Uncomment if needed: ports: ["8089:80"]
     volumes:
       - .:/app:ro
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
@@ -125,16 +125,15 @@ services:
       - matre_network
 
   # ===========================================
-  # Local HTTPS (development)
+  # Local HTTPS (development) - enabled by default
   # ===========================================
-  # Run with: docker-compose --profile local up -d
   # First generate certs: ./docker/traefik/generate-local-certs.sh
+  # Then: docker-compose up -d
+  # Access: https://matre.local
 
   traefik-local:
     image: traefik:v3.2
     container_name: matre_traefik
-    profiles:
-      - local
     ports:
       - "80:80"
       - "443:443"
