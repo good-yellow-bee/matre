@@ -65,7 +65,7 @@
     {# Quick Actions #}
     <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
         <h2 class="text-lg font-semibold text-slate-900 mb-4">Quick Actions</h2>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <a href="{{ path('admin_test_run_new') }}" class="flex flex-col items-center gap-2 p-4 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-colors no-underline group">
                 <div class="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
                     <i class="bi bi-play-fill text-blue-600"></i>
@@ -92,6 +92,20 @@
                     <i class="bi bi-list-ul text-slate-600"></i>
                 </div>
                 <span class="text-sm font-medium text-slate-700">View All Runs</span>
+            </a>
+
+            <a href="{{ path('admin_test_history') }}" class="flex flex-col items-center gap-2 p-4 rounded-lg border border-slate-200 hover:border-cyan-300 hover:bg-cyan-50 transition-colors no-underline group">
+                <div class="h-10 w-10 rounded-lg bg-cyan-100 flex items-center justify-center group-hover:bg-cyan-200 transition-colors">
+                    <i class="bi bi-clock-history text-cyan-600"></i>
+                </div>
+                <span class="text-sm font-medium text-slate-700">Test History</span>
+            </a>
+
+            <a href="http://matre.local:5050/allure-docker-service/projects/default/reports/latest/index.html" target="_blank" rel="noopener" class="flex flex-col items-center gap-2 p-4 rounded-lg border border-slate-200 hover:border-orange-300 hover:bg-orange-50 transition-colors no-underline group">
+                <div class="h-10 w-10 rounded-lg bg-orange-100 flex items-center justify-center group-hover:bg-orange-200 transition-colors">
+                    <i class="bi bi-file-earmark-bar-graph text-orange-600"></i>
+                </div>
+                <span class="text-sm font-medium text-slate-700">Allure Results</span>
             </a>
         </div>
     </div>

@@ -1,0 +1,104 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}MATRE - Automated Testing for Magento 2{% endblock %}
+
+{% block body %}
+<div class="homepage">
+    {# Navigation #}
+    <nav class="homepage-nav">
+        <div class="homepage-nav-inner">
+            <a href="{{ path('app_homepage') }}" class="homepage-logo">
+                <i class="bi bi-speedometer2"></i>
+                <span>MATRE</span>
+            </a>
+            <a href="{{ path('app_login') }}" class="homepage-login-link">
+                Login <i class="bi bi-arrow-right"></i>
+            </a>
+        </div>
+    </nav>
+
+    {# Hero Section #}
+    <section class="homepage-hero">
+        <div class="homepage-hero-content">
+            <h1 class="homepage-headline">
+                <span class="homepage-headline-accent">Automated Testing</span>
+                <br>for Magento 2
+            </h1>
+            <p class="homepage-subhead">
+                Orchestrate MFTF and Playwright tests across multiple environments
+                with scheduling, reporting, and real-time monitoring.
+            </p>
+            <a href="{{ path('app_login') }}" class="homepage-cta">
+                Get Started <i class="bi bi-arrow-right"></i>
+            </a>
+        </div>
+    </section>
+
+    {# Features Section #}
+    <section class="homepage-features">
+        <h2 class="homepage-features-title">Why MATRE?</h2>
+
+        <div class="homepage-features-grid">
+            {# Row 1: 3 features #}
+            <div class="homepage-feature-card">
+                <div class="homepage-feature-icon">
+                    <i class="bi bi-bug"></i>
+                </div>
+                <h3>MFTF Tests</h3>
+                <p>Run Magento Functional Testing Framework tests in isolated Docker containers.</p>
+            </div>
+
+            <div class="homepage-feature-card">
+                <div class="homepage-feature-icon">
+                    <i class="bi bi-display"></i>
+                </div>
+                <h3>Playwright</h3>
+                <p>Modern end-to-end browser testing with cross-browser support.</p>
+            </div>
+
+            <div class="homepage-feature-card">
+                <div class="homepage-feature-icon">
+                    <i class="bi bi-globe"></i>
+                </div>
+                <h3>Multi-Environment</h3>
+                <p>Configure and manage multiple Magento instances as test targets.</p>
+            </div>
+
+            {# Row 2: 2 features centered #}
+            <div class="homepage-feature-card">
+                <div class="homepage-feature-icon">
+                    <i class="bi bi-calendar-check"></i>
+                </div>
+                <h3>Scheduling</h3>
+                <p>Cron-based automated test runs with queue management.</p>
+            </div>
+
+            <div class="homepage-feature-card">
+                <div class="homepage-feature-icon">
+                    <i class="bi bi-graph-up"></i>
+                </div>
+                <h3>Reporting</h3>
+                <p>Allure reports with screenshots, logs, and artifact collection.</p>
+            </div>
+        </div>
+    </section>
+
+    {# Footer CTA #}
+    <section class="homepage-footer-cta">
+        <h2>Ready to automate your tests?</h2>
+        <a href="{{ path('app_login') }}" class="homepage-cta">
+            Get Started <i class="bi bi-arrow-right"></i>
+        </a>
+    </section>
+
+    {# Footer #}
+    <footer class="homepage-footer">
+        <div class="homepage-footer-inner">
+            <span>MATRE &copy; {{ 'now'|date('Y') }}</span>
+            <a href="https://github.com" target="_blank" rel="noopener">
+                <i class="bi bi-github"></i>
+            </a>
+        </div>
+    </footer>
+</div>
+{% endblock %}
