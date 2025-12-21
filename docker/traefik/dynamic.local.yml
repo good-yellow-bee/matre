@@ -1,0 +1,31 @@
+# Traefik Dynamic Configuration for Local Development
+# Self-signed certificates for HTTPS
+
+http:
+  middlewares:
+    security-headers:
+      headers:
+        frameDeny: true
+        browserXssFilter: true
+        contentTypeNosniff: true
+        # No HSTS for local dev (would cause issues with self-signed certs)
+
+    rate-limit:
+      rateLimit:
+        average: 100
+        burst: 50
+
+tls:
+  certificates:
+    - certFile: /etc/traefik/certs/local.crt
+      keyFile: /etc/traefik/certs/local.key
+
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /etc/traefik/certs/local.crt
+        keyFile: /etc/traefik/certs/local.key
+
+  options:
+    default:
+      minVersion: VersionTLS12
