@@ -132,14 +132,14 @@ services:
   # Access: https://matre.local
 
   traefik-local:
-    image: traefik:v3.2
+    image: traefik:v3.6
     container_name: matre_traefik
     ports:
       - "80:80"
       - "443:443"
       - "8080:8080"  # Traefik dashboard
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ~/.docker/run/docker.sock:/var/run/docker.sock:ro
       - ./docker/traefik/traefik.local.yml:/etc/traefik/traefik.yml:ro
       - ./docker/traefik/dynamic.local.yml:/etc/traefik/dynamic.local.yml:ro
       - ./docker/traefik/certs:/etc/traefik/certs:ro
@@ -153,7 +153,7 @@ services:
   # Run with: docker-compose --profile production up -d
 
   traefik:
-    image: traefik:v3.2
+    image: traefik:v3.6
     container_name: matre_traefik_prod
     profiles:
       - production
