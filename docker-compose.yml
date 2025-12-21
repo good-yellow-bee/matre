@@ -125,13 +125,37 @@ services:
       - matre_network
 
   # ===========================================
-  # Production SSL (optional)
+  # Local HTTPS (development)
+  # ===========================================
+  # Run with: docker-compose --profile local up -d
+  # First generate certs: ./docker/traefik/generate-local-certs.sh
+
+  traefik-local:
+    image: traefik:v3.2
+    container_name: matre_traefik
+    profiles:
+      - local
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./docker/traefik/traefik.local.yml:/etc/traefik/traefik.yml:ro
+      - ./docker/traefik/dynamic.local.yml:/etc/traefik/dynamic.local.yml:ro
+      - ./docker/traefik/certs:/etc/traefik/certs:ro
+    networks:
+      - traefik
+    restart: unless-stopped
+
+  # ===========================================
+  # Production SSL (Let's Encrypt)
   # ===========================================
   # Run with: docker-compose --profile production up -d
 
   traefik:
     image: traefik:v3.2
-    container_name: matre_traefik
+    container_name: matre_traefik_prod
     profiles:
       - production
     ports:
@@ -145,7 +169,7 @@ services:
     environment:
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:-}
     networks:
-      - matre_network
+      - traefik
     restart: unless-stopped
 
   # ===========================================
