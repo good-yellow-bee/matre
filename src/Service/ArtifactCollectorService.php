@@ -148,20 +148,86 @@ class ArtifactCollectorService
 
     /**
      * Get full filesystem path to an artifact file.
+     *
+     * SECURITY: Validates that the requested file is within the run's artifact directory
+     * to prevent path traversal attacks.
+     *
+     * @throws \InvalidArgumentException if filename contains path traversal attempts
      */
     public function getArtifactFilePath(TestRun $run, string $filename): string
     {
-        return sprintf('%s/%s', $this->getRunArtifactsPath($run), $filename);
+        // SECURITY: Sanitize filename to prevent path traversal
+        $sanitizedFilename = $this->sanitizeFilename($filename);
+
+        $basePath = $this->getRunArtifactsPath($run);
+        $fullPath = $basePath . '/' . $sanitizedFilename;
+
+        // SECURITY: Resolve real path and verify it's within the allowed directory
+        // If file exists, use realpath; otherwise verify parent directory
+        if (file_exists($fullPath)) {
+            $realPath = realpath($fullPath);
+            $realBase = realpath($basePath);
+
+            if ($realPath === false || $realBase === false) {
+                throw new \InvalidArgumentException('Invalid artifact path');
+            }
+
+            // Ensure the resolved path is within the artifacts directory
+            if (!str_starts_with($realPath, $realBase . '/')) {
+                throw new \InvalidArgumentException('Path traversal attempt detected');
+            }
+
+            return $realPath;
+        }
+
+        return $fullPath;
     }
 
     /**
      * Check if artifact file exists.
+     *
+     * SECURITY: Uses sanitized path to prevent path traversal attacks.
      */
     public function artifactExists(TestRun $run, string $filename): bool
     {
-        $path = $this->getArtifactFilePath($run, $filename);
+        try {
+            $path = $this->getArtifactFilePath($run, $filename);
 
-        return file_exists($path) && is_file($path);
+            return file_exists($path) && is_file($path);
+        } catch (\InvalidArgumentException) {
+            // Path traversal attempt or invalid path
+            return false;
+        }
+    }
+
+    /**
+     * Sanitize a filename to prevent path traversal attacks.
+     *
+     * @throws \InvalidArgumentException if filename is invalid
+     */
+    private function sanitizeFilename(string $filename): string
+    {
+        // Remove null bytes
+        $filename = str_replace("\0", '', $filename);
+
+        // Reject path traversal patterns
+        if (str_contains($filename, '..') || str_contains($filename, "\0")) {
+            throw new \InvalidArgumentException('Invalid filename: path traversal detected');
+        }
+
+        // Reject absolute paths
+        if (str_starts_with($filename, '/') || preg_match('/^[a-zA-Z]:/', $filename)) {
+            throw new \InvalidArgumentException('Invalid filename: absolute path not allowed');
+        }
+
+        // Get just the basename (removes directory components)
+        $basename = basename($filename);
+
+        if ($basename === '' || $basename === '.' || $basename === '..') {
+            throw new \InvalidArgumentException('Invalid filename');
+        }
+
+        return $basename;
     }
 
     /**

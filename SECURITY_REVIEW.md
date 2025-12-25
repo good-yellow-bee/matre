@@ -305,19 +305,87 @@ The codebase demonstrates good security practices in several areas:
 
 ## Priority Remediation
 
-| Priority | Issue | Effort |
-|----------|-------|--------|
-| P0 | Command Injection in Playwright/MFTF Executors | Medium |
-| P1 | Credential Encryption at Rest | Medium |
-| P1 | Path Traversal Validation | Low |
-| P2 | 2FA for API Endpoints | High |
-| P2 | TOTP Secret Encryption | Low |
-| P3 | Password Reset Token Hashing | Low |
-| P3 | Security Headers | Low |
-| P3 | Audit Logging for Impersonation | Medium |
+| Priority | Issue | Effort | Status |
+|----------|-------|--------|--------|
+| P0 | Command Injection in Playwright/MFTF Executors | Medium | **FIXED** |
+| P1 | Credential Encryption at Rest | Medium | **FIXED** |
+| P1 | Path Traversal Validation | Low | **FIXED** |
+| P2 | 2FA for API Endpoints | High | **FIXED** |
+| P2 | TOTP Secret Encryption | Low | **FIXED** |
+| P3 | Password Reset Token Hashing | Low | **FIXED** |
+| P3 | Security Headers | Low | **FIXED** |
+| P3 | Audit Logging for Impersonation | Medium | **FIXED** |
+| P3 | Sensitive Value Masking in Templates | Low | **FIXED** |
+| P4 | Performance Indexes | Low | **FIXED** |
+
+---
+
+## Fixes Applied (2025-12-25)
+
+The following security fixes have been implemented:
+
+### Critical Fixes
+1. **Command Injection Prevention** - Created `ShellEscapeService` with strict validation:
+   - `src/Service/Security/ShellEscapeService.php` - Validates env var names and escapes values
+   - Updated `PlaywrightExecutorService.php` to use secure building
+   - Updated `MftfExecutorService.php` to use secure building
+
+### High Priority Fixes
+2. **Credential Encryption** - AES-256-GCM encryption for sensitive data:
+   - `src/Service/Security/CredentialEncryptionService.php` - Encryption service
+   - `src/EventListener/CredentialEncryptionListener.php` - Auto-encrypts on persist/load
+   - Encrypts: `TestEnvironment.adminPassword`, `User.totpSecret`
+
+3. **Path Traversal Protection** - Updated `ArtifactCollectorService`:
+   - Added `sanitizeFilename()` method to reject `..` and absolute paths
+   - `getArtifactFilePath()` now validates path is within allowed directory
+   - Uses `realpath()` for canonicalization
+
+4. **2FA for Sensitive APIs** - New listener for API 2FA enforcement:
+   - `src/EventListener/ApiTwoFactorListener.php`
+   - Requires 2FA for POST/PUT/DELETE on users, test-runs, environments, cron-jobs
+
+### Medium Priority Fixes
+5. **Password Reset Token Hashing**:
+   - `PasswordResetRequest.php` now stores `tokenHash` instead of plain `token`
+   - Repository uses `hashToken()` to compare tokens
+   - Migration invalidates existing plain-text tokens
+
+6. **Security Headers** - Added response headers listener:
+   - `src/EventListener/SecurityHeadersListener.php`
+   - Adds: X-Frame-Options, X-Content-Type-Options, CSP, Referrer-Policy, etc.
+
+7. **Audit Logging for Impersonation**:
+   - `src/EventSubscriber/SwitchUserAuditSubscriber.php`
+   - Logs switch_user events with user, IP, timestamp
+
+8. **Sensitive Value Masking**:
+   - `src/Twig/SensitiveDataExtension.php` - `mask_sensitive` filter
+   - Updated `test_environment/show.html.twig` to mask passwords/secrets/keys
+
+### Performance Fixes
+9. **Database Indexes** - Migration `Version20251225000001.php`:
+   - `IDX_TEST_RUN_STATUS` on `matre_test_runs(status)`
+   - `IDX_TEST_RUN_ENV_STATUS` on `matre_test_runs(environment_id, status)`
+   - `IDX_TEST_RUN_CREATED` on `matre_test_runs(created_at)`
+   - `IDX_TEST_RESULT_RUN_STATUS` on `matre_test_results(test_run_id, status)`
 
 ---
 
 ## Conclusion
 
-The MATRE codebase has a solid security foundation but requires immediate attention to the command injection vulnerabilities in the test execution services. The critical issues should be addressed before any production deployment. The medium and low severity issues should be included in the security backlog for the next development cycle.
+All identified security vulnerabilities have been addressed. The MATRE codebase now includes:
+- Command injection prevention via strict validation and escaping
+- Encryption at rest for sensitive credentials
+- Path traversal protection for file downloads
+- 2FA enforcement for sensitive API operations
+- Hashed password reset tokens
+- Comprehensive security headers
+- Audit logging for admin impersonation
+- Masked display of sensitive values
+- Performance indexes for common queries
+
+Run the migration to apply database changes:
+```bash
+php bin/console doctrine:migrations:migrate
+```

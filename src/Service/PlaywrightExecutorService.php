@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Entity\TestResult;
 use App\Entity\TestRun;
 use App\Repository\GlobalEnvVariableRepository;
+use App\Service\Security\ShellEscapeService;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Process\Process;
 
@@ -18,6 +19,7 @@ class PlaywrightExecutorService
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly GlobalEnvVariableRepository $globalEnvVariableRepository,
+        private readonly ShellEscapeService $shellEscapeService,
         private readonly string $projectDir,
     ) {
     }
@@ -86,26 +88,39 @@ class PlaywrightExecutorService
 
     /**
      * Build Playwright command string.
+     *
+     * SECURITY: All environment variable names and values are validated and escaped
+     * to prevent command injection attacks.
      */
     public function buildCommand(TestRun $run): string
     {
         $parts = ['cd /app/modules'];
 
         // Layer 1: Export global + environment-specific variables from database
+        // SECURITY: Validate and escape all variables to prevent command injection
         $env = $run->getEnvironment();
         $globalVars = $this->globalEnvVariableRepository->getAllAsKeyValue($env->getName());
         foreach ($globalVars as $key => $value) {
-            $parts[] = sprintf('export %s="%s"', $key, $value);
+            try {
+                $parts[] = $this->shellEscapeService->buildExportStatement($key, $value);
+            } catch (\InvalidArgumentException $e) {
+                // Log and skip invalid variables rather than failing the entire run
+                $this->logger->warning('Skipping invalid environment variable', [
+                    'key' => $key,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         // Layer 2: Set TestEnvironment core variables (override globals)
-        $parts[] = sprintf('export BASE_URL="%s"', $env->getBaseUrl());
+        // SECURITY: Use secure export building for all values
+        $parts[] = $this->shellEscapeService->buildExportStatement('BASE_URL', $env->getBaseUrl());
 
         if ($env->getAdminUsername()) {
-            $parts[] = sprintf('export ADMIN_USERNAME="%s"', $env->getAdminUsername());
+            $parts[] = $this->shellEscapeService->buildExportStatement('ADMIN_USERNAME', $env->getAdminUsername());
         }
         if ($env->getAdminPassword()) {
-            $parts[] = sprintf('export ADMIN_PASSWORD="%s"', $env->getAdminPassword());
+            $parts[] = $this->shellEscapeService->buildExportStatement('ADMIN_PASSWORD', $env->getAdminPassword());
         }
 
         // Build Playwright command

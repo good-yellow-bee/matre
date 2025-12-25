@@ -24,17 +24,22 @@ class PasswordResetRequestRepository extends ServiceEntityRepository
     /**
      * Find a valid (non-expired, unused) reset request by token.
      *
-     * @param string $token The reset token
+     * SECURITY: The plain token is hashed before lookup to match stored hash.
+     *
+     * @param string $plainToken The plain reset token (as sent in email)
      *
      * @return PasswordResetRequest|null The reset request or null if not found/invalid
      */
-    public function findValidByToken(string $token): ?PasswordResetRequest
+    public function findValidByToken(string $plainToken): ?PasswordResetRequest
     {
+        // SECURITY: Hash the incoming token to match against stored hash
+        $tokenHash = PasswordResetRequest::hashToken($plainToken);
+
         return $this->createQueryBuilder('prr')
-            ->where('prr.token = :token')
+            ->where('prr.tokenHash = :tokenHash')
             ->andWhere('prr.expiresAt > :now')
             ->andWhere('prr.isUsed = :isUsed')
-            ->setParameter('token', $token)
+            ->setParameter('tokenHash', $tokenHash)
             ->setParameter('now', new \DateTimeImmutable())
             ->setParameter('isUsed', false)
             ->getQuery()
