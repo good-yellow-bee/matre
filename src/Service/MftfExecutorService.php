@@ -388,23 +388,4 @@ class MftfExecutorService
             default => TestResult::STATUS_BROKEN,
         };
     }
-
-    /**
-     * Quote env value if it contains spaces or special characters.
-     */
-    private function quoteEnvValue(string $value): string
-    {
-        // Already quoted
-        if (preg_match('/^([\'"]).*\1$/', $value)) {
-            return $value;
-        }
-
-        // Needs quoting (spaces, special chars, or empty)
-        if ($value === '' || preg_match('/[\s$"\'\\\\#]/', $value)) {
-            // Use single quotes and escape existing single quotes
-            return "'" . str_replace("'", "'\\''", $value) . "'";
-        }
-
-        return $value;
-    }
 }
