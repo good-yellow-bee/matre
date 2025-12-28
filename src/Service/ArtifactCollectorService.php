@@ -201,36 +201,6 @@ class ArtifactCollectorService
     }
 
     /**
-     * Sanitize a filename to prevent path traversal attacks.
-     *
-     * @throws \InvalidArgumentException if filename is invalid
-     */
-    private function sanitizeFilename(string $filename): string
-    {
-        // Remove null bytes
-        $filename = str_replace("\0", '', $filename);
-
-        // Reject path traversal patterns
-        if (str_contains($filename, '..') || str_contains($filename, "\0")) {
-            throw new \InvalidArgumentException('Invalid filename: path traversal detected');
-        }
-
-        // Reject absolute paths
-        if (str_starts_with($filename, '/') || preg_match('/^[a-zA-Z]:/', $filename)) {
-            throw new \InvalidArgumentException('Invalid filename: absolute path not allowed');
-        }
-
-        // Get just the basename (removes directory components)
-        $basename = basename($filename);
-
-        if ($basename === '' || $basename === '.' || $basename === '..') {
-            throw new \InvalidArgumentException('Invalid filename');
-        }
-
-        return $basename;
-    }
-
-    /**
      * List all artifacts for a run.
      *
      * @return array{screenshots: string[], html: string[], other: string[]}
@@ -289,6 +259,36 @@ class ArtifactCollectorService
         }
 
         return $removed;
+    }
+
+    /**
+     * Sanitize a filename to prevent path traversal attacks.
+     *
+     * @throws \InvalidArgumentException if filename is invalid
+     */
+    private function sanitizeFilename(string $filename): string
+    {
+        // Remove null bytes
+        $filename = str_replace("\0", '', $filename);
+
+        // Reject path traversal patterns
+        if (str_contains($filename, '..') || str_contains($filename, "\0")) {
+            throw new \InvalidArgumentException('Invalid filename: path traversal detected');
+        }
+
+        // Reject absolute paths
+        if (str_starts_with($filename, '/') || preg_match('/^[a-zA-Z]:/', $filename)) {
+            throw new \InvalidArgumentException('Invalid filename: absolute path not allowed');
+        }
+
+        // Get just the basename (removes directory components)
+        $basename = basename($filename);
+
+        if ($basename === '' || $basename === '.' || $basename === '..') {
+            throw new \InvalidArgumentException('Invalid filename');
+        }
+
+        return $basename;
     }
 
     /**

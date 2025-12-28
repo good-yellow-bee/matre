@@ -40,18 +40,11 @@ class ShellEscapeService
         }
 
         if (strlen($name) > self::MAX_ENV_VAR_NAME_LENGTH) {
-            throw new \InvalidArgumentException(sprintf(
-                'Environment variable name exceeds maximum length of %d characters',
-                self::MAX_ENV_VAR_NAME_LENGTH,
-            ));
+            throw new \InvalidArgumentException(sprintf('Environment variable name exceeds maximum length of %d characters', self::MAX_ENV_VAR_NAME_LENGTH));
         }
 
         if (!preg_match(self::ENV_VAR_NAME_PATTERN, $name)) {
-            throw new \InvalidArgumentException(sprintf(
-                'Invalid environment variable name "%s". Must match pattern: %s',
-                $name,
-                self::ENV_VAR_NAME_PATTERN,
-            ));
+            throw new \InvalidArgumentException(sprintf('Invalid environment variable name "%s". Must match pattern: %s', $name, self::ENV_VAR_NAME_PATTERN));
         }
     }
 
@@ -63,10 +56,7 @@ class ShellEscapeService
     public function validateEnvVarValue(string $value): void
     {
         if (strlen($value) > self::MAX_ENV_VAR_VALUE_LENGTH) {
-            throw new \InvalidArgumentException(sprintf(
-                'Environment variable value exceeds maximum length of %d characters',
-                self::MAX_ENV_VAR_VALUE_LENGTH,
-            ));
+            throw new \InvalidArgumentException(sprintf('Environment variable value exceeds maximum length of %d characters', self::MAX_ENV_VAR_VALUE_LENGTH));
         }
 
         // Check for null bytes which could cause truncation
