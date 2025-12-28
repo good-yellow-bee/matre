@@ -11,7 +11,8 @@ use Doctrine\ORM\Mapping as ORM;
 /**
  * Entity for storing password reset requests.
  *
- * Stores tokens for password reset requests with expiration tracking.
+ * Stores hashed tokens for password reset requests with expiration tracking.
+ * SECURITY: Tokens are hashed before storage to prevent token theft if database is compromised.
  */
 #[ORM\Entity(repositoryClass: PasswordResetRequestRepository::class)]
 #[ORM\Table(name: 'matre_password_reset_requests')]
@@ -27,8 +28,12 @@ class PasswordResetRequest
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private ?User $user = null;
 
+    /**
+     * SECURITY: This stores the SHA-256 hash of the token, not the token itself.
+     * The plain token is only sent in the email and never stored.
+     */
     #[ORM\Column(type: Types::STRING, length: 100, unique: true)]
-    private ?string $token = null;
+    private ?string $tokenHash = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private ?\DateTimeImmutable $expiresAt = null;
@@ -59,16 +64,34 @@ class PasswordResetRequest
         return $this;
     }
 
-    public function getToken(): ?string
+    /**
+     * Get the token hash (for database queries).
+     */
+    public function getTokenHash(): ?string
     {
-        return $this->token;
+        return $this->tokenHash;
     }
 
-    public function setToken(string $token): static
+    /**
+     * Set the token by hashing it.
+     * SECURITY: The plain token is hashed and only the hash is stored.
+     *
+     * @param string $plainToken The plain token to hash and store
+     */
+    public function setToken(string $plainToken): static
     {
-        $this->token = $token;
+        $this->tokenHash = self::hashToken($plainToken);
 
         return $this;
+    }
+
+    /**
+     * Hash a token for storage or comparison.
+     * Uses SHA-256 which is fast enough for tokens (unlike passwords).
+     */
+    public static function hashToken(string $token): string
+    {
+        return hash('sha256', $token);
     }
 
     public function getExpiresAt(): ?\DateTimeImmutable

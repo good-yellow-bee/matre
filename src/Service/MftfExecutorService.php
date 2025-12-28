@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Entity\TestResult;
 use App\Entity\TestRun;
 use App\Repository\GlobalEnvVariableRepository;
+use App\Service\Security\ShellEscapeService;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Process\Process;
 
@@ -18,6 +19,7 @@ class MftfExecutorService
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly GlobalEnvVariableRepository $globalEnvVariableRepository,
+        private readonly ShellEscapeService $shellEscapeService,
         private readonly string $projectDir,
         private readonly string $seleniumHost,
         private readonly int $seleniumPort,
@@ -94,6 +96,9 @@ class MftfExecutorService
 
     /**
      * Build MFTF command string.
+     *
+     * SECURITY: All environment variable names and values are validated and escaped
+     * to prevent command injection attacks.
      */
     public function buildCommand(TestRun $run): string
     {
@@ -117,7 +122,7 @@ class MftfExecutorService
 
         // Change to acceptance test directory
         $acceptanceDir = $this->magentoRoot . '/dev/tests/acceptance';
-        $parts[] = 'cd ' . $acceptanceDir;
+        $parts[] = 'cd ' . escapeshellarg($acceptanceDir);
 
         // Build .env file with layered configuration:
         // 1. Global variables (shared across all environments)
@@ -130,12 +135,21 @@ class MftfExecutorService
         $mftfEnvFile = $acceptanceDir . '/.env';
 
         // Layer 1: Start with global + environment-specific variables from database
+        // SECURITY: Validate and escape all variables to prevent command injection
         $globalVars = $this->globalEnvVariableRepository->getAllAsKeyValue($env->getName());
         if (!empty($globalVars)) {
             $globalContent = "# Global variables (from ATR database)\n";
             foreach ($globalVars as $key => $value) {
-                $quotedValue = $this->quoteEnvValue($value);
-                $globalContent .= sprintf("%s=%s\n", $key, $quotedValue);
+                try {
+                    // SECURITY: Validate variable name and build safe env file line
+                    $globalContent .= $this->shellEscapeService->buildEnvFileLine($key, $value) . "\n";
+                } catch (\InvalidArgumentException $e) {
+                    // Log and skip invalid variables rather than failing the entire run
+                    $this->logger->warning('Skipping invalid environment variable', [
+                        'key' => $key,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
             }
             $parts[] = sprintf('echo %s > %s', escapeshellarg($globalContent), escapeshellarg($mftfEnvFile));
             $parts[] = sprintf('cat %s >> %s', escapeshellarg($moduleEnvFile), escapeshellarg($mftfEnvFile));
@@ -144,8 +158,11 @@ class MftfExecutorService
         }
 
         // Layer 2: Override Selenium configuration (ATR infra)
-        $parts[] = sprintf('echo "SELENIUM_HOST=%s" >> %s', $this->seleniumHost, escapeshellarg($mftfEnvFile));
-        $parts[] = sprintf('echo "SELENIUM_PORT=%d" >> %s', $this->seleniumPort, escapeshellarg($mftfEnvFile));
+        // SECURITY: Use secure building for selenium configuration
+        $seleniumHostLine = $this->shellEscapeService->buildEnvFileLine('SELENIUM_HOST', $this->seleniumHost);
+        $seleniumPortLine = $this->shellEscapeService->buildEnvFileLine('SELENIUM_PORT', (string) $this->seleniumPort);
+        $parts[] = sprintf('echo %s >> %s', escapeshellarg($seleniumHostLine), escapeshellarg($mftfEnvFile));
+        $parts[] = sprintf('echo %s >> %s', escapeshellarg($seleniumPortLine), escapeshellarg($mftfEnvFile));
 
         // Generate credentials file from env variables (MFTF requires this for _CREDS references)
         $credentialsFile = $acceptanceDir . '/.credentials';
@@ -370,24 +387,5 @@ class MftfExecutorService
             'SKIP' => TestResult::STATUS_SKIPPED,
             default => TestResult::STATUS_BROKEN,
         };
-    }
-
-    /**
-     * Quote env value if it contains spaces or special characters.
-     */
-    private function quoteEnvValue(string $value): string
-    {
-        // Already quoted
-        if (preg_match('/^([\'"]).*\1$/', $value)) {
-            return $value;
-        }
-
-        // Needs quoting (spaces, special chars, or empty)
-        if ($value === '' || preg_match('/[\s$"\'\\\\#]/', $value)) {
-            // Use single quotes and escape existing single quotes
-            return "'" . str_replace("'", "'\\''", $value) . "'";
-        }
-
-        return $value;
     }
 }

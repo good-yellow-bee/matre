@@ -73,7 +73,14 @@
                             {% for name, data in envVars %}
                             <tr>
                                 <td><code class="text-primary">{{ name }}</code></td>
-                                <td class="text-muted small" style="max-width: 300px; overflow: hidden; text-overflow: ellipsis;">{{ data.value }}</td>
+                                <td class="text-muted small" style="max-width: 300px; overflow: hidden; text-overflow: ellipsis;">
+                                    {# SECURITY: Mask sensitive values (passwords, secrets, keys, tokens) #}
+                                    {% if is_sensitive_name(name) %}
+                                        <span class="text-secondary" title="Sensitive value hidden">{{ data.value|mask_sensitive }}</span>
+                                    {% else %}
+                                        {{ data.value }}
+                                    {% endif %}
+                                </td>
                                 <td class="small">{{ data.usedInTests|default('—') }}</td>
                             </tr>
                             {% endfor %}
