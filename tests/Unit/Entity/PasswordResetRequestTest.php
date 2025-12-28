@@ -21,7 +21,7 @@ class PasswordResetRequestTest extends TestCase
 
         $this->assertNull($request->getId());
         $this->assertNull($request->getUser());
-        $this->assertNull($request->getToken());
+        $this->assertNull($request->getTokenHash());
         $this->assertNull($request->getExpiresAt());
         $this->assertNull($request->getCreatedAt());
         $this->assertFalse($request->isUsed());
@@ -41,9 +41,16 @@ class PasswordResetRequestTest extends TestCase
     public function testTokenGetterAndSetter(): void
     {
         $request = new PasswordResetRequest();
-        $request->setToken('abc123token');
+        $plainToken = 'abc123token';
+        $request->setToken($plainToken);
 
-        $this->assertEquals('abc123token', $request->getToken());
+        // Token is now hashed before storage - verify hash was generated
+        $this->assertNotNull($request->getTokenHash());
+        // Verify hash matches expected hash (SHA-256)
+        $this->assertEquals(
+            PasswordResetRequest::hashToken($plainToken),
+            $request->getTokenHash(),
+        );
     }
 
     public function testExpiresAtGetterAndSetter(): void
