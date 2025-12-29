@@ -231,13 +231,10 @@ class AllureReportService
      */
     private function sendResultsToAllure(string $projectId, string $resultsPath): void
     {
-        $files = glob($resultsPath . '/*-result.json');
-        if (empty($files)) {
-            return;
-        }
-
         $results = [];
-        foreach ($files as $file) {
+
+        // Result JSONs (test results)
+        foreach (glob($resultsPath . '/*-result.json') as $file) {
             $content = file_get_contents($file);
             if ($content) {
                 $results[] = [
@@ -247,25 +244,54 @@ class AllureReportService
             }
         }
 
-        if (!empty($results)) {
-            try {
-                $this->executeWithRetry(
-                    fn () => $this->httpClient->request(
-                        'POST',
-                        $this->allureUrl . '/allure-docker-service/send-results',
-                        [
-                            'query' => ['project_id' => $projectId],
-                            'json' => ['results' => $results],
-                        ],
-                    ),
-                    'send_allure_results',
-                );
-            } catch (\Throwable $e) {
-                $this->logger->error('Failed to send results to Allure after retries', [
-                    'projectId' => $projectId,
-                    'error' => $e->getMessage(),
-                ]);
+        // Container JSONs (test suites/groups)
+        foreach (glob($resultsPath . '/*-container.json') as $file) {
+            $content = file_get_contents($file);
+            if ($content) {
+                $results[] = [
+                    'file_name' => basename($file),
+                    'content_base64' => base64_encode($content),
+                ];
             }
+        }
+
+        // Attachments (screenshots, HTML - critical for failed tests)
+        foreach (glob($resultsPath . '/*-attachment') as $file) {
+            $content = file_get_contents($file);
+            if ($content) {
+                $results[] = [
+                    'file_name' => basename($file),
+                    'content_base64' => base64_encode($content),
+                ];
+            }
+        }
+
+        if (empty($results)) {
+            return;
+        }
+
+        $this->logger->debug('Sending files to Allure', [
+            'projectId' => $projectId,
+            'fileCount' => count($results),
+        ]);
+
+        try {
+            $this->executeWithRetry(
+                fn () => $this->httpClient->request(
+                    'POST',
+                    $this->allureUrl . '/allure-docker-service/send-results',
+                    [
+                        'query' => ['project_id' => $projectId],
+                        'json' => ['results' => $results],
+                    ],
+                ),
+                'send_allure_results',
+            );
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to send results to Allure after retries', [
+                'projectId' => $projectId,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 }

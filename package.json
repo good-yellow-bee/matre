@@ -16,6 +16,9 @@
     "vuedraggable": "^4.1.0"
   },
   "devDependencies": {
+    "@hotwired/turbo": "^7.1.0 || ^8.0",
+    "@symfony/stimulus-bridge": "^3.2.0 || ^4.0.0",
+    "@symfony/ux-turbo": "file:vendor/symfony/ux-turbo/assets",
     "@vitejs/plugin-vue": "^5.1.2",
     "autoprefixer": "^10.4.22",
     "postcss": "^8.5.6",
