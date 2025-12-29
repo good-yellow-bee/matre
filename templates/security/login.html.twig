@@ -2,15 +2,171 @@
 
 {% block title %}Sign in · {{ site_settings.siteName }}{% endblock %}
 
+{% block stylesheets %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    body.app-shell {
+        font-family: 'Inter', sans-serif;
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    }
+    .login-card {
+        width: min(420px, 100%);
+        background: #fff;
+        border-radius: 1rem;
+        padding: 2.5rem;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+        border: 1px solid #e2e8f0;
+    }
+    .login-logo {
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        background: #3b82f6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 1.5rem;
+        margin: 0 auto 1.25rem;
+    }
+    .login-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+    }
+    .login-subtitle {
+        color: #64748b;
+        font-size: 0.925rem;
+        margin-bottom: 2rem;
+    }
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+    .form-label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #334155;
+        margin-bottom: 0.5rem;
+    }
+    .input-wrapper {
+        display: flex;
+        align-items: center;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.625rem;
+        background: #fff;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .input-wrapper:focus-within {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    .input-icon {
+        width: 44px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #94a3b8;
+        flex-shrink: 0;
+    }
+    .input-field {
+        flex: 1;
+        border: none;
+        outline: none;
+        padding: 0.75rem 0.75rem 0.75rem 0;
+        font-size: 0.925rem;
+        color: #0f172a;
+        background: transparent;
+    }
+    .input-field::placeholder {
+        color: #94a3b8;
+    }
+    .checkbox-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        font-size: 0.875rem;
+    }
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #475569;
+        cursor: pointer;
+    }
+    .checkbox-label input {
+        width: 1rem;
+        height: 1rem;
+        accent-color: #3b82f6;
+    }
+    .forgot-link {
+        color: #3b82f6;
+        text-decoration: none;
+        font-weight: 500;
+    }
+    .forgot-link:hover {
+        text-decoration: underline;
+    }
+    .login-btn {
+        width: 100%;
+        padding: 0.875rem;
+        background: #3b82f6;
+        color: #fff;
+        border: none;
+        border-radius: 0.625rem;
+        font-size: 0.925rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+    }
+    .login-btn:hover {
+        background: #2563eb;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+    .login-footer {
+        text-align: center;
+        margin-top: 1.5rem;
+        color: #94a3b8;
+        font-size: 0.8rem;
+    }
+    .alert {
+        padding: 0.875rem 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1.25rem;
+        font-size: 0.875rem;
+    }
+    .alert-danger {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        color: #dc2626;
+    }
+    .alert-info {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        color: #2563eb;
+    }
+    .alert a {
+        color: inherit;
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
+
 {% block body %}
 <section class="auth-hero">
-    <div class="auth-card">
-        <div class="text-center mb-4">
-            <div class="auth-logo mx-auto">
+    <div class="login-card">
+        <div class="text-center">
+            <div class="login-logo">
                 <i class="bi bi-speedometer2"></i>
             </div>
-            <h1 class="auth-title">Welcome back</h1>
-            <p class="auth-subtitle">Sign in to manage your test automation.</p>
+            <h1 class="login-title">Welcome back</h1>
+            <p class="login-subtitle">Sign in to manage your test automation.</p>
         </div>
 
         {% if error %}
@@ -26,57 +182,57 @@
             </div>
         {% endif %}
 
-        <form method="post" action="{{ path('app_login') }}" class="space-y-3">
-            <div class="mb-3">
-                <label for="username" class="form-label fw-semibold">Username</label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-person"></i></span>
+        <form method="post" action="{{ path('app_login') }}">
+            <div class="form-group">
+                <label for="username" class="form-label">Username</label>
+                <div class="input-wrapper">
+                    <span class="input-icon"><i class="bi bi-person"></i></span>
                     <input
                         type="text"
                         value="{{ last_username }}"
                         name="_username"
                         id="username"
-                        class="form-control"
+                        class="input-field"
                         autocomplete="username"
                         required
                         autofocus
-                        placeholder="admin">
+                        placeholder="Enter username">
                 </div>
             </div>
 
-            <div class="mb-3">
-                <label for="password" class="form-label fw-semibold">Password</label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-lock"></i></span>
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <div class="input-wrapper">
+                    <span class="input-icon"><i class="bi bi-lock"></i></span>
                     <input
                         type="password"
                         name="_password"
                         id="password"
-                        class="form-control"
+                        class="input-field"
                         autocomplete="current-password"
                         required
-                        placeholder="••••••••">
+                        placeholder="Enter password">
                 </div>
             </div>
 
             <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
 
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
-                <label class="form-check remember-me mb-0">
-                    <input type="checkbox" name="_remember_me" id="remember_me" class="form-check-input">
-                    <span class="form-check-label">Remember me</span>
+            <div class="checkbox-row">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="_remember_me" id="remember_me">
+                    <span>Remember me</span>
                 </label>
-                <a class="small text-decoration-none text-primary" href="#">
+                <a class="forgot-link" href="#">
                     Forgot password?
                 </a>
             </div>
 
-            <button class="btn auth-cta text-white w-100" type="submit">
+            <button class="login-btn" type="submit">
                 Sign in
             </button>
         </form>
 
-        <p class="auth-footnote text-center mt-4 mb-0">
+        <p class="login-footer">
             &copy; {{ 'now'|date('Y') }} {{ site_settings.siteName }} · Crafted with Symfony 7
         </p>
     </div>
