@@ -7,6 +7,7 @@ namespace App\Controller\Admin;
 use App\Entity\TestRun;
 use App\Form\TestRunType;
 use App\Message\TestRunMessage;
+use App\Repository\TestRunRepository;
 use App\Repository\TestSuiteRepository;
 use App\Service\ArtifactCollectorService;
 use App\Service\TestRunnerService;
@@ -28,6 +29,7 @@ class TestRunController extends AbstractController
         private readonly TestRunnerService $testRunnerService,
         private readonly ArtifactCollectorService $artifactCollector,
         private readonly MessageBusInterface $messageBus,
+        private readonly TestRunRepository $testRunRepository,
         private readonly TestSuiteRepository $testSuiteRepository,
         private readonly string $noVncUrl,
     ) {
@@ -86,8 +88,15 @@ class TestRunController extends AbstractController
     }
 
     #[Route('/{id}', name: 'admin_test_run_show', methods: ['GET'], requirements: ['id' => '\d+'])]
-    public function show(TestRun $run): Response
+    public function show(int $id): Response
     {
+        $run = $this->testRunRepository->find($id);
+        if (!$run) {
+            $this->addFlash('error', sprintf('Test run #%d does not exist.', $id));
+
+            return $this->redirectToRoute('admin_test_run_index');
+        }
+
         $artifacts = $this->artifactCollector->listArtifacts($run);
 
         return $this->render('admin/test_run/show.html.twig', [
@@ -98,8 +107,15 @@ class TestRunController extends AbstractController
     }
 
     #[Route('/{id}/artifacts/{filename}', name: 'admin_test_run_artifact', methods: ['GET'], requirements: ['id' => '\d+', 'filename' => '.+'])]
-    public function artifact(TestRun $run, string $filename): Response
+    public function artifact(int $id, string $filename): Response
     {
+        $run = $this->testRunRepository->find($id);
+        if (!$run) {
+            $this->addFlash('error', sprintf('Test run #%d does not exist.', $id));
+
+            return $this->redirectToRoute('admin_test_run_index');
+        }
+
         // Security: only allow specific extensions
         $allowedExtensions = ['png', 'jpg', 'jpeg', 'gif', 'html', 'htm', 'json'];
         $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
@@ -124,8 +140,15 @@ class TestRunController extends AbstractController
     }
 
     #[Route('/{id}/cancel', name: 'admin_test_run_cancel', methods: ['POST'], requirements: ['id' => '\d+'])]
-    public function cancel(Request $request, TestRun $run): Response
+    public function cancel(Request $request, int $id): Response
     {
+        $run = $this->testRunRepository->find($id);
+        if (!$run) {
+            $this->addFlash('error', sprintf('Test run #%d does not exist.', $id));
+
+            return $this->redirectToRoute('admin_test_run_index');
+        }
+
         if ($this->isCsrfTokenValid('cancel' . $run->getId(), $request->request->get('_token'))) {
             if ($run->canBeCancelled()) {
                 $this->testRunnerService->cancelRun($run);
@@ -141,8 +164,15 @@ class TestRunController extends AbstractController
     }
 
     #[Route('/{id}/retry', name: 'admin_test_run_retry', methods: ['POST'], requirements: ['id' => '\d+'])]
-    public function retry(Request $request, TestRun $run): Response
+    public function retry(Request $request, int $id): Response
     {
+        $run = $this->testRunRepository->find($id);
+        if (!$run) {
+            $this->addFlash('error', sprintf('Test run #%d does not exist.', $id));
+
+            return $this->redirectToRoute('admin_test_run_index');
+        }
+
         if ($this->isCsrfTokenValid('retry' . $run->getId(), $request->request->get('_token'))) {
             $newRun = $this->testRunnerService->retryRun($run);
 
@@ -167,8 +197,15 @@ class TestRunController extends AbstractController
      * Get live output for a running test.
      */
     #[Route('/{id}/live-output', name: 'admin_test_run_live_output', methods: ['GET'], requirements: ['id' => '\d+'])]
-    public function liveOutput(TestRun $run): JsonResponse
+    public function liveOutput(int $id): JsonResponse
     {
+        $run = $this->testRunRepository->find($id);
+        if (!$run) {
+            return new JsonResponse([
+                'error' => sprintf('Test run #%d does not exist.', $id),
+            ], 404);
+        }
+
         $outputPath = $run->getOutputFilePath();
 
         if (!$outputPath || !file_exists($outputPath)) {

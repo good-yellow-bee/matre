@@ -158,10 +158,25 @@ class TestRunCommand extends Command
                     ],
                 );
 
+                // Check for failures or broken tests
                 if ($counts['failed'] > 0 || $counts['broken'] > 0) {
                     $io->warning('Some tests failed or are broken.');
 
                     return Command::FAILURE;
+                }
+
+                // Check if any results were parsed - 0 results with run marked failed indicates parsing issue
+                $totalResults = array_sum($counts);
+                if (0 === $totalResults && TestRun::STATUS_FAILED === $run->getStatus()) {
+                    $io->error('Test execution failed - no results could be parsed. Check output log for details.');
+
+                    return Command::FAILURE;
+                }
+
+                if (0 === $totalResults) {
+                    $io->warning('No test results found. Verify test filter matches existing tests.');
+
+                    return Command::SUCCESS;
                 }
 
                 $io->success('All tests passed!');

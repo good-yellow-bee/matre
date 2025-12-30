@@ -200,7 +200,8 @@ class MftfExecutorService
         $results = [];
 
         // Strip ANSI escape codes for clean parsing
-        $cleanOutput = preg_replace('/\x1b\[[0-9;]*m/', '', $output);
+        // Handles both \x1b[...m (ESC sequences) and [...m (raw brackets from logs)
+        $cleanOutput = preg_replace('/\x1b\[[0-9;]*m|\[[0-9;]*m/', '', $output);
 
         // Pattern to match test blocks in Codeception output
         // Format: "TestCest: MethodName" ... (steps) ... "PASSED/FAIL"
@@ -227,6 +228,38 @@ class MftfExecutorService
             $results = $this->parseResultsFallback($run, $cleanOutput);
         }
 
+        // Exception detection: If still no results but output contains error indicators,
+        // create a synthetic broken result to avoid false "All tests passed" message
+        if (empty($results) && $this->hasErrorIndicators($cleanOutput)) {
+            $result = new TestResult();
+            $result->setTestRun($run);
+
+            // Extract test ID from output or use filter - just the ID is enough info
+            $testId = null;
+
+            // Try to extract from Cest name in output (e.g., MOEC2417Cest -> MOEC2417)
+            if (preg_match('/([A-Z]+\d+)Cest/', $cleanOutput, $idMatch)) {
+                $testId = $idMatch[1];
+            }
+            // Fallback: Use run's test filter
+            elseif ($filter = $run->getTestFilter()) {
+                if (preg_match('/^([A-Z]+\d+)/', $filter, $idMatch)) {
+                    $testId = $idMatch[1];
+                } else {
+                    $testId = $filter; // Use filter as-is if no ID pattern
+                }
+            }
+
+            // Use test ID as both name and ID - simple and sufficient
+            $result->setTestName($testId ?? 'Unknown');
+            if ($testId) {
+                $result->setTestId($testId);
+            }
+            $result->setStatus(TestResult::STATUS_BROKEN);
+
+            $results[] = $result;
+        }
+
         // Extract duration from timing line and apply to results
         if (preg_match('/Time:\s*([0-9:.]+)/', $cleanOutput, $timeMatch)) {
             $this->applyDurationToResults($results, $timeMatch[1]);
@@ -249,6 +282,29 @@ class MftfExecutorService
     public function getAllureResultsPath(): string
     {
         return $this->projectDir . '/var/mftf-results/allure-results';
+    }
+
+    /**
+     * Check if output contains error indicators that suggest test failure.
+     */
+    private function hasErrorIndicators(string $output): bool
+    {
+        $errorPatterns = [
+            '/\[Exception\]/',                          // PHP/Codeception exception
+            '/ERRORS!\s*Tests:/',                       // Codeception error summary
+            '/Fatal error:/i',                          // PHP fatal error
+            '/Uncaught exception/i',                    // Uncaught exception
+            '/failed to generate/i',                    // MFTF generation failure
+            '/Step\s+\[.*?\]\s+.*?FAIL/s',              // Step failure without proper result line
+        ];
+
+        foreach ($errorPatterns as $pattern) {
+            if (preg_match($pattern, $output)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -337,7 +393,7 @@ class MftfExecutorService
         // Parse time format "MM:SS.mmm" or "SS.mmm"
         $parts = explode(':', $timeStr);
         $seconds = 0.0;
-        if (count($parts) === 2) {
+        if (2 === count($parts)) {
             $seconds = (int) $parts[0] * 60 + (float) $parts[1];
         } else {
             $seconds = (float) $parts[0];
