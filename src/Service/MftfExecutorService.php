@@ -56,8 +56,10 @@ class MftfExecutorService
         $run->setOutputFilePath($outputFile);
 
         // Execute via docker
+        // Force ANSI color output for better styled logs
         $process = new Process([
             'docker', 'exec',
+            '-e', 'TERM=xterm-256color',
             $this->magentoContainer,
             'bash', '-c',
             $mftfCommand,
@@ -175,6 +177,8 @@ class MftfExecutorService
         $mftfParts = [$mftfBin . ' run:test'];
         $mftfParts[] = escapeshellarg($filter);
         $mftfParts[] = '-fr'; // failed rerun flag
+
+        $mftfParts[] = '--ansi'; // Force colored output
 
         $parts[] = implode(' ', $mftfParts);
 

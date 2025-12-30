@@ -20,9 +20,19 @@ use Symfony\Component\HttpKernel\KernelEvents;
 #[AsEventListener(event: KernelEvents::RESPONSE, priority: -256)]
 class SecurityHeadersListener
 {
+    public function __construct(
+        private readonly string $environment,
+    ) {
+    }
+
     public function __invoke(ResponseEvent $event): void
     {
         if (!$event->isMainRequest()) {
+            return;
+        }
+
+        // Skip security headers in dev to allow Symfony toolbar
+        if ($this->environment === 'dev') {
             return;
         }
 

@@ -18,7 +18,6 @@ use Symfony\Component\Process\Process;
 class CheckMagentoCommand extends Command
 {
     public function __construct(
-        private readonly string $magentoRoot,
         private readonly string $magentoContainer,
     ) {
         parent::__construct();

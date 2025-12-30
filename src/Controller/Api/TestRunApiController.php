@@ -9,7 +9,6 @@ use App\Message\TestRunMessage;
 use App\Repository\TestResultRepository;
 use App\Repository\TestRunRepository;
 use App\Service\TestRunnerService;
-use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -25,7 +24,6 @@ class TestRunApiController extends AbstractController
         private readonly TestRunRepository $testRunRepository,
         private readonly TestResultRepository $testResultRepository,
         private readonly TestRunnerService $testRunnerService,
-        private readonly EntityManagerInterface $entityManager,
         private readonly MessageBusInterface $messageBus,
     ) {
     }

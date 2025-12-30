@@ -6,7 +6,6 @@ namespace App\Controller\Api;
 
 use App\Entity\TestEnvironment;
 use App\Repository\GlobalEnvVariableRepository;
-use App\Repository\TestEnvironmentRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -22,7 +21,6 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class TestEnvironmentApiController extends AbstractController
 {
     public function __construct(
-        private readonly TestEnvironmentRepository $repository,
         private readonly GlobalEnvVariableRepository $globalEnvVariableRepository,
         private readonly EntityManagerInterface $entityManager,
     ) {

@@ -73,8 +73,9 @@ class TestEnvironment
     /**
      * Additional environment variables as JSON.
      * Stores all variables from .env file that don't have dedicated fields.
+     * Format: key => value (string) or key => {value: string, usedInTests: string|null}.
      *
-     * @var array<string, string>
+     * @var array<string, string|array{value: string, usedInTests: string|null}>
      */
     #[ORM\Column(type: Types::JSON)]
     private array $envVariables = [];
