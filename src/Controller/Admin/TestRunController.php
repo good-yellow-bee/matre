@@ -7,11 +7,9 @@ namespace App\Controller\Admin;
 use App\Entity\TestRun;
 use App\Form\TestRunType;
 use App\Message\TestRunMessage;
-use App\Repository\TestRunRepository;
 use App\Repository\TestSuiteRepository;
 use App\Service\ArtifactCollectorService;
 use App\Service\TestRunnerService;
-use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -27,8 +25,6 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class TestRunController extends AbstractController
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
-        private readonly TestRunRepository $testRunRepository,
         private readonly TestRunnerService $testRunnerService,
         private readonly ArtifactCollectorService $artifactCollector,
         private readonly MessageBusInterface $messageBus,

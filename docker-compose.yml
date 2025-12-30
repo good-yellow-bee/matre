@@ -177,7 +177,7 @@ services:
 
   # Selenium Hub - Grid coordinator
   selenium-hub:
-    image: selenium/hub:4.15
+    image: selenium/hub:latest
     container_name: matre_selenium_hub
     ports:
       - "4442:4442"
@@ -189,10 +189,10 @@ services:
     networks:
       - matre_network
 
-  # Chrome Node - Browser for MFTF tests (scalable)
+  # Chromium Node - Browser for MFTF tests (ARM64 compatible)
   # noVNC live preview available at https://{APP_DOMAIN}:7900
   chrome-node:
-    image: selenium/node-chrome:4.15
+    image: selenium/node-chromium:latest
     container_name: matre_chrome_node
     shm_size: 2gb
     ports:
@@ -206,6 +206,9 @@ services:
       SE_NODE_MAX_SESSIONS: 2
       SE_NODE_SESSION_TIMEOUT: 300
       SE_VNC_NO_PASSWORD: ${SE_VNC_NO_PASSWORD:-true}
+      # Chromium anti-bot detection flags (hides navigator.webdriver)
+      SE_BROWSER_ARGS_DISABLE_BLINK: "--disable-blink-features=AutomationControlled"
+      SE_BROWSER_ARGS_DISABLE_INFOBARS: "--disable-infobars"
     networks:
       - matre_network
 

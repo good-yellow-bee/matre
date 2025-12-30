@@ -19,22 +19,26 @@ echo ""
 
 FAILED=0
 
-# Check 1: Composer Validation
-echo -e "${BLUE}[1/6] Validating composer.json...${NC}"
-composer validate --strict
-if [ $? -ne 0 ]; then
-    echo -e "${RED}✗ Composer validation failed${NC}"
-    FAILED=1
-else
-    echo -e "${GREEN}✓ Composer validation passed${NC}"
-fi
-echo ""
-
 # Check if Docker is running
 DOCKER_RUNNING=0
 if docker-compose ps --status running 2>/dev/null | grep -q "php"; then
     DOCKER_RUNNING=1
 fi
+
+# Check 1: Composer Validation
+echo -e "${BLUE}[1/6] Validating composer.json...${NC}"
+if [ $DOCKER_RUNNING -eq 1 ]; then
+    docker-compose exec -T php composer validate --strict
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}✗ Composer validation failed${NC}"
+        FAILED=1
+    else
+        echo -e "${GREEN}✓ Composer validation passed${NC}"
+    fi
+else
+    echo -e "${YELLOW}⚠ Docker not running - skipping composer validation${NC}"
+fi
+echo ""
 
 # Check 2: PHPStan
 echo -e "${BLUE}[2/6] Running PHPStan (Level 5)...${NC}"
@@ -84,13 +88,17 @@ echo ""
 
 # Check 5: Security Audit
 echo -e "${BLUE}[5/6] Running security audit...${NC}"
-composer audit
-if [ $? -ne 0 ]; then
-    echo -e "${YELLOW}⚠ Security vulnerabilities found${NC}"
-    echo -e "${YELLOW}Review and fix before production deployment${NC}"
-    # Don't fail on security issues, just warn
+if [ $DOCKER_RUNNING -eq 1 ]; then
+    docker-compose exec -T php composer audit
+    if [ $? -ne 0 ]; then
+        echo -e "${YELLOW}⚠ Security vulnerabilities found${NC}"
+        echo -e "${YELLOW}Review and fix before production deployment${NC}"
+        # Don't fail on security issues, just warn
+    else
+        echo -e "${GREEN}✓ Security audit passed${NC}"
+    fi
 else
-    echo -e "${GREEN}✓ Security audit passed${NC}"
+    echo -e "${YELLOW}⚠ Docker not running - skipping security audit${NC}"
 fi
 echo ""
 

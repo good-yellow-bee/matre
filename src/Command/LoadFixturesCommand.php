@@ -6,6 +6,7 @@ namespace App\Command;
 
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -77,6 +78,7 @@ class LoadFixturesCommand extends Command
                 'All existing data will be permanently deleted.',
             ]);
 
+            /** @var QuestionHelper $helper */
             $helper = $this->getHelper('question');
             $question = new ConfirmationQuestion(
                 'Are you sure you want to continue? (yes/no) ',

@@ -3,6 +3,10 @@ framework:
     secret: '%env(APP_SECRET)%'
     #csrf_protection: true
 
+    # Trust reverse proxy (Traefik) for HTTPS detection
+    trusted_proxies: '%env(TRUSTED_PROXIES)%'
+    trusted_headers: ['x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-port']
+
     # Note that the session will be started ONLY if you read or write from it.
     session: true
 

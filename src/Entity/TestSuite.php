@@ -87,6 +87,9 @@ class TestSuite
     #[ORM\Column(name: 'is_active', type: Types::BOOLEAN)]
     private bool $isActive = true;
 
+    #[ORM\Column(type: Types::INTEGER, nullable: true)]
+    private ?int $estimatedDuration = null;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -178,9 +181,26 @@ class TestSuite
         return $this->isActive;
     }
 
+    public function isActive(): bool
+    {
+        return $this->isActive;
+    }
+
     public function setIsActive(bool $isActive): static
     {
         $this->isActive = $isActive;
+
+        return $this;
+    }
+
+    public function getEstimatedDuration(): ?int
+    {
+        return $this->estimatedDuration;
+    }
+
+    public function setEstimatedDuration(?int $estimatedDuration): static
+    {
+        $this->estimatedDuration = $estimatedDuration;
 
         return $this;
     }

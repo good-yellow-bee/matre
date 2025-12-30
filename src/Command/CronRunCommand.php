@@ -6,6 +6,7 @@ namespace App\Command;
 
 use App\Message\CronJobMessage;
 use App\Repository\CronJobRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -25,6 +26,7 @@ class CronRunCommand extends Command
     public function __construct(
         private readonly CronJobRepository $cronJobRepository,
         private readonly MessageBusInterface $messageBus,
+        private readonly EntityManagerInterface $entityManager,
     ) {
         parent::__construct();
     }
@@ -85,7 +87,7 @@ class CronRunCommand extends Command
         $handledStamps = $envelope->all(HandledStamp::class);
         if (!empty($handledStamps)) {
             // Refresh job to get latest status
-            $this->cronJobRepository->getEntityManager()->refresh($job);
+            $this->entityManager->refresh($job);
 
             if ($job->getLastStatus() === 'success') {
                 $io->success('Job completed successfully');

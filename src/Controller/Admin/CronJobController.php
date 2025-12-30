@@ -6,7 +6,6 @@ namespace App\Controller\Admin;
 
 use App\Entity\CronJob;
 use App\Form\CronJobType;
-use App\Repository\CronJobRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -25,7 +24,6 @@ class CronJobController extends AbstractController
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly CronJobRepository $cronJobRepository,
     ) {
     }
 
