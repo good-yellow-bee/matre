@@ -1,303 +1,349 @@
 #!/usr/bin/env python3
 """
-Allure Test History Cleanup Script
+Allure Test History Cleanup Script (v2)
 
-Removes test execution history from Allure reports for specified test IDs.
-Can be run locally or via SSH on a remote server.
+Removes test execution history from Allure reports with advanced filtering.
+Supports multi-environment batch operations and suite-based filtering.
 
-Usage:
-    # Local execution:
-    python allure_cleanup.py --path /path/to/allure-report --test-id "MOEC-2609US"
+Usage Examples:
+    # Remove test from all environments
+    python allure_cleanup.py -t MOEC8899ES --env all
 
-    # Remote execution via SSH:
-    python allure_cleanup.py --ssh abb --path /home/ubuntu/ABBTests/src/pub/allure-report-stage-us --test-id "MOEC-2609US"
+    # Remove from specific suite only (e.g., group1)
+    python allure_cleanup.py -t MOEC2417 --in-suite group1 --env all
 
-    # Dry run (show what would be removed):
-    python allure_cleanup.py --ssh abb --path /path/to/report --test-id "MOEC-2609US" --dry-run
+    # Remove from ES environments only
+    python allure_cleanup.py -t MOEC3758 --env es
 
-    # Multiple tests:
-    python allure_cleanup.py --ssh abb --path /path/to/report --test-id "MOEC-2609US" --test-id "MOEC-1234"
+    # Remove from group1 on US environments only
+    python allure_cleanup.py -t MOEC-5173 --in-suite group1 --env us
+
+    # Keep entries in functional\\us suite (remove from everywhere else)
+    python allure_cleanup.py -t MOEC5317 --not-in-suite us --env all
+
+    # Multiple test IDs
+    python allure_cleanup.py -t MOEC3758 -t MOEC11676 --env es
+
+    # Dry run
+    python allure_cleanup.py -t MOEC2417 --in-suite group1 --env all --dry-run
+
+Environment shortcuts:
+    all     = stage-us, stage-es, preprod-us, preprod-es
+    us      = stage-us, preprod-us
+    es      = stage-es, preprod-es
+    stage   = stage-us, stage-es
+    preprod = preprod-us, preprod-es
 """
 
 import argparse
 import json
 import subprocess
 import sys
-import hashlib
+import tempfile
+import os
 from pathlib import Path
+from typing import Optional
 
 
-def run_command(cmd: str, ssh_host: str = None, use_sudo: bool = False) -> tuple[int, str, str]:
-    """Run a command locally or via SSH."""
-    if use_sudo:
-        cmd = f'sudo {cmd}'
-    if ssh_host:
-        cmd = f'ssh {ssh_host} "{cmd}"'
+# Environment shortcuts
+ENV_SHORTCUTS = {
+    'all': ['stage-us', 'stage-es', 'preprod-us', 'preprod-es'],
+    'us': ['stage-us', 'preprod-us'],
+    'es': ['stage-es', 'preprod-es'],
+    'stage': ['stage-us', 'stage-es'],
+    'preprod': ['preprod-us', 'preprod-es'],
+}
 
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    return result.returncode, result.stdout, result.stderr
-
-
-def read_remote_file(path: str, ssh_host: str = None) -> str:
-    """Read file content from local or remote."""
-    cmd = f"cat {path}"
-    code, stdout, stderr = run_command(cmd, ssh_host)
-    if code != 0:
-        raise FileNotFoundError(f"Cannot read {path}: {stderr}")
-    return stdout
+# Default base path template
+DEFAULT_BASE_PATH = '/home/ubuntu/ABBTests/src/pub/allure-report-{env}'
+DEFAULT_SSH_HOST = 'abb'
 
 
-def write_remote_file(path: str, content: str, ssh_host: str = None, use_sudo: bool = False) -> None:
-    """Write content to local or remote file."""
-    if ssh_host:
-        # Use tee with sudo for permission issues
-        if use_sudo:
-            cmd = f"ssh {ssh_host} 'sudo tee {path} > /dev/null'"
-        else:
-            cmd = f"ssh {ssh_host} 'cat > {path}'"
-        proc = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, text=True)
-        proc.communicate(input=content)
-        if proc.returncode != 0:
-            raise IOError(f"Failed to write to {path}")
-    else:
-        Path(path).write_text(content)
+def expand_environments(env_arg: str) -> list[str]:
+    """Expand environment argument to list of environments."""
+    if env_arg in ENV_SHORTCUTS:
+        return ENV_SHORTCUTS[env_arg]
+    return [e.strip() for e in env_arg.split(',')]
 
 
-def backup_file(path: str, ssh_host: str = None, use_sudo: bool = False) -> str:
-    """Create a backup of the file."""
-    backup_path = f"{path}.bak"
-    cmd = f"cp {path} {backup_path}"
-    code, _, stderr = run_command(cmd, ssh_host, use_sudo)
-    if code != 0:
-        raise IOError(f"Failed to backup {path}: {stderr}")
-    return backup_path
+def generate_cleanup_script(
+    test_ids: list[str],
+    in_suites: Optional[list[str]] = None,
+    not_in_suites: Optional[list[str]] = None,
+    dry_run: bool = False
+) -> str:
+    """Generate Python cleanup script to run on remote."""
 
+    # Build filter conditions
+    suite_conditions = []
+    if in_suites:
+        suite_checks = ' or '.join([f'"{s}" in suite' for s in in_suites])
+        suite_conditions.append(f'({suite_checks})')
+    if not_in_suites:
+        suite_checks = ' and '.join([f'"{s}" not in suite' for s in not_in_suites])
+        suite_conditions.append(f'({suite_checks})')
 
-def find_test_hashes(report_path: str, test_ids: list[str], ssh_host: str = None) -> dict:
-    """Find test case hashes by searching in behaviors.json and categories.json."""
-    found_tests = {}
+    suite_filter = ' and '.join(suite_conditions) if suite_conditions else 'True'
 
-    # Search in behaviors.json
-    try:
-        behaviors_path = f"{report_path}/data/behaviors.json"
-        content = read_remote_file(behaviors_path, ssh_host)
-        behaviors = json.loads(content)
+    # Escape test IDs for Python string
+    test_ids_str = ', '.join([f'"{tid}"' for tid in test_ids])
 
-        def search_children(node, test_ids, results):
-            if isinstance(node, dict):
-                if 'name' in node and 'uid' in node:
-                    for test_id in test_ids:
-                        if test_id.lower() in node.get('name', '').lower():
-                            results[node['name']] = {
-                                'uid': node['uid'],
-                                'status': node.get('status'),
-                                'retriesCount': node.get('retriesCount', 0)
-                            }
-                if 'children' in node:
-                    for child in node['children']:
-                        search_children(child, test_ids, results)
-            elif isinstance(node, list):
-                for item in node:
-                    search_children(item, test_ids, results)
+    script = f'''
+import json
+import os
+import sys
 
-        search_children(behaviors, test_ids, found_tests)
-    except Exception as e:
-        print(f"Warning: Could not search behaviors.json: {e}")
+def cleanup_environment(base_path, test_ids, dry_run=False):
+    """Clean up test entries from a single environment."""
+    tc_dir = f"{{base_path}}/data/test-cases"
 
-    return found_tests
+    if not os.path.exists(tc_dir):
+        return {{"error": "Directory not found", "path": tc_dir}}
 
+    removed = []
+    removed_uids = []
 
-def find_history_keys(report_path: str, test_names: list[str], ssh_host: str = None) -> list[str]:
-    """Find history.json keys that match the test names."""
-    keys_to_remove = []
+    # Find and remove matching test-case files
+    for f in os.listdir(tc_dir):
+        if not f.endswith(".json"):
+            continue
 
-    # Read suites.csv to map test names to history IDs
-    try:
-        suites_path = f"{report_path}/data/suites.csv"
-        content = read_remote_file(suites_path, ssh_host)
+        filepath = f"{{tc_dir}}/{{f}}"
+        try:
+            with open(filepath) as fh:
+                data = json.load(fh)
+        except Exception as e:
+            continue
 
-        for line in content.split('\n'):
-            for test_name in test_names:
-                if test_name.lower() in line.lower():
-                    # The historyId is typically calculated from test full name
-                    # We'll need to search history.json directly
-                    pass
-    except Exception as e:
-        print(f"Warning: Could not read suites.csv: {e}")
+        name = data.get("name", "")
+        labels = data.get("labels", [])
+        suite = next((l.get("value", "") for l in labels if l.get("name") == "suite"), "")
 
-    # Read history.json and search for matching entries
-    try:
-        history_path = f"{report_path}/history/history.json"
-        content = read_remote_file(history_path, ssh_host)
-        history = json.loads(content)
+        # Check if test ID matches
+        matches_id = False
+        for tid in test_ids:
+            if tid in name:
+                matches_id = True
+                break
 
-        # Search through categories.json for test name to historyId mapping
-        categories_path = f"{report_path}/data/categories.json"
-        cat_content = read_remote_file(categories_path, ssh_host)
+        if not matches_id:
+            continue
 
-        for test_name in test_names:
-            if test_name.lower() in cat_content.lower():
-                # Find the historyId by searching for test name patterns
-                # The history ID is a hash - we need to find it in test-cases folder
-                pass
+        # Apply suite filter
+        if not ({suite_filter}):
+            continue
 
-    except Exception as e:
-        print(f"Warning: Could not process history: {e}")
+        # This entry should be removed
+        uid = data.get("uid")
+        history_id = data.get("historyId")
 
-    return keys_to_remove
+        removed.append({{
+            "uid": uid,
+            "name": name,
+            "suite": suite,
+            "historyId": history_id
+        }})
+        removed_uids.append(uid)
 
+        if not dry_run:
+            os.remove(filepath)
 
-def get_test_history_ids(report_path: str, test_pattern: str, ssh_host: str = None) -> list[str]:
-    """Get historyId values for tests matching pattern by searching test-cases."""
-    history_ids = []
+    if not removed:
+        return {{"removed": 0, "entries": []}}
 
-    # Search in test-cases JSON files for matching test names
-    cmd = f"grep -r '{test_pattern}' {report_path}/data/test-cases/ 2>/dev/null | head -20"
-    code, stdout, stderr = run_command(cmd, ssh_host)
-
-    if stdout:
-        # Parse the grep output to find historyId
-        for line in stdout.split('\n'):
-            if 'historyId' in line:
-                try:
-                    # Extract historyId from JSON content
-                    import re
-                    match = re.search(r'"historyId"\s*:\s*"([^"]+)"', line)
-                    if match:
-                        history_ids.append(match.group(1))
-                except:
-                    pass
-
-    # Alternative: search directly in test-cases files
-    cmd = f"find {report_path}/data/test-cases -name '*.json' -exec grep -l '{test_pattern}' {{}} \\; 2>/dev/null"
-    code, stdout, stderr = run_command(cmd, ssh_host)
-
-    if stdout:
-        for file_path in stdout.strip().split('\n'):
-            if file_path:
-                try:
-                    content = read_remote_file(file_path, ssh_host)
-                    data = json.loads(content)
-                    if 'historyId' in data:
-                        history_ids.append(data['historyId'])
-                except Exception as e:
-                    print(f"Warning: Could not parse {file_path}: {e}")
-
-    return list(set(history_ids))
-
-
-def remove_from_history(report_path: str, history_ids: list[str], ssh_host: str = None, dry_run: bool = False, use_sudo: bool = False) -> int:
-    """Remove entries from history.json by historyId."""
-    history_path = f"{report_path}/history/history.json"
-
-    try:
-        content = read_remote_file(history_path, ssh_host)
-        history = json.loads(content)
-    except Exception as e:
-        print(f"Error reading history.json: {e}")
-        return 0
-
-    original_count = len(history)
-    removed_count = 0
-
-    for history_id in history_ids:
-        if history_id in history:
-            if dry_run:
-                print(f"  [DRY RUN] Would remove history entry: {history_id}")
-            else:
-                del history[history_id]
-            removed_count += 1
-
-    if removed_count > 0 and not dry_run:
-        # Backup original
-        backup_file(history_path, ssh_host, use_sudo)
-
-        # Write updated history
-        new_content = json.dumps(history, separators=(',', ':'))
-        write_remote_file(history_path, new_content, ssh_host, use_sudo)
-        print(f"  Removed {removed_count} entries from history.json (backup created)")
-
-    return removed_count
-
-
-def remove_test_case_files(report_path: str, test_uids: list[str], ssh_host: str = None, dry_run: bool = False, use_sudo: bool = False) -> int:
-    """Remove test-case JSON files by UID."""
-    removed = 0
-    for uid in test_uids:
-        file_path = f"{report_path}/data/test-cases/{uid}.json"
-        if dry_run:
-            print(f"  [DRY RUN] Would remove: {file_path}")
-            removed += 1
-        else:
-            cmd = f"rm -f {file_path}"
-            code, _, stderr = run_command(cmd, ssh_host, use_sudo)
-            if code == 0:
-                print(f"  Removed: {file_path}")
-                removed += 1
-            else:
-                print(f"  Warning: Could not remove {file_path}: {stderr}")
-    return removed
-
-
-def remove_from_json_file(report_path: str, filename: str, test_uids: list[str], ssh_host: str = None, dry_run: bool = False, use_sudo: bool = False) -> int:
-    """Remove test entries from a JSON file (behaviors.json, suites.json) by UID."""
-    file_path = f"{report_path}/data/{filename}"
-
-    try:
-        content = read_remote_file(file_path, ssh_host)
-        data = json.loads(content)
-    except Exception as e:
-        print(f"  Warning: Could not read {filename}: {e}")
-        return 0
-
-    removed = 0
-
-    def remove_by_uid(node, uids_to_remove):
-        """Recursively remove nodes with matching UIDs."""
-        nonlocal removed
+    # Helper to remove by UID from nested structure
+    def remove_by_uid(node, uids):
         if isinstance(node, dict):
-            if 'children' in node and isinstance(node['children'], list):
-                original_len = len(node['children'])
-                node['children'] = [
-                    child for child in node['children']
-                    if not (isinstance(child, dict) and child.get('uid') in uids_to_remove)
+            if "children" in node:
+                node["children"] = [
+                    c for c in node["children"]
+                    if not (isinstance(c, dict) and c.get("uid") in uids)
                 ]
-                removed += original_len - len(node['children'])
-                for child in node['children']:
-                    remove_by_uid(child, uids_to_remove)
+                for c in node["children"]:
+                    remove_by_uid(c, uids)
         elif isinstance(node, list):
             for item in node:
-                remove_by_uid(item, uids_to_remove)
+                remove_by_uid(item, uids)
 
-    if dry_run:
-        # Count matches without modifying
-        def count_matches(node, uids):
-            count = 0
-            if isinstance(node, dict):
-                if node.get('uid') in uids:
-                    count += 1
-                if 'children' in node:
-                    for child in node['children']:
-                        count += count_matches(child, uids)
-            elif isinstance(node, list):
-                for item in node:
-                    count += count_matches(item, uids)
-            return count
+    # Update behaviors.json and suites.json
+    for jf in ["behaviors.json", "suites.json"]:
+        jpath = f"{{base_path}}/data/{{jf}}"
+        if not os.path.exists(jpath):
+            continue
 
-        matches = count_matches(data, set(test_uids))
-        if matches > 0:
-            print(f"  [DRY RUN] Would remove {matches} entries from {filename}")
-        return matches
+        try:
+            with open(jpath) as fh:
+                jdata = json.load(fh)
 
-    remove_by_uid(data, set(test_uids))
+            if not dry_run:
+                # Backup
+                with open(f"{{jpath}}.bak", "w") as fh:
+                    json.dump(jdata, fh)
 
-    if removed > 0:
-        backup_file(file_path, ssh_host, use_sudo)
-        new_content = json.dumps(data, separators=(',', ':'))
-        write_remote_file(file_path, new_content, ssh_host, use_sudo)
-        print(f"  Removed {removed} entries from {filename} (backup created)")
+                remove_by_uid(jdata, set(removed_uids))
 
-    return removed
+                with open(jpath, "w") as fh:
+                    json.dump(jdata, fh, separators=(",", ":"))
+        except Exception as e:
+            pass
+
+    # Update history.json
+    history_ids = set(r["historyId"] for r in removed if r.get("historyId"))
+    hist_path = f"{{base_path}}/history/history.json"
+
+    if history_ids and os.path.exists(hist_path):
+        try:
+            with open(hist_path) as fh:
+                hist = json.load(fh)
+
+            if not dry_run:
+                with open(f"{{hist_path}}.bak", "w") as fh:
+                    json.dump(hist, fh)
+
+                for hid in history_ids:
+                    if hid in hist:
+                        del hist[hid]
+
+                with open(hist_path, "w") as fh:
+                    json.dump(hist, fh, separators=(",", ":"))
+        except Exception as e:
+            pass
+
+    return {{
+        "removed": len(removed),
+        "entries": removed[:5],
+        "more": len(removed) - 5 if len(removed) > 5 else 0
+    }}
+
+
+# Main execution
+test_ids = [{test_ids_str}]
+dry_run = {str(dry_run)}
+environments = {{}}  # Will be populated by caller
+
+base_path_template = os.environ.get("BASE_PATH", "{DEFAULT_BASE_PATH}")
+envs_str = os.environ.get("ENVIRONMENTS", "")
+
+if not envs_str:
+    print("ERROR: ENVIRONMENTS not set", file=sys.stderr)
+    sys.exit(1)
+
+results = {{}}
+for env in envs_str.split(","):
+    env = env.strip()
+    if not env:
+        continue
+    base_path = base_path_template.replace("{{env}}", env)
+    results[env] = cleanup_environment(base_path, test_ids, dry_run)
+
+print(json.dumps(results, indent=2))
+'''
+    return script
+
+
+def run_remote_cleanup(
+    ssh_host: str,
+    environments: list[str],
+    test_ids: list[str],
+    base_path: str,
+    in_suites: Optional[list[str]] = None,
+    not_in_suites: Optional[list[str]] = None,
+    dry_run: bool = False,
+    use_sudo: bool = False
+) -> dict:
+    """Run cleanup script on remote host."""
+
+    script = generate_cleanup_script(test_ids, in_suites, not_in_suites, dry_run)
+
+    # Create temp file with script
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write(script)
+        temp_path = f.name
+
+    try:
+        # Copy script to remote
+        remote_path = '/tmp/allure_cleanup_batch.py'
+        subprocess.run(
+            ['scp', temp_path, f'{ssh_host}:{remote_path}'],
+            check=True, capture_output=True
+        )
+
+        # Run script on remote
+        env_vars = f'ENVIRONMENTS="{",".join(environments)}" BASE_PATH="{base_path}"'
+        python_cmd = f'{env_vars} python3 {remote_path}'
+
+        if use_sudo:
+            python_cmd = f'sudo {python_cmd}'
+
+        result = subprocess.run(
+            ['ssh', ssh_host, python_cmd],
+            capture_output=True, text=True
+        )
+
+        if result.returncode != 0:
+            print(f"Error: {result.stderr}", file=sys.stderr)
+            return {}
+
+        return json.loads(result.stdout)
+
+    finally:
+        os.unlink(temp_path)
+
+
+def run_local_cleanup(
+    environments: list[str],
+    test_ids: list[str],
+    base_path: str,
+    in_suites: Optional[list[str]] = None,
+    not_in_suites: Optional[list[str]] = None,
+    dry_run: bool = False
+) -> dict:
+    """Run cleanup locally."""
+
+    script = generate_cleanup_script(test_ids, in_suites, not_in_suites, dry_run)
+
+    # Set environment variables and run
+    env = os.environ.copy()
+    env['ENVIRONMENTS'] = ','.join(environments)
+    env['BASE_PATH'] = base_path
+
+    result = subprocess.run(
+        [sys.executable, '-c', script],
+        capture_output=True, text=True, env=env
+    )
+
+    if result.returncode != 0:
+        print(f"Error: {result.stderr}", file=sys.stderr)
+        return {}
+
+    return json.loads(result.stdout)
+
+
+def print_results(results: dict, dry_run: bool = False):
+    """Print cleanup results in a formatted way."""
+    prefix = "[DRY RUN] " if dry_run else ""
+
+    total_removed = 0
+
+    for env, result in results.items():
+        if 'error' in result:
+            print(f"\n{env}: {result['error']} ({result.get('path', '')})")
+            continue
+
+        removed = result.get('removed', 0)
+        total_removed += removed
+
+        print(f"\n{env}: {prefix}Removed {removed} entries")
+
+        for entry in result.get('entries', []):
+            print(f"  - {entry['name']}")
+            print(f"    Suite: {entry['suite']}")
+
+        if result.get('more', 0) > 0:
+            print(f"  ... and {result['more']} more")
+
+    print(f"\n{'=' * 50}")
+    print(f"Total: {prefix}{total_removed} entries removed across {len(results)} environment(s)")
 
 
 def main():
@@ -306,83 +352,101 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__
     )
-    parser.add_argument('--ssh', '-s', help='SSH host alias (from ~/.ssh/config)')
-    parser.add_argument('--path', '-p', required=True, help='Path to allure report directory')
-    parser.add_argument('--test-id', '-t', action='append', required=True,
-                        help='Test ID pattern to remove (can be used multiple times)')
-    parser.add_argument('--dry-run', '-n', action='store_true',
-                        help='Show what would be removed without making changes')
-    parser.add_argument('--sudo', action='store_true',
-                        help='Use sudo for file operations (needed for permission issues)')
+
+    parser.add_argument(
+        '--test-id', '-t',
+        action='append',
+        required=True,
+        help='Test ID pattern to remove (can be used multiple times)'
+    )
+
+    parser.add_argument(
+        '--env', '-e',
+        default='all',
+        help='Environments: all, us, es, stage, preprod, or comma-separated list (default: all)'
+    )
+
+    parser.add_argument(
+        '--in-suite',
+        action='append',
+        help='Only remove from these suites (can be used multiple times)'
+    )
+
+    parser.add_argument(
+        '--not-in-suite',
+        action='append',
+        help='Do not remove from these suites (can be used multiple times)'
+    )
+
+    parser.add_argument(
+        '--ssh', '-s',
+        default=DEFAULT_SSH_HOST,
+        help=f'SSH host alias (default: {DEFAULT_SSH_HOST}, use "local" for local execution)'
+    )
+
+    parser.add_argument(
+        '--base-path', '-p',
+        default=DEFAULT_BASE_PATH,
+        help=f'Base path template with {{env}} placeholder (default: {DEFAULT_BASE_PATH})'
+    )
+
+    parser.add_argument(
+        '--dry-run', '-n',
+        action='store_true',
+        help='Show what would be removed without making changes'
+    )
+
+    parser.add_argument(
+        '--sudo',
+        action='store_true',
+        help='Use sudo for file operations'
+    )
 
     args = parser.parse_args()
 
-    print(f"Allure History Cleanup")
-    print(f"=" * 50)
-    print(f"Report path: {args.path}")
-    print(f"SSH host: {args.ssh or 'local'}")
+    # Expand environments
+    environments = expand_environments(args.env)
+
+    # Print header
+    print("Allure History Cleanup")
+    print("=" * 50)
     print(f"Test IDs: {', '.join(args.test_id)}")
+    print(f"Environments: {', '.join(environments)}")
+    print(f"Base path: {args.base_path}")
+
+    if args.in_suite:
+        print(f"In suites: {', '.join(args.in_suite)}")
+    if args.not_in_suite:
+        print(f"Not in suites: {', '.join(args.not_in_suite)}")
+
+    print(f"SSH host: {args.ssh}")
     print(f"Dry run: {args.dry_run}")
     print(f"Use sudo: {args.sudo}")
-    print()
 
-    # Step 1: Find tests in report
-    print("Step 1: Searching for tests in report...")
-    found_tests = find_test_hashes(args.path, args.test_id, args.ssh)
-
-    if found_tests:
-        print(f"  Found {len(found_tests)} matching test(s):")
-        for name, info in found_tests.items():
-            print(f"    - {name}")
-            print(f"      UID: {info['uid']}, Status: {info['status']}, Retries: {info['retriesCount']}")
+    # Run cleanup
+    if args.ssh == 'local':
+        results = run_local_cleanup(
+            environments=environments,
+            test_ids=args.test_id,
+            base_path=args.base_path,
+            in_suites=args.in_suite,
+            not_in_suites=args.not_in_suite,
+            dry_run=args.dry_run
+        )
     else:
-        print("  No matching tests found in behaviors.json")
+        results = run_remote_cleanup(
+            ssh_host=args.ssh,
+            environments=environments,
+            test_ids=args.test_id,
+            base_path=args.base_path,
+            in_suites=args.in_suite,
+            not_in_suites=args.not_in_suite,
+            dry_run=args.dry_run,
+            use_sudo=args.sudo
+        )
 
-    # Step 2: Find history IDs
-    print("\nStep 2: Finding history IDs...")
-    history_ids = []
-    for test_id in args.test_id:
-        ids = get_test_history_ids(args.path, test_id, args.ssh)
-        history_ids.extend(ids)
-
-    history_ids = list(set(history_ids))
-
-    if history_ids:
-        print(f"  Found {len(history_ids)} history ID(s):")
-        for hid in history_ids:
-            print(f"    - {hid}")
-    else:
-        print("  No history IDs found")
-        return 1
-
-    # Collect UIDs from found tests
-    test_uids = [info['uid'] for info in found_tests.values()]
-
-    # Step 3: Remove test-case files
-    print("\nStep 3: Removing test-case files...")
-    if test_uids:
-        remove_test_case_files(args.path, test_uids, args.ssh, args.dry_run, args.sudo)
-    else:
-        print("  No UIDs found to remove")
-
-    # Step 4: Remove from behaviors.json
-    print("\nStep 4: Removing from behaviors.json...")
-    if test_uids:
-        remove_from_json_file(args.path, "behaviors.json", test_uids, args.ssh, args.dry_run, args.sudo)
-
-    # Step 5: Remove from suites.json
-    print("\nStep 5: Removing from suites.json...")
-    if test_uids:
-        remove_from_json_file(args.path, "suites.json", test_uids, args.ssh, args.dry_run, args.sudo)
-
-    # Step 6: Remove from history.json
-    print("\nStep 6: Removing from history.json...")
-    removed = remove_from_history(args.path, history_ids, args.ssh, args.dry_run, args.sudo)
-
-    if args.dry_run:
-        print(f"\n[DRY RUN] Complete cleanup preview finished")
-    else:
-        print(f"\nDone! Complete cleanup finished")
+    # Print results
+    print_results(results, args.dry_run)
 
     return 0
 
