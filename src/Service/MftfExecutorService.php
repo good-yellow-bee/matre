@@ -33,9 +33,11 @@ class MftfExecutorService
      * Execute MFTF tests for a test run.
      * Output is streamed to a file to prevent memory bloat on long-running tests.
      *
+     * @param callable|null $outputCallback Optional callback for real-time output streaming
+     *
      * @return array{output: string, exitCode: int}
      */
-    public function execute(TestRun $run): array
+    public function execute(TestRun $run, ?callable $outputCallback = null): array
     {
         $this->logger->info('Executing MFTF tests', [
             'runId' => $run->getId(),
@@ -66,10 +68,13 @@ class MftfExecutorService
         ]);
         $process->setTimeout(3600); // 1 hour timeout
 
-        // Stream output to file instead of buffering in memory
+        // Stream output to file and optionally to callback
         $handle = fopen($outputFile, 'w');
-        $process->run(function ($type, $buffer) use ($handle) {
+        $process->run(function ($type, $buffer) use ($handle, $outputCallback) {
             fwrite($handle, $buffer);
+            if ($outputCallback !== null) {
+                $outputCallback($buffer);
+            }
         });
         fclose($handle);
 
@@ -125,6 +130,14 @@ class MftfExecutorService
         // Change to acceptance test directory
         $acceptanceDir = $this->magentoRoot . '/dev/tests/acceptance';
         $parts[] = 'cd ' . escapeshellarg($acceptanceDir);
+
+        // MFTF bug workaround: Reorder Codeception extensions so AllureCodeception
+        // writes result.json BEFORE TestContextExtension throws exception on test failure.
+        // Without this, Allure reports are empty because exception breaks lifecycle.
+        // See: MFTF AllureHelper.php:29 throws when serializing Exception objects.
+        $parts[] = "sed -i 's/- Magento.*TestContextExtension/- PLACEHOLDER_TESTCONTEXT/' codeception.yml";
+        $parts[] = "sed -i 's/- Qameta.*AllureCodeception/- Magento\\\\FunctionalTestingFramework\\\\Extension\\\\TestContextExtension/' codeception.yml";
+        $parts[] = "sed -i 's/- PLACEHOLDER_TESTCONTEXT/- Qameta\\\\Allure\\\\Codeception\\\\AllureCodeception/' codeception.yml";
 
         // Build .env file with layered configuration:
         // 1. Global variables (shared across all environments)
@@ -182,7 +195,22 @@ class MftfExecutorService
 
         $parts[] = implode(' ', $mftfParts);
 
-        return implode(' && ', $parts);
+        // Build command chain with && for dependencies
+        $mainCommand = implode(' && ', $parts);
+
+        // After MFTF execution, move screenshots to per-run directory to prevent
+        // cross-run contamination when multiple runs execute in parallel.
+        // Use ; to run regardless of MFTF exit code (we want artifacts even on failure)
+        // NOTE: Allure results are NOT moved here - they're in a separate Docker mount
+        // and AllureReportService handles copying them to per-run directory.
+        $runOutputDir = 'tests/_output/run-' . $runId;
+        $moveCommands = [
+            'mkdir -p ' . escapeshellarg($runOutputDir),
+            'find tests/_output -maxdepth 1 -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.gif" -o -name "*.html" \) -exec mv {} ' . escapeshellarg($runOutputDir) . '/ \; 2>/dev/null || true',
+        ];
+
+        // Append move commands with ; so they run regardless of test result
+        return $mainCommand . ' ; ' . implode(' && ', $moveCommands);
     }
 
     /**
@@ -277,7 +305,10 @@ class MftfExecutorService
     }
 
     /**
-     * Get path to Allure results from MFTF.
+     * Get path to Allure results from MFTF (shared location).
+     *
+     * Allure results are in a separate Docker mount, so we don't move them
+     * to per-run directory. AllureReportService handles copying them.
      */
     public function getAllureResultsPath(): string
     {

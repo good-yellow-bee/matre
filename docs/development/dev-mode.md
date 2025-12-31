@@ -60,7 +60,7 @@ echo "DEV_MODULE_PATH=./test-module" >> .env
 ### 3. Run Tests
 
 ```bash
-php bin/console app:test:run --filter=YourTest
+php bin/console app:test:run --filter=YourTestName
 ```
 
 Logs will show:

@@ -11,6 +11,7 @@ use App\Entity\TestSuite;
 use App\Repository\TestRunRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\Lock\LockFactory;
 
 /**
  * Orchestrates test execution workflow.
@@ -26,6 +27,7 @@ class TestRunnerService
         private readonly AllureReportService $allureReportService,
         private readonly ArtifactCollectorService $artifactCollector,
         private readonly LoggerInterface $logger,
+        private readonly LockFactory $lockFactory,
     ) {
     }
 
@@ -69,9 +71,6 @@ class TestRunnerService
         $run->setStatus(TestRun::STATUS_PREPARING);
         $this->entityManager->flush();
 
-        // Clear artifact source directories to prevent contamination from previous runs
-        $this->artifactCollector->clearSourceDirectories();
-
         try {
             // Clone module to run-specific directory
             $run->setStatus(TestRun::STATUS_CLONING);
@@ -95,132 +94,146 @@ class TestRunnerService
 
     /**
      * Execute the test run.
+     *
+     * @param callable|null $outputCallback Optional callback for real-time output streaming
      */
-    public function executeRun(TestRun $run): void
+    public function executeRun(TestRun $run, ?callable $outputCallback = null): void
     {
         $this->logger->info('Executing test run', ['id' => $run->getId()]);
 
         $run->markStarted();
         $this->entityManager->flush();
 
-        // Set status to RUNNING and output file path before test execution
-        $run->setStatus(TestRun::STATUS_RUNNING);
-        $type = $run->getType();
-
-        // Set output file path so live streaming can find it
-        if ($type === TestRun::TYPE_MFTF || $type === TestRun::TYPE_BOTH) {
-            $run->setOutputFilePath($this->mftfExecutor->getOutputFilePath($run));
-        } elseif ($type === TestRun::TYPE_PLAYWRIGHT) {
-            $run->setOutputFilePath($this->playwrightExecutor->getOutputFilePath($run));
-        }
-        $this->entityManager->flush();
-
-        $allResults = [];
-        $allurePaths = [];
-        $output = '';
-        $executionFailed = false;
-        $failureReason = '';
+        // Per-env lock - serializes same-env runs to prevent artifact contamination
+        // Different-env runs can still be parallel (per-run dirs isolate artifacts)
+        $envLock = $this->lockFactory->createLock(
+            'mftf_execution_env_' . $run->getEnvironment()->getId(),
+            3600, // 1 hour timeout
+        );
+        $envLock->acquire(true); // blocking
 
         try {
-            // Execute MFTF tests
+            // Set status to RUNNING and output file path before test execution
+            $run->setStatus(TestRun::STATUS_RUNNING);
+            $type = $run->getType();
+
+            // Set output file path so live streaming can find it
             if ($type === TestRun::TYPE_MFTF || $type === TestRun::TYPE_BOTH) {
-                $mftfResult = $this->mftfExecutor->execute($run);
-                $output .= "=== MFTF Output ===\n" . $mftfResult['output'] . "\n\n";
+                $run->setOutputFilePath($this->mftfExecutor->getOutputFilePath($run));
+            } elseif ($type === TestRun::TYPE_PLAYWRIGHT) {
+                $run->setOutputFilePath($this->playwrightExecutor->getOutputFilePath($run));
+            }
+            $this->entityManager->flush();
 
-                // Check for fatal errors that prevent test execution
-                $isFatalError = preg_match('/ERROR: \d+ Test\(s\) failed to generate/i', $mftfResult['output'])
-                    || preg_match('/is not available under/i', $mftfResult['output']);
+            $allResults = [];
+            $allurePaths = [];
+            $output = '';
+            $executionFailed = false;
+            $failureReason = '';
 
-                // ALWAYS parse results (even on failure) to capture partial test data
-                $mftfResults = $this->mftfExecutor->parseResults($run, $mftfResult['output']);
-                foreach ($mftfResults as $result) {
-                    $run->addResult($result);
-                    $this->entityManager->persist($result);
-                    $allResults[] = $result;
-                }
+            try {
+                // Execute MFTF tests
+                if ($type === TestRun::TYPE_MFTF || $type === TestRun::TYPE_BOTH) {
+                    $mftfResult = $this->mftfExecutor->execute($run, $outputCallback);
+                    $output .= "=== MFTF Output ===\n" . $mftfResult['output'] . "\n\n";
 
-                $allurePaths[] = $this->mftfExecutor->getAllureResultsPath();
+                    // Check for fatal errors that prevent test execution
+                    $isFatalError = preg_match('/ERROR: \d+ Test\(s\) failed to generate/i', $mftfResult['output'])
+                        || preg_match('/is not available under/i', $mftfResult['output']);
 
-                // Track failure but don't exit early - continue to collect artifacts
-                if ($mftfResult['exitCode'] !== 0) {
-                    $executionFailed = true;
-                    if ($isFatalError) {
-                        if (preg_match('/ERROR: \d+ Test\(s\) failed to generate/i', $mftfResult['output'])) {
-                            $failureReason = 'MFTF test generation failed - see output log';
+                    // ALWAYS parse results (even on failure) to capture partial test data
+                    $mftfResults = $this->mftfExecutor->parseResults($run, $mftfResult['output']);
+                    foreach ($mftfResults as $result) {
+                        $run->addResult($result);
+                        $this->entityManager->persist($result);
+                        $allResults[] = $result;
+                    }
+
+                    $allurePaths[] = $this->mftfExecutor->getAllureResultsPath();
+
+                    // Track failure but don't exit early - continue to collect artifacts
+                    if ($mftfResult['exitCode'] !== 0) {
+                        $executionFailed = true;
+                        if ($isFatalError) {
+                            if (preg_match('/ERROR: \d+ Test\(s\) failed to generate/i', $mftfResult['output'])) {
+                                $failureReason = 'MFTF test generation failed - see output log';
+                            } else {
+                                $failureReason = 'Generated test file not found - see output log';
+                            }
                         } else {
-                            $failureReason = 'Generated test file not found - see output log';
+                            // Normal test failure (tests ran but some failed)
+                            $failedCount = count(array_filter($mftfResults, fn ($r) => $r->isFailed()));
+                            $failureReason = $failedCount > 0
+                                ? sprintf('%d test(s) failed', $failedCount)
+                                : 'MFTF execution failed with exit code ' . $mftfResult['exitCode'];
                         }
-                    } else {
-                        // Normal test failure (tests ran but some failed)
-                        $failedCount = count(array_filter($mftfResults, fn ($r) => $r->isFailed()));
-                        $failureReason = $failedCount > 0
-                            ? sprintf('%d test(s) failed', $failedCount)
-                            : 'MFTF execution failed with exit code ' . $mftfResult['exitCode'];
                     }
                 }
-            }
 
-            // Execute Playwright tests
-            if ($type === TestRun::TYPE_PLAYWRIGHT || $type === TestRun::TYPE_BOTH) {
-                $playwrightResult = $this->playwrightExecutor->execute($run);
-                $output .= "=== Playwright Output ===\n" . $playwrightResult['output'] . "\n\n";
+                // Execute Playwright tests
+                if ($type === TestRun::TYPE_PLAYWRIGHT || $type === TestRun::TYPE_BOTH) {
+                    $playwrightResult = $this->playwrightExecutor->execute($run, $outputCallback);
+                    $output .= "=== Playwright Output ===\n" . $playwrightResult['output'] . "\n\n";
 
-                // ALWAYS parse results (even on failure) to capture partial test data
-                $playwrightResults = $this->playwrightExecutor->parseResults($run, $playwrightResult['output']);
-                foreach ($playwrightResults as $result) {
-                    $run->addResult($result);
-                    $this->entityManager->persist($result);
-                    $allResults[] = $result;
+                    // ALWAYS parse results (even on failure) to capture partial test data
+                    $playwrightResults = $this->playwrightExecutor->parseResults($run, $playwrightResult['output']);
+                    foreach ($playwrightResults as $result) {
+                        $run->addResult($result);
+                        $this->entityManager->persist($result);
+                        $allResults[] = $result;
+                    }
+
+                    $allurePaths[] = $this->playwrightExecutor->getAllureResultsPath();
+
+                    // Track failure but don't exit early
+                    if ($playwrightResult['exitCode'] !== 0) {
+                        $executionFailed = true;
+                        $failedCount = count(array_filter($playwrightResults, fn ($r) => $r->isFailed()));
+                        $pwReason = $failedCount > 0
+                            ? sprintf('%d test(s) failed', $failedCount)
+                            : 'Playwright execution failed with exit code ' . $playwrightResult['exitCode'];
+                        $failureReason = $failureReason ? $failureReason . '; ' . $pwReason : $pwReason;
+                    }
                 }
 
-                $allurePaths[] = $this->playwrightExecutor->getAllureResultsPath();
+                $run->setOutput($output);
 
-                // Track failure but don't exit early
-                if ($playwrightResult['exitCode'] !== 0) {
-                    $executionFailed = true;
-                    $failedCount = count(array_filter($playwrightResults, fn ($r) => $r->isFailed()));
-                    $pwReason = $failedCount > 0
-                        ? sprintf('%d test(s) failed', $failedCount)
-                        : 'Playwright execution failed with exit code ' . $playwrightResult['exitCode'];
-                    $failureReason = $failureReason ? $failureReason . '; ' . $pwReason : $pwReason;
+                // ALWAYS collect artifacts (even on failure) - screenshots/HTML are valuable for debugging
+                $artifacts = $this->artifactCollector->collectArtifacts($run);
+                if (!empty($artifacts['screenshots'])) {
+                    $this->artifactCollector->associateScreenshotsWithResults($allResults, $artifacts['screenshots']);
                 }
-            }
 
-            $run->setOutput($output);
-
-            // ALWAYS collect artifacts (even on failure) - screenshots/HTML are valuable for debugging
-            $artifacts = $this->artifactCollector->collectArtifacts($run);
-            if (!empty($artifacts['screenshots'])) {
-                $this->artifactCollector->associateScreenshotsWithResults($allResults, $artifacts['screenshots']);
-            }
-
-            $this->entityManager->flush();
-
-            // Mark failed AFTER collecting all data
-            if ($executionFailed) {
-                $run->markFailed($failureReason);
                 $this->entityManager->flush();
+
+                // Mark failed AFTER collecting all data
+                if ($executionFailed) {
+                    $run->markFailed($failureReason);
+                    $this->entityManager->flush();
+                }
+
+                $this->logger->info('Test execution completed', [
+                    'id' => $run->getId(),
+                    'resultCount' => count($allResults),
+                    'failed' => $executionFailed,
+                    'artifacts' => [
+                        'screenshots' => count($artifacts['screenshots']),
+                        'html' => count($artifacts['html']),
+                    ],
+                ]);
+            } catch (\Throwable $e) {
+                $this->logger->error('Test execution failed', [
+                    'id' => $run->getId(),
+                    'error' => $e->getMessage(),
+                ]);
+                $run->setOutput($output . "\n\nERROR: " . $e->getMessage());
+                $run->markFailed($e->getMessage());
+                $this->entityManager->flush();
+
+                throw $e;
             }
-
-            $this->logger->info('Test execution completed', [
-                'id' => $run->getId(),
-                'resultCount' => count($allResults),
-                'failed' => $executionFailed,
-                'artifacts' => [
-                    'screenshots' => count($artifacts['screenshots']),
-                    'html' => count($artifacts['html']),
-                ],
-            ]);
-        } catch (\Throwable $e) {
-            $this->logger->error('Test execution failed', [
-                'id' => $run->getId(),
-                'error' => $e->getMessage(),
-            ]);
-            $run->setOutput($output . "\n\nERROR: " . $e->getMessage());
-            $run->markFailed($e->getMessage());
-            $this->entityManager->flush();
-
-            throw $e;
+        } finally {
+            $envLock->release();
         }
     }
 
@@ -267,13 +280,13 @@ class TestRunnerService
             $run->markCompleted();
             $this->entityManager->flush();
 
+            // Per-run directories are cleaned up by clearOldRunDirectories() (scheduled task)
+            // No need to clear after each run since artifacts are isolated per-run
+
             $this->logger->info('Reports generated', [
                 'id' => $run->getId(),
                 'reportUrl' => $report->getPublicUrl(),
             ]);
-
-            // Clear source directories after report generation
-            $this->artifactCollector->clearSourceDirectories();
 
             return $report;
         } catch (\Throwable $e) {

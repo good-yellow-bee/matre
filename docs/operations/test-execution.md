@@ -92,7 +92,7 @@ docker-compose exec php php bin/console app:test:run <type> <environment> [optio
 **Options:**
 | Option | Example | Description |
 |--------|---------|-------------|
-| `--filter` | `--filter=CheckoutTest` | Run specific test or group |
+| `--filter` | `--filter=Checkout` | Run specific test or group |
 | `--suite` | `--suite=smoke` | Use predefined test suite |
 | `--sync` | `--sync` | Wait for completion (blocking) |
 

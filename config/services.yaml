@@ -74,6 +74,10 @@ services:
             $allureUrl: '%env(ALLURE_URL)%'
             $allurePublicUrl: '%env(ALLURE_PUBLIC_URL)%'
 
+    App\Service\AllureStepParserService:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
     App\Service\ArtifactCollectorService:
         arguments:
             $projectDir: '%kernel.project_dir%'
@@ -99,6 +103,7 @@ services:
     App\Controller\Admin\TestRunController:
         arguments:
             $noVncUrl: '%env(NOVNC_URL)%'
+            $allurePublicUrl: '%env(ALLURE_PUBLIC_URL)%'
 
     App\EventListener\SecurityHeadersListener:
         arguments:

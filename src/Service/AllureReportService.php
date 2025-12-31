@@ -43,19 +43,13 @@ class AllureReportService
         $runId = $run->getId();
         $allureResultsPath = $this->getAllureResultsPath($runId);
 
-        // Merge results from different sources if multiple paths provided
-        if (count($resultPaths) > 1) {
+        // Merge results from sources (uses mergeResults to preserve existing files like synthetic results)
+        if (!empty($resultPaths)) {
             $this->mergeResults($resultPaths, $allureResultsPath);
-        } elseif (count($resultPaths) === 1) {
-            if ($this->filesystem->exists($resultPaths[0]) && is_dir($resultPaths[0])) {
-                $this->filesystem->mirror($resultPaths[0], $allureResultsPath);
-            } else {
-                $this->logger->warning('Allure results not found', ['path' => $resultPaths[0]]);
-            }
         }
 
-        // Generate report via Allure service
-        $reportId = $this->triggerReportGeneration($runId);
+        // Generate report via Allure service (uses environment name as project ID)
+        $reportId = $this->triggerReportGeneration($run);
 
         // Create report entity
         $report = new TestReport();
@@ -183,9 +177,11 @@ class AllureReportService
     /**
      * Trigger report generation via Allure Docker service.
      */
-    private function triggerReportGeneration(int $runId): string
+    private function triggerReportGeneration(TestRun $run): string
     {
-        $projectId = 'default';
+        // Use environment name as project ID for per-environment reports
+        $projectId = $run->getEnvironment()->getName();
+        $runId = $run->getId();
 
         try {
             // Create project if not exists (with retry)
@@ -202,8 +198,20 @@ class AllureReportService
 
         // Send results to Allure service
         $resultsPath = $this->getAllureResultsPath($runId);
+        $hasResults = false;
+
         if ($this->filesystem->exists($resultsPath)) {
-            $this->sendResultsToAllure($projectId, $resultsPath);
+            $hasResults = $this->sendResultsToAllure($projectId, $resultsPath);
+        }
+
+        // Only generate report if we actually sent result files
+        if (!$hasResults) {
+            $this->logger->warning('No Allure result files to generate report from', [
+                'runId' => $runId,
+                'resultsPath' => $resultsPath,
+            ]);
+
+            return $projectId;
         }
 
         // Generate report (with retry)
@@ -228,15 +236,19 @@ class AllureReportService
 
     /**
      * Send results files to Allure service.
+     *
+     * @return bool True if result/container files were sent, false if only attachments or nothing
      */
-    private function sendResultsToAllure(string $projectId, string $resultsPath): void
+    private function sendResultsToAllure(string $projectId, string $resultsPath): bool
     {
         $results = [];
+        $hasResultFiles = false;
 
         // Result JSONs (test results)
         foreach (glob($resultsPath . '/*-result.json') as $file) {
             $content = file_get_contents($file);
             if ($content) {
+                $hasResultFiles = true;
                 $results[] = [
                     'file_name' => basename($file),
                     'content_base64' => base64_encode($content),
@@ -248,6 +260,7 @@ class AllureReportService
         foreach (glob($resultsPath . '/*-container.json') as $file) {
             $content = file_get_contents($file);
             if ($content) {
+                $hasResultFiles = true;
                 $results[] = [
                     'file_name' => basename($file),
                     'content_base64' => base64_encode($content),
@@ -267,12 +280,13 @@ class AllureReportService
         }
 
         if (empty($results)) {
-            return;
+            return false;
         }
 
         $this->logger->debug('Sending files to Allure', [
             'projectId' => $projectId,
             'fileCount' => count($results),
+            'hasResultFiles' => $hasResultFiles,
         ]);
 
         try {
@@ -293,5 +307,7 @@ class AllureReportService
                 'error' => $e->getMessage(),
             ]);
         }
+
+        return $hasResultFiles;
     }
 }

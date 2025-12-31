@@ -141,7 +141,7 @@
                             <th>Test</th>
                             <th>Status</th>
                             <th>Duration</th>
-                            <th>Screenshot</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -172,16 +172,24 @@
                             </td>
                             <td>{{ result.duration ? (result.duration ~ 's') : '-' }}</td>
                             <td>
-                                {% if result.screenshotPath %}
-                                <a href="{{ path('admin_test_run_artifact', {id: run.id, filename: result.screenshotPath}) }}"
-                                   data-screenshot
-                                   class="btn btn-sm btn-outline-primary"
-                                   title="View Screenshot">
-                                    <i class="bi bi-image"></i>
-                                </a>
-                                {% else %}
-                                <span class="text-muted">-</span>
-                                {% endif %}
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button"
+                                            class="btn btn-outline-secondary btn-steps"
+                                            data-result-id="{{ result.id }}"
+                                            data-test-name="{{ result.testName }}"
+                                            data-api-url="{{ path('admin_test_run_result_steps', {id: run.id, resultId: result.id}) }}"
+                                            title="View execution steps">
+                                        <i class="bi bi-list-nested"></i> Steps
+                                    </button>
+                                    {% if result.screenshotPath %}
+                                    <a href="{{ path('admin_test_run_artifact', {id: run.id, filename: result.screenshotPath}) }}"
+                                       data-screenshot
+                                       class="btn btn-outline-primary"
+                                       title="View Screenshot">
+                                        <i class="bi bi-image"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
                             </td>
                         </tr>
                         {% if result.errorMessage %}
@@ -288,6 +296,13 @@
                 </a>
                 {% endif %}
 
+                {% if allure_public_url %}
+                <a href="{{ allure_public_url }}/allure-docker-service/projects/{{ run.environment.name }}/reports/latest/index.html"
+                   target="_blank" rel="noopener" class="btn btn-success w-100">
+                    <i class="bi bi-bar-chart-fill"></i> View Allure Project
+                </a>
+                {% endif %}
+
                 {% if run.canBeCancelled %}
                 <form action="{{ path('admin_test_run_cancel', {id: run.id}) }}" method="post">
                     <input type="hidden" name="_token" value="{{ csrf_token('cancel' ~ run.id) }}">
@@ -311,23 +326,23 @@
                 </a>
             </div>
         </div>
+    </div>
+</div>
 
-        {# Reports #}
-        {% if run.reports|length > 0 %}
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Reports</h5>
+{# Steps Modal #}
+<div class="modal fade" id="stepsModal" tabindex="-1" aria-labelledby="stepsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="stepsModalLabel">
+                    <i class="bi bi-list-nested me-2"></i>Test Steps
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="card-body d-grid gap-2">
-                {% for report in run.reports %}
-                <a href="{{ report.publicUrl }}" target="_blank" rel="noopener" class="btn btn-primary">
-                    <i class="bi bi-file-earmark-bar-graph"></i>
-                    {{ report.reportType|title }} Report
-                </a>
-                {% endfor %}
+            <div class="modal-body">
+                <div id="steps-container" data-vue-island="test-step-tree"></div>
             </div>
         </div>
-        {% endif %}
     </div>
 </div>
 {% endblock %}
@@ -491,4 +506,61 @@
         });
     </script>
     {% endif %}
+
+    {# Test Steps Vue App #}
+    {{ vite_entry_script_tags('test-step-tree-app') }}
+
+    <script>
+        // Steps modal handling
+        document.addEventListener('DOMContentLoaded', () => {
+            const stepsModal = document.getElementById('stepsModal');
+            const stepsContainer = document.getElementById('steps-container');
+            const modalTitleText = document.querySelector('#stepsModalLabel');
+            let currentVueApp = null;
+
+            // Handle steps button clicks
+            document.querySelectorAll('.btn-steps').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const apiUrl = btn.dataset.apiUrl;
+                    const testName = btn.dataset.testName;
+
+                    // Update modal title text (keep icon, update text node)
+                    const textNode = modalTitleText.lastChild;
+                    if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+                        textNode.textContent = testName;
+                    } else {
+                        modalTitleText.appendChild(document.createTextNode(testName));
+                    }
+
+                    // Unmount previous Vue app if exists
+                    if (currentVueApp) {
+                        currentVueApp.unmount();
+                        currentVueApp = null;
+                    }
+
+                    // Clear container and set API URL
+                    stepsContainer.textContent = '';
+                    stepsContainer.dataset.apiUrl = apiUrl;
+
+                    // Mount new Vue app
+                    if (window.mountTestStepTree) {
+                        currentVueApp = window.mountTestStepTree(stepsContainer, apiUrl);
+                    }
+
+                    // Show modal
+                    const modal = new bootstrap.Modal(stepsModal);
+                    modal.show();
+                });
+            });
+
+            // Cleanup on modal close
+            stepsModal.addEventListener('hidden.bs.modal', () => {
+                if (currentVueApp) {
+                    currentVueApp.unmount();
+                    currentVueApp = null;
+                }
+                stepsContainer.textContent = '';
+            });
+        });
+    </script>
 {% endblock %}

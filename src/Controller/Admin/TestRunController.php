@@ -9,6 +9,7 @@ use App\Form\TestRunType;
 use App\Message\TestRunMessage;
 use App\Repository\TestRunRepository;
 use App\Repository\TestSuiteRepository;
+use App\Service\AllureStepParserService;
 use App\Service\ArtifactCollectorService;
 use App\Service\TestRunnerService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -28,10 +29,12 @@ class TestRunController extends AbstractController
     public function __construct(
         private readonly TestRunnerService $testRunnerService,
         private readonly ArtifactCollectorService $artifactCollector,
+        private readonly AllureStepParserService $allureStepParser,
         private readonly MessageBusInterface $messageBus,
         private readonly TestRunRepository $testRunRepository,
         private readonly TestSuiteRepository $testSuiteRepository,
         private readonly string $noVncUrl,
+        private readonly string $allurePublicUrl,
     ) {
     }
 
@@ -103,6 +106,7 @@ class TestRunController extends AbstractController
             'run' => $run,
             'artifacts' => $artifacts,
             'vnc_url' => $this->noVncUrl,
+            'allure_public_url' => $this->allurePublicUrl,
         ]);
     }
 
@@ -222,6 +226,45 @@ class TestRunController extends AbstractController
             'output' => $content,
             'status' => $run->getStatus(),
         ]);
+    }
+
+    /**
+     * Get Allure execution steps for a specific test result.
+     */
+    #[Route('/{id}/results/{resultId}/steps', name: 'admin_test_run_result_steps', methods: ['GET'], requirements: ['id' => '\d+', 'resultId' => '\d+'])]
+    public function getResultSteps(int $id, int $resultId): JsonResponse
+    {
+        $run = $this->testRunRepository->find($id);
+        if (!$run) {
+            return new JsonResponse(['error' => 'Test run not found'], 404);
+        }
+
+        $result = null;
+        foreach ($run->getResults() as $r) {
+            if ($r->getId() === $resultId) {
+                $result = $r;
+
+                break;
+            }
+        }
+
+        if (!$result) {
+            return new JsonResponse(['error' => 'Test result not found'], 404);
+        }
+
+        $steps = $this->allureStepParser->getStepsForResult($result);
+
+        if (!$steps) {
+            return new JsonResponse([
+                'testName' => $result->getTestName(),
+                'status' => $result->getStatus(),
+                'duration' => $result->getDuration(),
+                'steps' => [],
+                'error' => 'Step details unavailable (Allure data not found)',
+            ]);
+        }
+
+        return new JsonResponse($steps);
     }
 
     /**

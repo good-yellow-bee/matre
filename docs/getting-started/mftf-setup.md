@@ -339,7 +339,7 @@ This will:
 ```bash
 # Run specific test (sync - waits for completion)
 docker-compose exec php php bin/console app:test:run mftf dev-us \
-    --filter="StorefrontHomePageLoadTest" --sync
+    --filter="StorefrontHomePageLoad" --sync
 
 # Run test group
 docker-compose exec php php bin/console app:test:run mftf dev-us \
