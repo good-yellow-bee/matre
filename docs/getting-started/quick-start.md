@@ -206,10 +206,10 @@ Test Suites group tests for reuse and scheduling. You can skip this and run test
 
 ```bash
 # Run specific test (async - returns immediately)
-docker-compose exec php php bin/console app:test:run mftf dev-us --filter="MOEC1625Test"
+docker-compose exec php php bin/console app:test:run mftf dev-us --filter="MOEC1625"
 
 # Run and wait for completion (sync)
-docker-compose exec php php bin/console app:test:run mftf dev-us --filter="MOEC1625Test" --sync
+docker-compose exec php php bin/console app:test:run mftf dev-us --filter="MOEC1625" --sync
 
 # Run a test group
 docker-compose exec php php bin/console app:test:run mftf dev-us --filter="@checkout"
@@ -226,7 +226,7 @@ docker-compose exec php php bin/console app:test:run mftf dev-us --sync
 Starting test run #42...
 Environment: dev-us
 Type: MFTF
-Filter: MOEC1625Test
+Filter: MOEC1625
 
 Phase 1/5: Preparing...
 Phase 2/5: Executing tests...

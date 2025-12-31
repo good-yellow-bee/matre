@@ -375,6 +375,30 @@ docker-compose down && docker-compose up -d --build
 
 ---
 
+## Direct Artifact Access
+
+Access test artifacts and logs directly via filesystem:
+
+| Directory | Contents | Example |
+|-----------|----------|---------|
+| `var/test-artifacts/{runId}/` | Screenshots, HTML snapshots | `var/test-artifacts/42/screenshot-001.png` |
+| `var/test-output/` | MFTF execution logs | `var/test-output/mftf-run-42.log` |
+
+### Browse Artifacts
+
+```bash
+# List artifacts for run 42
+ls var/test-artifacts/42/
+
+# View MFTF log for run 42
+cat var/test-output/mftf-run-42.log
+
+# Tail live log during execution
+tail -f var/test-output/mftf-run-42.log
+```
+
+---
+
 ## Getting Help
 
 If these solutions don't resolve your issue:

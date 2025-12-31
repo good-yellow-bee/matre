@@ -9,6 +9,7 @@ use App\Entity\TestRun;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Finder\Finder;
+use Symfony\Component\Lock\LockFactory;
 
 /**
  * Collects test artifacts (screenshots, HTML) from MFTF output and organizes them by run.
@@ -21,6 +22,7 @@ class ArtifactCollectorService
 
     public function __construct(
         private readonly LoggerInterface $logger,
+        private readonly LockFactory $lockFactory,
         private readonly string $projectDir,
         private readonly string $artifactsDir = 'var/test-artifacts',
         private readonly string $mftfResultsDir = 'var/mftf-results',
@@ -29,49 +31,57 @@ class ArtifactCollectorService
 
     /**
      * Collect artifacts from MFTF output directory for a test run.
-     * Returns array of collected artifact paths.
+     * Uses global lock to prevent artifact contamination between concurrent runs.
      *
      * @return array{screenshots: string[], html: string[]}
      */
     public function collectArtifacts(TestRun $run): array
     {
-        $sourcePath = $this->projectDir . '/' . $this->mftfResultsDir;
-        $targetPath = $this->getRunArtifactsPath($run);
-
         $collected = ['screenshots' => [], 'html' => []];
 
-        if (!is_dir($sourcePath)) {
-            $this->logger->warning('MFTF results directory not found', ['path' => $sourcePath]);
+        // Acquire global lock to prevent concurrent runs from mixing artifacts
+        $lock = $this->lockFactory->createLock('artifact_collection', 300);
+        $lock->acquire(true);
+
+        try {
+            $sourcePath = $this->projectDir . '/' . $this->mftfResultsDir . '/run-' . $run->getId();
+            $targetPath = $this->getRunArtifactsPath($run);
+
+            if (!is_dir($sourcePath)) {
+                $this->logger->warning('MFTF results directory not found', ['path' => $sourcePath]);
+
+                return $collected;
+            }
+
+            $filesystem = new Filesystem();
+            $filesystem->mkdir($targetPath);
+
+            // Collect screenshots
+            $collected['screenshots'] = $this->collectFilesByExtension(
+                $sourcePath,
+                $targetPath,
+                self::SCREENSHOT_EXTENSIONS,
+                $filesystem,
+            );
+
+            // Collect HTML files
+            $collected['html'] = $this->collectFilesByExtension(
+                $sourcePath,
+                $targetPath,
+                self::HTML_EXTENSIONS,
+                $filesystem,
+            );
+
+            $this->logger->info('Artifacts collected', [
+                'run_id' => $run->getId(),
+                'screenshots' => count($collected['screenshots']),
+                'html' => count($collected['html']),
+            ]);
 
             return $collected;
+        } finally {
+            $lock->release();
         }
-
-        $filesystem = new Filesystem();
-        $filesystem->mkdir($targetPath);
-
-        // Collect screenshots
-        $collected['screenshots'] = $this->collectFilesByExtension(
-            $sourcePath,
-            $targetPath,
-            self::SCREENSHOT_EXTENSIONS,
-            $filesystem,
-        );
-
-        // Collect HTML files
-        $collected['html'] = $this->collectFilesByExtension(
-            $sourcePath,
-            $targetPath,
-            self::HTML_EXTENSIONS,
-            $filesystem,
-        );
-
-        $this->logger->info('Artifacts collected', [
-            'run_id' => $run->getId(),
-            'screenshots' => count($collected['screenshots']),
-            'html' => count($collected['html']),
-        ]);
-
-        return $collected;
     }
 
     /**
@@ -115,26 +125,39 @@ class ArtifactCollectorService
     }
 
     /**
-     * Clear source directories to prevent artifact contamination between runs.
-     * Only removes contents, not the directories themselves (they may be Docker volume mounts).
+     * Clear old per-run directories to prevent disk space buildup.
+     * Only removes run-* directories older than the specified number of days.
+     *
+     * @param int $keepDays Number of days to keep run directories (default: 7)
      */
-    public function clearSourceDirectories(): void
+    public function clearOldRunDirectories(int $keepDays = 7): void
     {
         $filesystem = new Filesystem();
-        $dirs = [
-            $this->projectDir . '/' . $this->mftfResultsDir,
-            $this->projectDir . '/var/playwright-results',
-        ];
+        $baseDir = $this->projectDir . '/' . $this->mftfResultsDir;
 
-        foreach ($dirs as $dir) {
-            if ($filesystem->exists($dir) && is_dir($dir)) {
-                $this->logger->info('Clearing artifact source directory contents', ['path' => $dir]);
-                // Remove contents only, not the directory itself (may be a Docker volume mount)
-                $iterator = new \FilesystemIterator($dir, \FilesystemIterator::SKIP_DOTS);
-                foreach ($iterator as $item) {
-                    $filesystem->remove($item->getPathname());
-                }
+        if (!$filesystem->exists($baseDir) || !is_dir($baseDir)) {
+            return;
+        }
+
+        $finder = new Finder();
+        $finder->directories()->in($baseDir)->depth(0)->name('run-*');
+
+        $cutoff = new \DateTimeImmutable("-{$keepDays} days");
+        $removed = 0;
+
+        foreach ($finder as $dir) {
+            if ($dir->getMTime() < $cutoff->getTimestamp()) {
+                $this->logger->info('Removing old run directory', [
+                    'path' => $dir->getPathname(),
+                    'mtime' => date('Y-m-d H:i:s', $dir->getMTime()),
+                ]);
+                $filesystem->remove($dir->getPathname());
+                ++$removed;
             }
+        }
+
+        if ($removed > 0) {
+            $this->logger->info('Cleaned up old run directories', ['count' => $removed]);
         }
     }
 

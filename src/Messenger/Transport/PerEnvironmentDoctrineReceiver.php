@@ -21,6 +21,7 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
 {
     private const QUEUE_PREFIX = 'test_runner_env_';
     private const LOCK_TTL = 3600; // 1 hour
+    private const REDELIVER_AFTER_SECONDS = 900; // 15 minutes
 
     /** @var array<int, LockInterface> */
     private array $activeLocks = [];
@@ -41,20 +42,23 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
      */
     public function get(): iterable
     {
-        // Find all distinct queue names with pending messages
+        // Find all distinct queue names with pending or stale messages
+        $staleThreshold = new \DateTimeImmutable(sprintf('-%d seconds', self::REDELIVER_AFTER_SECONDS));
         $queues = $this->connection->fetchFirstColumn(
             sprintf(
                 'SELECT DISTINCT queue_name FROM %s
                  WHERE queue_name LIKE :prefix
-                 AND delivered_at IS NULL
+                 AND (delivered_at IS NULL OR delivered_at < :stale_threshold)
                  AND available_at <= :now',
                 $this->tableName,
             ),
             [
                 'prefix' => self::QUEUE_PREFIX . '%',
+                'stale_threshold' => $staleThreshold,
                 'now' => new \DateTimeImmutable(),
             ],
             [
+                'stale_threshold' => 'datetime_immutable',
                 'now' => 'datetime_immutable',
             ],
         );
@@ -120,12 +124,13 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
         }
 
         try {
-            // Get oldest message for this queue (FIFO)
+            // Get oldest message for this queue (FIFO), including stale redeliveries
+            $staleThreshold = new \DateTimeImmutable(sprintf('-%d seconds', self::REDELIVER_AFTER_SECONDS));
             $row = $this->connection->fetchAssociative(
                 sprintf(
                     'SELECT * FROM %s
                      WHERE queue_name = :queue
-                     AND delivered_at IS NULL
+                     AND (delivered_at IS NULL OR delivered_at < :stale_threshold)
                      AND available_at <= :now
                      ORDER BY created_at ASC
                      LIMIT 1
@@ -134,9 +139,11 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
                 ),
                 [
                     'queue' => $queueName,
+                    'stale_threshold' => $staleThreshold,
                     'now' => new \DateTimeImmutable(),
                 ],
                 [
+                    'stale_threshold' => 'datetime_immutable',
                     'now' => 'datetime_immutable',
                 ],
             );
@@ -145,6 +152,15 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
                 $lock->release();
 
                 return null;
+            }
+
+            // Log redelivery of stuck message
+            if ($row['delivered_at'] !== null) {
+                $this->logger->warning('Redelivering stuck message', [
+                    'id' => $row['id'],
+                    'queueName' => $queueName,
+                    'originalDeliveredAt' => $row['delivered_at'],
+                ]);
             }
 
             // Mark as delivered

@@ -28,9 +28,11 @@ class PlaywrightExecutorService
      * Execute Playwright tests for a test run.
      * Output is streamed to a file to prevent memory bloat on long-running tests.
      *
+     * @param callable|null $outputCallback Optional callback for real-time output streaming
+     *
      * @return array{output: string, exitCode: int}
      */
-    public function execute(TestRun $run): array
+    public function execute(TestRun $run, ?callable $outputCallback = null): array
     {
         $this->logger->info('Executing Playwright tests', [
             'runId' => $run->getId(),
@@ -56,10 +58,13 @@ class PlaywrightExecutorService
         ]);
         $process->setTimeout(3600); // 1 hour timeout
 
-        // Stream output to file instead of buffering in memory
+        // Stream output to file and optionally to callback
         $handle = fopen($outputFile, 'w');
-        $process->run(function ($type, $buffer) use ($handle) {
+        $process->run(function ($type, $buffer) use ($handle, $outputCallback) {
             fwrite($handle, $buffer);
+            if ($outputCallback !== null) {
+                $outputCallback($buffer);
+            }
         });
         fclose($handle);
 

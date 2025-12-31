@@ -150,6 +150,7 @@ curl http://localhost:5050/allure-docker-service/projects
 | MFTF results | `var/mftf-results/` |
 | Playwright results | `var/playwright-results/` |
 | Test artifacts | `var/test-artifacts/{runId}/` |
+| MFTF run logs | `var/test-output/mftf-run-{id}.log` |
 
 ---
 

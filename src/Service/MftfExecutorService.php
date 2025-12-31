@@ -33,9 +33,11 @@ class MftfExecutorService
      * Execute MFTF tests for a test run.
      * Output is streamed to a file to prevent memory bloat on long-running tests.
      *
+     * @param callable|null $outputCallback Optional callback for real-time output streaming
+     *
      * @return array{output: string, exitCode: int}
      */
-    public function execute(TestRun $run): array
+    public function execute(TestRun $run, ?callable $outputCallback = null): array
     {
         $this->logger->info('Executing MFTF tests', [
             'runId' => $run->getId(),
@@ -66,10 +68,13 @@ class MftfExecutorService
         ]);
         $process->setTimeout(3600); // 1 hour timeout
 
-        // Stream output to file instead of buffering in memory
+        // Stream output to file and optionally to callback
         $handle = fopen($outputFile, 'w');
-        $process->run(function ($type, $buffer) use ($handle) {
+        $process->run(function ($type, $buffer) use ($handle, $outputCallback) {
             fwrite($handle, $buffer);
+            if ($outputCallback !== null) {
+                $outputCallback($buffer);
+            }
         });
         fclose($handle);
 
@@ -125,6 +130,14 @@ class MftfExecutorService
         // Change to acceptance test directory
         $acceptanceDir = $this->magentoRoot . '/dev/tests/acceptance';
         $parts[] = 'cd ' . escapeshellarg($acceptanceDir);
+
+        // MFTF bug workaround: Reorder Codeception extensions so AllureCodeception
+        // writes result.json BEFORE TestContextExtension throws exception on test failure.
+        // Without this, Allure reports are empty because exception breaks lifecycle.
+        // See: MFTF AllureHelper.php:29 throws when serializing Exception objects.
+        $parts[] = "sed -i 's/- Magento.*TestContextExtension/- PLACEHOLDER_TESTCONTEXT/' codeception.yml";
+        $parts[] = "sed -i 's/- Qameta.*AllureCodeception/- Magento\\\\FunctionalTestingFramework\\\\Extension\\\\TestContextExtension/' codeception.yml";
+        $parts[] = "sed -i 's/- PLACEHOLDER_TESTCONTEXT/- Qameta\\\\Allure\\\\Codeception\\\\AllureCodeception/' codeception.yml";
 
         // Build .env file with layered configuration:
         // 1. Global variables (shared across all environments)
@@ -182,7 +195,22 @@ class MftfExecutorService
 
         $parts[] = implode(' ', $mftfParts);
 
-        return implode(' && ', $parts);
+        // Build command chain with && for dependencies
+        $mainCommand = implode(' && ', $parts);
+
+        // After MFTF execution, move screenshots to per-run directory to prevent
+        // cross-run contamination when multiple runs execute in parallel.
+        // Use ; to run regardless of MFTF exit code (we want artifacts even on failure)
+        // NOTE: Allure results are NOT moved here - they're in a separate Docker mount
+        // and AllureReportService handles copying them to per-run directory.
+        $runOutputDir = 'tests/_output/run-' . $runId;
+        $moveCommands = [
+            'mkdir -p ' . escapeshellarg($runOutputDir),
+            'find tests/_output -maxdepth 1 -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.gif" -o -name "*.html" \) -exec mv {} ' . escapeshellarg($runOutputDir) . '/ \; 2>/dev/null || true',
+        ];
+
+        // Append move commands with ; so they run regardless of test result
+        return $mainCommand . ' ; ' . implode(' && ', $moveCommands);
     }
 
     /**
@@ -200,7 +228,8 @@ class MftfExecutorService
         $results = [];
 
         // Strip ANSI escape codes for clean parsing
-        $cleanOutput = preg_replace('/\x1b\[[0-9;]*m/', '', $output);
+        // Handles both \x1b[...m (ESC sequences) and [...m (raw brackets from logs)
+        $cleanOutput = preg_replace('/\x1b\[[0-9;]*m|\[[0-9;]*m/', '', $output);
 
         // Pattern to match test blocks in Codeception output
         // Format: "TestCest: MethodName" ... (steps) ... "PASSED/FAIL"
@@ -227,6 +256,38 @@ class MftfExecutorService
             $results = $this->parseResultsFallback($run, $cleanOutput);
         }
 
+        // Exception detection: If still no results but output contains error indicators,
+        // create a synthetic broken result to avoid false "All tests passed" message
+        if (empty($results) && $this->hasErrorIndicators($cleanOutput)) {
+            $result = new TestResult();
+            $result->setTestRun($run);
+
+            // Extract test ID from output or use filter - just the ID is enough info
+            $testId = null;
+
+            // Try to extract from Cest name in output (e.g., MOEC2417Cest -> MOEC2417)
+            if (preg_match('/([A-Z]+\d+)Cest/', $cleanOutput, $idMatch)) {
+                $testId = $idMatch[1];
+            }
+            // Fallback: Use run's test filter
+            elseif ($filter = $run->getTestFilter()) {
+                if (preg_match('/^([A-Z]+\d+)/', $filter, $idMatch)) {
+                    $testId = $idMatch[1];
+                } else {
+                    $testId = $filter; // Use filter as-is if no ID pattern
+                }
+            }
+
+            // Use test ID as both name and ID - simple and sufficient
+            $result->setTestName($testId ?? 'Unknown');
+            if ($testId) {
+                $result->setTestId($testId);
+            }
+            $result->setStatus(TestResult::STATUS_BROKEN);
+
+            $results[] = $result;
+        }
+
         // Extract duration from timing line and apply to results
         if (preg_match('/Time:\s*([0-9:.]+)/', $cleanOutput, $timeMatch)) {
             $this->applyDurationToResults($results, $timeMatch[1]);
@@ -244,11 +305,37 @@ class MftfExecutorService
     }
 
     /**
-     * Get path to Allure results from MFTF.
+     * Get path to Allure results from MFTF (shared location).
+     *
+     * Allure results are in a separate Docker mount, so we don't move them
+     * to per-run directory. AllureReportService handles copying them.
      */
     public function getAllureResultsPath(): string
     {
         return $this->projectDir . '/var/mftf-results/allure-results';
+    }
+
+    /**
+     * Check if output contains error indicators that suggest test failure.
+     */
+    private function hasErrorIndicators(string $output): bool
+    {
+        $errorPatterns = [
+            '/\[Exception\]/',                          // PHP/Codeception exception
+            '/ERRORS!\s*Tests:/',                       // Codeception error summary
+            '/Fatal error:/i',                          // PHP fatal error
+            '/Uncaught exception/i',                    // Uncaught exception
+            '/failed to generate/i',                    // MFTF generation failure
+            '/Step\s+\[.*?\]\s+.*?FAIL/s',              // Step failure without proper result line
+        ];
+
+        foreach ($errorPatterns as $pattern) {
+            if (preg_match($pattern, $output)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -337,7 +424,7 @@ class MftfExecutorService
         // Parse time format "MM:SS.mmm" or "SS.mmm"
         $parts = explode(':', $timeStr);
         $seconds = 0.0;
-        if (count($parts) === 2) {
+        if (2 === count($parts)) {
             $seconds = (int) $parts[0] * 60 + (float) $parts[1];
         } else {
             $seconds = (float) $parts[0];
