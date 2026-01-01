@@ -56,14 +56,14 @@ for i in {1..30}; do
     sleep 5
 done
 
-# Wait for Elasticsearch
-echo "Waiting for Elasticsearch..."
+# Wait for OpenSearch
+echo "Waiting for OpenSearch..."
 for i in {1..30}; do
-    if curl -s "http://${ES_HOST:-magento-elasticsearch}:9200" > /dev/null 2>&1; then
-        echo "Elasticsearch ready."
+    if curl -s "http://${OPENSEARCH_HOST:-magento-opensearch}:9200" > /dev/null 2>&1; then
+        echo "OpenSearch ready."
         break
     fi
-    echo "Elasticsearch not ready, waiting... ($i/30)"
+    echo "OpenSearch not ready, waiting... ($i/30)"
     sleep 5
 done
 
@@ -132,9 +132,9 @@ bin/magento setup:install \
     --currency="USD" \
     --timezone="America/New_York" \
     --use-rewrites="1" \
-    --search-engine="elasticsearch7" \
-    --elasticsearch-host="${ES_HOST:-magento-elasticsearch}" \
-    --elasticsearch-port="9200" \
+    --search-engine="opensearch" \
+    --opensearch-host="${OPENSEARCH_HOST:-magento-opensearch}" \
+    --opensearch-port="9200" \
     --session-save="redis" \
     --session-save-redis-host="${REDIS_HOST:-magento-redis}" \
     --cache-backend="redis" \

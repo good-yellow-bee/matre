@@ -266,13 +266,13 @@ services:
       DB_NAME: magento
       DB_USER: magento
       DB_PASS: magento
-      ES_HOST: magento-elasticsearch
+      OPENSEARCH_HOST: magento-opensearch
       REDIS_HOST: magento-redis
       SELENIUM_HOST: selenium-hub
       SELENIUM_PORT: 4444
     depends_on:
       - magento-db
-      - magento-elasticsearch
+      - magento-opensearch
       - magento-redis
       - selenium-hub
     networks:
@@ -292,16 +292,17 @@ services:
     networks:
       - matre_network
 
-  # Magento Elasticsearch
-  magento-elasticsearch:
-    image: elasticsearch:7.17.14
-    container_name: matre_magento_es
+  # Magento OpenSearch (required for Magento 2.4.8+)
+  magento-opensearch:
+    image: opensearchproject/opensearch:2.14.0
+    container_name: matre_magento_opensearch
     environment:
       - discovery.type=single-node
-      - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - DISABLE_SECURITY_PLUGIN=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=Admin123!
     volumes:
-      - matre_magento_es_data:/usr/share/elasticsearch/data
+      - matre_magento_opensearch_data:/usr/share/opensearch/data
     networks:
       - matre_network
 
@@ -356,7 +357,7 @@ volumes:
   matre_vendor:
   matre_magento_code:
   matre_magento_db_data:
-  matre_magento_es_data:
+  matre_magento_opensearch_data:
   traefik_certs:
 
 networks:
