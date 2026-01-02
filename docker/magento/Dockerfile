@@ -1,7 +1,7 @@
 # Magento 2 Docker Container for ATR
-# PHP 8.2 for Magento 2.4.6 compatibility (MFTF binary execution)
+# PHP 8.3 for Magento 2.4.8 compatibility (MFTF 5.x)
 
-FROM php:8.2-fpm-alpine
+FROM php:8.3-fpm-alpine
 
 # Install system dependencies
 RUN apk add --no-cache \
@@ -23,6 +23,7 @@ RUN apk add --no-cache \
     linux-headers
 
 # Configure and install PHP extensions
+# ftp extension required for Magento 2.4.8+
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
         gd \
@@ -34,7 +35,8 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
         soap \
         bcmath \
         sockets \
-        opcache
+        opcache \
+        ftp
 
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
