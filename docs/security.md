@@ -182,6 +182,13 @@ add_header X-XSS-Protection "1; mode=block" always;
 add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 ```
 
+### Content Security Policy
+
+CSP headers configured via `config/packages/nelmio_security.yaml`:
+- Self-hosted scripts/styles
+- External CDNs (fonts, libraries)
+- Inline styles (for dynamic UI)
+
 ---
 
 ## Input Validation

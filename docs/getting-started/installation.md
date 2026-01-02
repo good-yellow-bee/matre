@@ -40,8 +40,9 @@ This starts all services:
 | matre_scheduler | Cron job worker | - |
 | matre_test_worker | Test execution worker | - |
 | matre_selenium_hub | Selenium Grid hub | 4444 |
-| matre_chrome_node | Chrome browser node | - |
+| matre_chrome_node | Chrome/Chromium browser node | - |
 | matre_playwright | Playwright runner | - |
+| matre_opensearch | OpenSearch 2.14 (Magento search) | 9200 |
 | matre_allure | Allure report service | 5050 |
 | matre_magento | Magento MFTF environment | - |
 
@@ -227,3 +228,9 @@ docker-compose logs -f matre_test_worker
 # Restart worker
 docker-compose restart matre_test_worker
 ```
+
+---
+
+## ARM64 Support (M1/M2 Macs)
+
+Docker uses Chromium instead of Chrome for ARM64 compatibility. Anti-bot flags enabled by default for testing on protected sites.

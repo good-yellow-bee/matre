@@ -73,6 +73,23 @@ Watch test execution in real-time via browser-based VNC viewer:
 - **Screenshots:** Click thumbnails to view full failure screenshots
 - **Reports:** Link to Allure HTML report
 
+### Test Step Viewer
+
+View hierarchical test steps with action groups:
+1. Click any test row in results
+2. Steps modal shows tree view: parent steps → child actions
+3. Status icons: ✅ passed, ❌ failed, ⏭️ skipped
+4. Duration displayed per step
+
+### ANSI Color Output
+
+Test logs render with color styling:
+- Green: success messages
+- Yellow: warnings
+- Magenta/Cyan: highlights
+
+Sanitized via DOMPurify for security.
+
 ---
 
 ## Via CLI {#cli}

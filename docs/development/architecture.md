@@ -9,6 +9,7 @@
 | Frontend | Vue 3, Tailwind CSS |
 | Build | Vite |
 | Database | MariaDB 11 / MySQL 8 |
+| Search | OpenSearch 2.14 (Magento 2.4.8) |
 | Server | Nginx, PHP-FPM |
 | Container | Docker |
 

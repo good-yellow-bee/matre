@@ -109,6 +109,23 @@ docker-compose exec php php bin/console app:test:cleanup --reports-only --dry-ru
 docker-compose exec php php bin/console app:test:cleanup --days=1 --reports-only
 ```
 
+### Batch Cleanup (Advanced)
+
+For multi-environment cleanup, use `scripts/allure_cleanup.py`:
+
+```bash
+# Clean all environments
+python scripts/allure_cleanup.py all
+
+# Shortcuts: us, es, stage, preprod
+python scripts/allure_cleanup.py us --older-than 14
+
+# Filter by suite
+python scripts/allure_cleanup.py all --not-in-suite "Smoke"
+```
+
+See `scripts/README.md` for full options including remote execution mode.
+
 ---
 
 ## Allure Service Health
