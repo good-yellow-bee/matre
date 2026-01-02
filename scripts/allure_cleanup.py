@@ -88,12 +88,88 @@ def generate_cleanup_script(
     # Escape test IDs for Python string
     test_ids_str = ', '.join([f'"{tid}"' for tid in test_ids])
 
+    # Serialize suite filters as Python lists
+    in_suites_str = ', '.join([f'"{s}"' for s in (in_suites or [])])
+    not_in_suites_str = ', '.join([f'"{s}"' for s in (not_in_suites or [])])
+
     script = f'''
 import json
 import os
 import sys
+import xml.etree.ElementTree as ET
 
-def cleanup_environment(base_path, test_ids, dry_run=False):
+def cleanup_source_results(base_path, test_ids, in_suites, not_in_suites, dry_run=False):
+    """Clean source results (XML testsuite files) to prevent re-appearance after report regeneration."""
+    # Derive source path from report path
+    # /home/ubuntu/ABBTests/src/pub/allure-report-stage-us → /home/ubuntu/ABBTests/src/dev/tests/acceptance/_output/allure-results-stage-us
+    source_dir = base_path.replace("/pub/allure-report-", "/dev/tests/acceptance/_output/allure-results-")
+
+    if not os.path.exists(source_dir):
+        return {{"source_removed": 0, "source_files": [], "source_error": f"Source dir not found: {{source_dir}}"}}
+
+    source_removed = []
+
+    try:
+        files = os.listdir(source_dir)
+    except Exception as e:
+        return {{"source_removed": 0, "source_files": [], "source_error": str(e)}}
+
+    for f in files:
+        if not f.endswith("-testsuite.xml"):
+            continue
+
+        filepath = f"{{source_dir}}/{{f}}"
+        try:
+            tree = ET.parse(filepath)
+            root = tree.getroot()
+
+            # Get suite name from <test-suite><name> or root <name>
+            suite_el = root.find("name")
+            suite = suite_el.text if suite_el is not None else ""
+
+            # Apply suite filter (same logic as report cleanup)
+            if in_suites:
+                # At least one in_suite must match
+                if not any(s in suite for s in in_suites):
+                    continue
+            if not_in_suites:
+                # None of not_in_suites should match
+                if any(s in suite for s in not_in_suites):
+                    continue
+
+            # Find test name in <test-case><name>TESTID</name>
+            should_delete = False
+            matched_name = ""
+            for test_case in root.findall(".//test-case"):
+                name_el = test_case.find("name")
+                if name_el is None:
+                    continue
+                name = name_el.text or ""
+
+                # Check if test ID matches
+                for tid in test_ids:
+                    if tid in name:
+                        should_delete = True
+                        matched_name = name
+                        break
+                if should_delete:
+                    break
+
+            if should_delete:
+                source_removed.append({{"file": f, "name": matched_name, "suite": suite}})
+                if not dry_run:
+                    os.remove(filepath)
+
+        except Exception as e:
+            continue
+
+    return {{
+        "source_removed": len(source_removed),
+        "source_files": source_removed[:5],
+        "source_more": len(source_removed) - 5 if len(source_removed) > 5 else 0
+    }}
+
+def cleanup_environment(base_path, test_ids, in_suites, not_in_suites, dry_run=False):
     """Clean up test entries from a single environment."""
     tc_dir = f"{{base_path}}/data/test-cases"
 
@@ -209,15 +285,21 @@ def cleanup_environment(base_path, test_ids, dry_run=False):
         except Exception as e:
             pass
 
+    # Also clean source results (XML testsuite files)
+    source_result = cleanup_source_results(base_path, test_ids, in_suites, not_in_suites, dry_run)
+
     return {{
         "removed": len(removed),
         "entries": removed[:5],
-        "more": len(removed) - 5 if len(removed) > 5 else 0
+        "more": len(removed) - 5 if len(removed) > 5 else 0,
+        **source_result
     }}
 
 
 # Main execution
 test_ids = [{test_ids_str}]
+in_suites = [{in_suites_str}]
+not_in_suites = [{not_in_suites_str}]
 dry_run = {str(dry_run)}
 environments = {{}}  # Will be populated by caller
 
@@ -234,7 +316,7 @@ for env in envs_str.split(","):
     if not env:
         continue
     base_path = base_path_template.replace("{{env}}", env)
-    results[env] = cleanup_environment(base_path, test_ids, dry_run)
+    results[env] = cleanup_environment(base_path, test_ids, in_suites, not_in_suites, dry_run)
 
 print(json.dumps(results, indent=2))
 '''
@@ -324,6 +406,7 @@ def print_results(results: dict, dry_run: bool = False):
     prefix = "[DRY RUN] " if dry_run else ""
 
     total_removed = 0
+    total_source_removed = 0
 
     for env, result in results.items():
         if 'error' in result:
@@ -331,19 +414,34 @@ def print_results(results: dict, dry_run: bool = False):
             continue
 
         removed = result.get('removed', 0)
+        source_removed = result.get('source_removed', 0)
         total_removed += removed
+        total_source_removed += source_removed
 
-        print(f"\n{env}: {prefix}Removed {removed} entries")
+        print(f"\n{env}: {prefix}Removed {removed} report entries, {source_removed} source files")
 
         for entry in result.get('entries', []):
             print(f"  - {entry['name']}")
             print(f"    Suite: {entry['suite']}")
 
         if result.get('more', 0) > 0:
-            print(f"  ... and {result['more']} more")
+            print(f"  ... and {result['more']} more report entries")
+
+        # Show source file errors if any
+        if result.get('source_error'):
+            print(f"  ⚠️ Source cleanup error: {result['source_error']}")
+
+        # Show source files removed
+        for sf in result.get('source_files', []):
+            suite_info = sf.get('suite', '')
+            suite_short = suite_info.split('\\')[-1] if suite_info else 'unknown'
+            print(f"  📁 {sf['file']} ({sf['name']}) [{suite_short}]")
+
+        if result.get('source_more', 0) > 0:
+            print(f"  ... and {result['source_more']} more source files")
 
     print(f"\n{'=' * 50}")
-    print(f"Total: {prefix}{total_removed} entries removed across {len(results)} environment(s)")
+    print(f"Total: {prefix}{total_removed} report entries + {total_source_removed} source files removed across {len(results)} environment(s)")
 
 
 def main():
