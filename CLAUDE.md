@@ -149,11 +149,40 @@ Do not include Claude attribution in commits.
 
 ## Artifact Storage
 
-- Test artifacts: `var/test-artifacts/{runId}/`
-- MFTF results: `var/mftf-results/`
-- Playwright results: `var/playwright-results/`
-- Allure results: `var/allure-results/`
-- Test modules: `var/test-modules/`
+| Directory | Contents | Access Pattern |
+|-----------|----------|----------------|
+| `var/allure-results/run-{id}/` | Raw Allure JSON results, attachments | Per TestRun ID |
+| `var/allure-reports/latest/` | Generated HTML report (symlink to most recent) | Quick access |
+| `var/test-artifacts/{id}/` | Screenshots, HTML dumps per run | Per TestRun ID |
+| `var/mftf-results/run-{id}/` | MFTF-specific outputs | Per TestRun ID |
+| `var/test-modules/current` | Git-cloned or symlinked test module | Active module |
+
+## Env Variable Management
+
+**Source of truth:** `abb-custom-mftf/Cron/data/.env.{environment}`
+
+⚠️ **Always edit source files first** - they're version-controlled, then import to database.
+
+**Workflow:**
+```
+Source: TEST_MODULE_REPO/Cron/data/.env.{env}
+   ↓
+Import: php bin/console app:env:import [env] --clone
+   ↓
+Database: matre_global_env_variables table
+   ↓
+Runtime: Merged into test execution
+```
+
+**Import command options:**
+| Flag | Behavior |
+|------|----------|
+| `--clone` | Fresh git clone before import |
+| `--overwrite` | Replace existing values |
+| `--global` | Apply to all environments (null) |
+| `--dry-run` | Preview without changes |
+
+**Smart merge:** Same name+value → environments merged. Different values → creates new record (unless --overwrite).
 
 ## Dev Mode (Local Module Development)
 
