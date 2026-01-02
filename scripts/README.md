@@ -2,14 +2,18 @@
 
 ## allure_cleanup.py
 
-Remove test results from Allure reports with advanced filtering. Supports multi-environment batch operations and suite-based filtering.
+Remove test results from Allure reports **permanently** with advanced filtering. Supports multi-environment batch operations and suite-based filtering.
 
 ### What It Removes
 
+**From Generated Report** (`allure-report-{env}/`):
 1. **Test-case file** (`data/test-cases/{uid}.json`)
 2. **Behaviors entry** (`data/behaviors.json`)
 3. **Suites entry** (`data/suites.json`)
 4. **History entry** (`history/history.json`)
+
+**From Source Results** (`allure-results-{env}/`):
+5. **Testsuite XML files** (`{uuid}-testsuite.xml`) - **Prevents re-appearance after report regeneration**
 
 ### Environment Shortcuts
 
@@ -72,18 +76,22 @@ SSH host: abb
 Dry run: False
 Use sudo: True
 
-stage-us: Removed 236 entries
+stage-us: Removed 236 report entries, 236 source files
   - MOEC2417: Test for LV Drives configurators - Edit
     Suite: Magento\FunctionalTestingFramework.functional\group1
-  ... and 231 more
+  ... and 231 more report entries
+  📁 abc123-testsuite.xml (MOEC2417)
+  ... and 231 more source files
 
-stage-es: Removed 234 entries
+stage-es: Removed 234 report entries, 234 source files
   - MOEC2417: Test for LV Drives configurators - Edit
     Suite: Magento\FunctionalTestingFramework.functional\group1
-  ... and 229 more
+  ... and 229 more report entries
+  📁 def456-testsuite.xml (MOEC2417)
+  ... and 229 more source files
 
 ==================================================
-Total: 580 entries removed across 4 environment(s)
+Total: 470 report entries + 470 source files removed across 4 environment(s)
 ```
 
 ### Recovery
