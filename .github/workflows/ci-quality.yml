@@ -91,7 +91,29 @@ jobs:
 
       - name: Run PHPUnit tests
         run: |
-          APP_ENV=test APP_DEBUG=0 php bin/phpunit --configuration phpunit.dist.xml --coverage-clover coverage.xml --coverage-text
+          APP_ENV=test APP_DEBUG=0 php bin/phpunit --configuration phpunit.dist.xml --coverage-clover coverage.xml --coverage-text | tee phpunit-output.txt
+
+      - name: Check coverage threshold
+        run: |
+          # Extract coverage percentage from PHPUnit output
+          COVERAGE=$(grep -oP 'Lines:\s+\K[\d.]+' phpunit-output.txt | head -1)
+          THRESHOLD=30
+
+          echo "Current line coverage: ${COVERAGE}%"
+          echo "Required minimum: ${THRESHOLD}%"
+
+          if [ -z "$COVERAGE" ]; then
+            echo "❌ Could not extract coverage percentage from PHPUnit output"
+            exit 1
+          fi
+
+          # Compare using bc for floating point
+          if [ "$(echo "$COVERAGE < $THRESHOLD" | bc)" -eq 1 ]; then
+            echo "❌ Coverage ${COVERAGE}% is below minimum threshold of ${THRESHOLD}%"
+            exit 1
+          fi
+
+          echo "✅ Coverage ${COVERAGE}% meets minimum threshold of ${THRESHOLD}%"
 
       - name: Upload coverage to Codecov
         if: matrix.php-version == '8.5'

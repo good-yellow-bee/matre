@@ -1,0 +1,11 @@
+framework:
+    csrf_protection:
+        stateless_token_ids:
+            - submit
+            - authenticate
+            - logout
+            - test_run_api
+            - user_api
+            - env_variable_api
+            - cron_job_api
+            - test_discovery
