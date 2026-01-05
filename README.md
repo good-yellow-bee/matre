@@ -264,6 +264,9 @@ docker-compose logs -f matre_test_worker
 - [Architecture Overview](docs/development/architecture.md)
 - [Entities](docs/development/entities.md)
 - [Admin CRUD](docs/development/admin-crud.md)
+- [Forms](docs/development/forms.md) - Form handling patterns
+- [Vue Islands](docs/development/vue-islands.md) - Vue 3 component pattern
+- [Dev Mode](docs/development/dev-mode.md) - Local module development
 - [Unit Tests](docs/testing/unit-tests.md) - PHPUnit testing
 
 ### Deployment
