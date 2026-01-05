@@ -1,0 +1,11 @@
+framework:
+    rate_limiter:
+        # Disable rate limiting in tests by setting high limits
+        login:
+            limit: 10000
+        api:
+            limit: 10000
+        password_reset:
+            limit: 10000
+        user_creation:
+            limit: 10000
