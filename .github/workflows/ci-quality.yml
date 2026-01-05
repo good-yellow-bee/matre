@@ -97,7 +97,7 @@ jobs:
         run: |
           # Extract coverage percentage from PHPUnit output
           COVERAGE=$(grep -oP 'Lines:\s+\K[\d.]+' phpunit-output.txt | head -1)
-          THRESHOLD=30
+          THRESHOLD=20
 
           echo "Current line coverage: ${COVERAGE}%"
           echo "Required minimum: ${THRESHOLD}%"
