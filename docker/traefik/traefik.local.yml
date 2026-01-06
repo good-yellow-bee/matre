@@ -26,4 +26,4 @@ providers:
     watch: true
 
 log:
-  level: DEBUG
+  level: INFO

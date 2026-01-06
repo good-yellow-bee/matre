@@ -47,9 +47,26 @@ class TestRunMessageHandler
             return;
         }
 
-        // Skip if already cancelled or failed
-        if (in_array($run->getStatus(), [TestRun::STATUS_CANCELLED, TestRun::STATUS_FAILED], true)) {
-            $this->logger->info('Skipping cancelled/failed run', ['runId' => $runId]);
+        // Skip only early phases for failed/cancelled runs (REPORT must run to dispatch NOTIFY)
+        $skipForFailedStatuses = [TestRun::STATUS_CANCELLED, TestRun::STATUS_FAILED];
+        $phasesToSkipWhenFailed = [
+            TestRunMessage::PHASE_PREPARE,
+            TestRunMessage::PHASE_EXECUTE,
+        ];
+
+        if (in_array($run->getStatus(), $skipForFailedStatuses, true)
+            && in_array($phase, $phasesToSkipWhenFailed, true)) {
+            $this->logger->info('Skipping phase for cancelled/failed run, jumping to REPORT', [
+                'runId' => $runId,
+                'phase' => $phase,
+            ]);
+
+            // Dispatch REPORT to continue pipeline toward NOTIFY (for failure notification)
+            $this->messageBus->dispatch(new TestRunMessage(
+                $runId,
+                $run->getEnvironment()->getId(),
+                TestRunMessage::PHASE_REPORT,
+            ));
 
             return;
         }
@@ -85,21 +102,39 @@ class TestRunMessageHandler
 
     private function handlePrepare(TestRun $run): void
     {
-        $this->testRunnerService->prepareRun($run);
+        $nextPhase = TestRunMessage::PHASE_EXECUTE;
 
-        // Dispatch next phase
+        try {
+            $this->testRunnerService->prepareRun($run);
+        } catch (\Throwable $e) {
+            $this->logger->error('Prepare phase failed, skipping to REPORT', [
+                'runId' => $run->getId(),
+                'error' => $e->getMessage(),
+            ]);
+            // Skip EXECUTE, go straight to REPORT (which will dispatch NOTIFY)
+            $nextPhase = TestRunMessage::PHASE_REPORT;
+        }
+
         $this->messageBus->dispatch(new TestRunMessage(
             $run->getId(),
             $run->getEnvironment()->getId(),
-            TestRunMessage::PHASE_EXECUTE,
+            $nextPhase,
         ));
     }
 
     private function handleExecute(TestRun $run): void
     {
-        $this->testRunnerService->executeRun($run);
+        try {
+            $this->testRunnerService->executeRun($run);
+        } catch (\Throwable $e) {
+            $this->logger->error('Execute phase failed, continuing to REPORT', [
+                'runId' => $run->getId(),
+                'error' => $e->getMessage(),
+            ]);
+            // Continue to REPORT regardless - service should have marked run as failed
+        }
 
-        // Dispatch next phase
+        // Always dispatch REPORT (handles both success and failure)
         $this->messageBus->dispatch(new TestRunMessage(
             $run->getId(),
             $run->getEnvironment()->getId(),
@@ -109,9 +144,22 @@ class TestRunMessageHandler
 
     private function handleReport(TestRun $run): void
     {
-        $this->testRunnerService->generateReports($run);
+        // Only generate reports for successful runs
+        if (!in_array($run->getStatus(), [TestRun::STATUS_FAILED, TestRun::STATUS_CANCELLED], true)) {
+            try {
+                $this->testRunnerService->generateReports($run);
+            } catch (\Throwable $e) {
+                $this->logger->error('Report generation failed, continuing to NOTIFY', [
+                    'runId' => $run->getId(),
+                    'error' => $e->getMessage(),
+                ]);
+                // Continue to NOTIFY regardless
+            }
+        } else {
+            $this->logger->info('Skipping report generation for failed/cancelled run', ['id' => $run->getId()]);
+        }
 
-        // Dispatch next phase
+        // Always dispatch NOTIFY (even for failed runs - they need failure notifications!)
         $this->messageBus->dispatch(new TestRunMessage(
             $run->getId(),
             $run->getEnvironment()->getId(),
@@ -121,20 +169,28 @@ class TestRunMessageHandler
 
     private function handleNotify(TestRun $run): void
     {
-        // Slack: send if ANY subscribed user has Slack enabled
-        if ($this->userRepository->shouldSendSlackNotification($run)) {
-            $this->notificationService->sendSlackNotification($run);
+        try {
+            // Slack: send if ANY subscribed user has Slack enabled
+            if ($this->userRepository->shouldSendSlackNotification($run)) {
+                $this->notificationService->sendSlackNotification($run);
+            }
+
+            // Email: individual emails to each subscribed user
+            $usersToEmail = $this->userRepository->findUsersToNotifyByEmail($run);
+            $recipients = array_map(static fn (User $u) => $u->getEmail(), $usersToEmail);
+
+            if (!empty($recipients)) {
+                $this->notificationService->sendEmailNotification($run, $recipients);
+            }
+        } catch (\Throwable $e) {
+            $this->logger->error('Notification phase failed, continuing to CLEANUP', [
+                'runId' => $run->getId(),
+                'error' => $e->getMessage(),
+            ]);
+            // Continue to CLEANUP regardless
         }
 
-        // Email: individual emails to each subscribed user
-        $usersToEmail = $this->userRepository->findUsersToNotifyByEmail($run);
-        $recipients = array_map(static fn (User $u) => $u->getEmail(), $usersToEmail);
-
-        if (!empty($recipients)) {
-            $this->notificationService->sendEmailNotification($run, $recipients);
-        }
-
-        // Dispatch cleanup phase
+        // Always dispatch CLEANUP
         $this->messageBus->dispatch(new TestRunMessage(
             $run->getId(),
             $run->getEnvironment()->getId(),
@@ -144,6 +200,14 @@ class TestRunMessageHandler
 
     private function handleCleanup(TestRun $run): void
     {
-        $this->testRunnerService->cleanupRun($run);
+        try {
+            $this->testRunnerService->cleanupRun($run);
+        } catch (\Throwable $e) {
+            $this->logger->error('Cleanup phase failed', [
+                'runId' => $run->getId(),
+                'error' => $e->getMessage(),
+            ]);
+            // No next phase - just log and continue
+        }
     }
 }

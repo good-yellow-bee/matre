@@ -62,7 +62,12 @@ MAGENTO_PUBLIC_KEY=
 MAGENTO_PRIVATE_KEY=
 
 # Notifications
-SLACK_WEBHOOK_URL=
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/XXX/YYY/ZZZ
+MAILER_DSN=smtp://mailpit:1025
+
+# SLACK_WEBHOOK_URL: Incoming webhook for Slack notifications (optional)
+# MAILER_DSN: SMTP transport for email notifications
+# See docs/operations/notifications.md for full configuration
 ```
 
 ---
