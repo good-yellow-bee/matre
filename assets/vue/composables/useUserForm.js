@@ -8,6 +8,11 @@ export function useUserForm(apiBaseUrl) {
     passwordConfirm: '',
     roles: ['ROLE_USER'],
     isActive: true,
+    notificationsEnabled: false,
+    notificationTrigger: 'failures',
+    notifyByEmail: false,
+    notifyBySlack: false,
+    notificationEnvironments: [],
   });
 
   const errors = reactive({});
@@ -28,6 +33,11 @@ export function useUserForm(apiBaseUrl) {
       form.email = data.email || '';
       form.roles = data.roles || ['ROLE_USER'];
       form.isActive = data.isActive ?? true;
+      form.notificationsEnabled = data.notificationsEnabled ?? false;
+      form.notificationTrigger = data.notificationTrigger || 'failures';
+      form.notifyByEmail = data.notifyByEmail ?? false;
+      form.notifyBySlack = data.notifyBySlack ?? false;
+      form.notificationEnvironments = data.notificationEnvironments || [];
       // Password fields remain empty for security
 
       return { success: true };
@@ -52,6 +62,11 @@ export function useUserForm(apiBaseUrl) {
           passwordConfirm: form.passwordConfirm,
           roles: form.roles,
           isActive: form.isActive,
+          notificationsEnabled: form.notificationsEnabled,
+          notificationTrigger: form.notificationTrigger,
+          notifyByEmail: form.notifyByEmail,
+          notifyBySlack: form.notifyBySlack,
+          notificationEnvironments: form.notificationEnvironments,
         }),
       });
 
@@ -83,6 +98,11 @@ export function useUserForm(apiBaseUrl) {
         email: form.email,
         roles: form.roles,
         isActive: form.isActive,
+        notificationsEnabled: form.notificationsEnabled,
+        notificationTrigger: form.notificationTrigger,
+        notifyByEmail: form.notifyByEmail,
+        notifyBySlack: form.notifyBySlack,
+        notificationEnvironments: form.notificationEnvironments,
       };
 
       // Only include password if it's being changed

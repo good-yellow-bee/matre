@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Controller\Api;
 
+use App\Entity\TestEnvironment;
 use App\Entity\User;
+use App\Repository\TestEnvironmentRepository;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\Pagination\Paginator as DoctrinePaginator;
@@ -103,6 +105,14 @@ class UserApiController extends AbstractController
             'email' => $user->getEmail(),
             'roles' => $user->getRoles(),
             'isActive' => $user->getIsActive(),
+            'notificationsEnabled' => $user->isNotificationsEnabled(),
+            'notificationTrigger' => $user->getNotificationTrigger(),
+            'notifyByEmail' => $user->isNotifyByEmail(),
+            'notifyBySlack' => $user->isNotifyBySlack(),
+            'notificationEnvironments' => array_map(
+                fn (TestEnvironment $env) => $env->getId(),
+                $user->getNotificationEnvironments()->toArray(),
+            ),
             'createdAt' => $user->getCreatedAt()->format('c'),
             'updatedAt' => $user->getUpdatedAt()?->format('c'),
         ]);
@@ -117,6 +127,7 @@ class UserApiController extends AbstractController
         EntityManagerInterface $em,
         UserRepository $users,
         UserPasswordHasherInterface $passwordHasher,
+        TestEnvironmentRepository $environments,
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
 
@@ -140,6 +151,13 @@ class UserApiController extends AbstractController
         $roles = $this->sanitizeRoles($data['roles'] ?? ['ROLE_USER']);
         $user->setRoles($roles);
         $user->setIsActive($data['isActive'] ?? true);
+
+        // Notification settings
+        $user->setNotificationsEnabled($data['notificationsEnabled'] ?? false);
+        $user->setNotificationTrigger($data['notificationTrigger'] ?? 'failures');
+        $user->setNotifyByEmail($data['notifyByEmail'] ?? false);
+        $user->setNotifyBySlack($data['notifyBySlack'] ?? false);
+        $this->syncNotificationEnvironments($user, $data['notificationEnvironments'] ?? [], $environments);
 
         // Hash password
         $hashedPassword = $passwordHasher->hashPassword($user, $data['password']);
@@ -165,6 +183,7 @@ class UserApiController extends AbstractController
         EntityManagerInterface $em,
         UserRepository $users,
         UserPasswordHasherInterface $passwordHasher,
+        TestEnvironmentRepository $environments,
     ): JsonResponse {
         $user = $users->find($id);
 
@@ -193,6 +212,13 @@ class UserApiController extends AbstractController
         $roles = $this->sanitizeRoles($data['roles'] ?? ['ROLE_USER']);
         $user->setRoles($roles);
         $user->setIsActive($data['isActive'] ?? true);
+
+        // Notification settings
+        $user->setNotificationsEnabled($data['notificationsEnabled'] ?? false);
+        $user->setNotificationTrigger($data['notificationTrigger'] ?? 'failures');
+        $user->setNotifyByEmail($data['notifyByEmail'] ?? false);
+        $user->setNotifyBySlack($data['notifyBySlack'] ?? false);
+        $this->syncNotificationEnvironments($user, $data['notificationEnvironments'] ?? [], $environments);
 
         // Update password if provided
         if (!empty($data['password'])) {
@@ -417,5 +443,29 @@ class UserApiController extends AbstractController
         }
 
         return array_values($sanitized);
+    }
+
+    /**
+     * Sync notification environments for a user.
+     *
+     * @param array<int> $environmentIds
+     */
+    private function syncNotificationEnvironments(
+        User $user,
+        array $environmentIds,
+        TestEnvironmentRepository $environments,
+    ): void {
+        // Clear existing
+        foreach ($user->getNotificationEnvironments() as $env) {
+            $user->removeNotificationEnvironment($env);
+        }
+
+        // Add selected
+        foreach ($environmentIds as $id) {
+            $env = $environments->find($id);
+            if ($env) {
+                $user->addNotificationEnvironment($env);
+            }
+        }
     }
 }
