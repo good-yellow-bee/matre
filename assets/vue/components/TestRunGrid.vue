@@ -75,7 +75,7 @@
               <th>Environment</th>
               <th style="width: 100px">Type</th>
               <th style="width: 120px">Status</th>
-              <th style="width: 100px">Results</th>
+              <th style="width: 140px">Results</th>
               <th style="width: 100px">Duration</th>
               <th style="width: 140px">Created</th>
               <th class="text-end" style="width: 120px">Actions</th>
@@ -109,6 +109,8 @@
                   <span class="text-success">{{ run.resultCounts.passed }}</span>
                   /
                   <span class="text-danger">{{ run.resultCounts.failed }}</span>
+                  /
+                  <span class="text-warning">{{ run.resultCounts.broken }}</span>
                   /
                   <span class="text-secondary">{{ run.resultCounts.skipped }}</span>
                 </span>

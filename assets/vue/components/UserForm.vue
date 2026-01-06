@@ -187,6 +187,93 @@
         </div>
       </div>
 
+      <!-- Notification Settings Section -->
+      <div class="notification-section mb-4">
+        <h5 class="section-title">Notification Settings</h5>
+
+        <!-- Master Toggle -->
+        <div class="mb-3">
+          <div class="form-check form-switch">
+            <input
+              id="notifications-enabled"
+              v-model="form.notificationsEnabled"
+              type="checkbox"
+              class="form-check-input"
+              role="switch"
+            />
+            <label for="notifications-enabled" class="form-check-label">
+              <strong>Enable Notifications</strong>
+              <span class="text-muted d-block small">Master toggle for all notifications</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Notification Options (shown when enabled) -->
+        <div v-if="form.notificationsEnabled" class="notification-options">
+          <!-- Trigger -->
+          <div class="mb-3">
+            <label for="notification-trigger" class="form-label">Notify On</label>
+            <select
+              id="notification-trigger"
+              v-model="form.notificationTrigger"
+              class="form-select"
+            >
+              <option value="all">All test runs</option>
+              <option value="failures">Only failures</option>
+            </select>
+          </div>
+
+          <!-- Channels -->
+          <div class="mb-3">
+            <label class="form-label">Notification Channels</label>
+            <div class="channel-options">
+              <div class="form-check">
+                <input
+                  id="notify-email"
+                  v-model="form.notifyByEmail"
+                  type="checkbox"
+                  class="form-check-input"
+                />
+                <label for="notify-email" class="form-check-label">
+                  <i class="bi bi-envelope me-1"></i> Email
+                </label>
+              </div>
+              <div class="form-check">
+                <input
+                  id="notify-slack"
+                  v-model="form.notifyBySlack"
+                  type="checkbox"
+                  class="form-check-input"
+                />
+                <label for="notify-slack" class="form-check-label">
+                  <i class="bi bi-slack me-1"></i> Slack
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Environments -->
+          <div v-if="environments.length > 0" class="mb-3">
+            <label class="form-label">Environments</label>
+            <small class="text-muted d-block mb-2">Select environments to receive notifications for (leave empty for all)</small>
+            <div class="environment-options">
+              <div v-for="env in environments" :key="env.id" class="form-check">
+                <input
+                  :id="`env-${env.id}`"
+                  v-model="form.notificationEnvironments"
+                  type="checkbox"
+                  class="form-check-input"
+                  :value="env.id"
+                />
+                <label :for="`env-${env.id}`" class="form-check-label">
+                  {{ env.name }}
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Form Actions -->
       <div class="form-actions">
         <button
@@ -255,6 +342,10 @@ const props = defineProps({
     type: String,
     default: '/admin/users',
   },
+  environmentsUrl: {
+    type: String,
+    default: '/api/test-environments',
+  },
 });
 
 const {
@@ -279,6 +370,7 @@ const validatingEmail = ref(false);
 const showPassword = ref(false);
 const toast = ref({ show: false, message: '', type: 'success' });
 const originalData = ref(null);
+const environments = ref([]);
 
 const hasChanges = computed(() => {
   if (!originalData.value) return false;
@@ -287,7 +379,12 @@ const hasChanges = computed(() => {
     form.email !== originalData.value.email ||
     JSON.stringify(form.roles) !== JSON.stringify(originalData.value.roles) ||
     form.isActive !== originalData.value.isActive ||
-    form.password !== ''
+    form.password !== '' ||
+    form.notificationsEnabled !== originalData.value.notificationsEnabled ||
+    form.notificationTrigger !== originalData.value.notificationTrigger ||
+    form.notifyByEmail !== originalData.value.notifyByEmail ||
+    form.notifyBySlack !== originalData.value.notifyBySlack ||
+    JSON.stringify(form.notificationEnvironments) !== JSON.stringify(originalData.value.notificationEnvironments)
   );
 });
 
@@ -393,7 +490,15 @@ const isFormValid = computed(() => {
 // Reset to original data
 const resetToOriginal = () => {
   if (originalData.value) {
-    Object.assign(form, originalData.value);
+    form.username = originalData.value.username;
+    form.email = originalData.value.email;
+    form.roles = [...originalData.value.roles];
+    form.isActive = originalData.value.isActive;
+    form.notificationsEnabled = originalData.value.notificationsEnabled;
+    form.notificationTrigger = originalData.value.notificationTrigger;
+    form.notifyByEmail = originalData.value.notifyByEmail;
+    form.notifyBySlack = originalData.value.notifyBySlack;
+    form.notificationEnvironments = [...originalData.value.notificationEnvironments];
     form.password = '';
     form.passwordConfirm = '';
     clearErrors();
@@ -463,8 +568,24 @@ const showToast = (message, type = 'success') => {
   }, 3000);
 };
 
+// Fetch available environments
+const fetchEnvironments = async () => {
+  try {
+    const response = await fetch(props.environmentsUrl);
+    if (response.ok) {
+      const data = await response.json();
+      environments.value = data.items || data;
+    }
+  } catch (error) {
+    console.error('Failed to fetch environments:', error);
+  }
+};
+
 // Load user data on mount (if editing)
 onMounted(async () => {
+  // Fetch environments for notification settings
+  await fetchEnvironments();
+
   if (isEditMode.value) {
     const result = await fetchUser(props.userId);
     if (result.success) {
@@ -474,6 +595,11 @@ onMounted(async () => {
         email: form.email,
         roles: [...form.roles],
         isActive: form.isActive,
+        notificationsEnabled: form.notificationsEnabled,
+        notificationTrigger: form.notificationTrigger,
+        notifyByEmail: form.notifyByEmail,
+        notifyBySlack: form.notifyBySlack,
+        notificationEnvironments: [...form.notificationEnvironments],
       };
 
       // Validate username and email to show they're available
@@ -544,12 +670,55 @@ onMounted(async () => {
 
 /* Form Sections */
 .password-section,
-.roles-section {
+.roles-section,
+.notification-section {
   background: var(--slate-50);
   padding: 1.5rem;
   border-radius: 10px;
   margin-bottom: 1.5rem;
   border: 1px solid var(--slate-100);
+}
+
+/* Notification Options */
+.notification-options {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--slate-200);
+}
+
+.channel-options,
+.environment-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.channel-options .form-check,
+.environment-options .form-check {
+  padding: 0.75rem 1rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid var(--slate-200);
+  min-width: 120px;
+}
+
+.channel-options .form-check:hover,
+.environment-options .form-check:hover {
+  border-color: var(--primary);
+  background: rgba(59, 130, 246, 0.02);
+}
+
+.user-form :deep(.form-select) {
+  border: 1px solid var(--slate-200);
+  border-radius: 8px;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  color: var(--slate-900);
+}
+
+.user-form :deep(.form-select:focus) {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 /* Form Labels */

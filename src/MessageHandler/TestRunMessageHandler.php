@@ -144,8 +144,8 @@ class TestRunMessageHandler
 
     private function handleReport(TestRun $run): void
     {
-        // Only generate reports for successful runs
-        if (!in_array($run->getStatus(), [TestRun::STATUS_FAILED, TestRun::STATUS_CANCELLED], true)) {
+        // Generate reports for all runs except cancelled (we need reports to see what failed!)
+        if ($run->getStatus() !== TestRun::STATUS_CANCELLED) {
             try {
                 $this->testRunnerService->generateReports($run);
             } catch (\Throwable $e) {
@@ -156,7 +156,7 @@ class TestRunMessageHandler
                 // Continue to NOTIFY regardless
             }
         } else {
-            $this->logger->info('Skipping report generation for failed/cancelled run', ['id' => $run->getId()]);
+            $this->logger->info('Skipping report generation for cancelled run', ['id' => $run->getId()]);
         }
 
         // Always dispatch NOTIFY (even for failed runs - they need failure notifications!)

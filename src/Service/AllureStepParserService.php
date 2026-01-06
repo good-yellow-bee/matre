@@ -37,7 +37,31 @@ class AllureStepParserService
     }
 
     /**
+     * Get duration from Allure data for a test result (fallback when MFTF output lacks it).
+     */
+    public function getDurationForResult(TestResult $result): ?float
+    {
+        $filePath = $this->findAllureFileForResult($result);
+        if (!$filePath) {
+            return null;
+        }
+
+        $content = file_get_contents($filePath);
+        if (!$content) {
+            return null;
+        }
+
+        $data = json_decode($content, true);
+        if (!$data || !isset($data['start'], $data['stop'])) {
+            return null;
+        }
+
+        return ($data['stop'] - $data['start']) / 1000; // Convert ms to seconds
+    }
+
+    /**
      * Find Allure JSON file for a test result by searching run directory.
+     * When multiple files match, prefer the most recent one.
      */
     public function findAllureFileForResult(TestResult $result): ?string
     {
@@ -59,6 +83,8 @@ class AllureStepParserService
         $finder = new Finder();
         $finder->files()->in($runDir)->name('*-result.json');
 
+        $matchingFiles = [];
+
         foreach ($finder as $file) {
             $content = file_get_contents($file->getRealPath());
             if (!$content) {
@@ -72,11 +98,21 @@ class AllureStepParserService
 
             // Try multiple matching strategies
             if ($this->matchesTestResult($data, $testName, $testId)) {
-                return $file->getRealPath();
+                $matchingFiles[] = [
+                    'path' => $file->getRealPath(),
+                    'mtime' => $file->getMTime(),
+                ];
             }
         }
 
-        return null;
+        if (empty($matchingFiles)) {
+            return null;
+        }
+
+        // Sort by modification time descending - prefer most recent
+        usort($matchingFiles, fn ($a, $b) => $b['mtime'] <=> $a['mtime']);
+
+        return $matchingFiles[0]['path'];
     }
 
     /**

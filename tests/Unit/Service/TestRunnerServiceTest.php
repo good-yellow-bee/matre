@@ -11,10 +11,12 @@ use App\Entity\TestRun;
 use App\Entity\TestSuite;
 use App\Repository\TestRunRepository;
 use App\Service\AllureReportService;
+use App\Service\AllureStepParserService;
 use App\Service\ArtifactCollectorService;
 use App\Service\MftfExecutorService;
 use App\Service\ModuleCloneService;
 use App\Service\PlaywrightExecutorService;
+use App\Service\TestDiscoveryService;
 use App\Service\TestRunnerService;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -44,7 +46,11 @@ class TestRunnerServiceTest extends TestCase
 
     private MockObject&ArtifactCollectorService $artifactCollector;
 
+    private MockObject&AllureStepParserService $allureStepParser;
+
     private MockObject&LoggerInterface $logger;
+
+    private MockObject&TestDiscoveryService $testDiscovery;
 
     private MockObject&LockFactory $lockFactory;
 
@@ -61,7 +67,9 @@ class TestRunnerServiceTest extends TestCase
         $this->playwrightExecutor = $this->createMock(PlaywrightExecutorService::class);
         $this->allureReportService = $this->createMock(AllureReportService::class);
         $this->artifactCollector = $this->createMock(ArtifactCollectorService::class);
+        $this->allureStepParser = $this->createMock(AllureStepParserService::class);
         $this->logger = $this->createMock(LoggerInterface::class);
+        $this->testDiscovery = $this->createMock(TestDiscoveryService::class);
         $this->lockFactory = $this->createMock(LockFactory::class);
         $this->lock = $this->createMock(SharedLockInterface::class);
 
@@ -73,7 +81,9 @@ class TestRunnerServiceTest extends TestCase
             $this->playwrightExecutor,
             $this->allureReportService,
             $this->artifactCollector,
+            $this->allureStepParser,
             $this->logger,
+            $this->testDiscovery,
             $this->lockFactory,
         );
     }

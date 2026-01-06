@@ -94,6 +94,69 @@ class MftfExecutorService
     }
 
     /**
+     * Execute a single MFTF test with dedicated output file.
+     *
+     * Used for sequential group execution where each test gets its own output.
+     *
+     * @return array{output: string, exitCode: int, outputFilePath: string}
+     */
+    public function executeSingleTest(TestRun $run, string $testName): array
+    {
+        $this->logger->info('Executing single MFTF test', [
+            'runId' => $run->getId(),
+            'testName' => $testName,
+        ]);
+
+        // Use full testName for unique file (avoid collisions)
+        $safeFileName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $testName);
+        $outputFile = sprintf(
+            '%s/var/test-output/run-%d/%s.log',
+            $this->projectDir,
+            $run->getId(),
+            $safeFileName,
+        );
+
+        // Ensure directory exists
+        $dir = dirname($outputFile);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0o755, true);
+        }
+
+        // Build command with test name override
+        $mftfCommand = $this->buildCommand($run, $testName);
+
+        // Execute via Docker (same pattern as execute())
+        $process = new Process([
+            'docker', 'exec',
+            '-e', 'TERM=xterm-256color',
+            $this->magentoContainer,
+            'bash', '-c',
+            $mftfCommand,
+        ]);
+        $process->setTimeout(3600); // 1 hour timeout per test
+
+        // Stream to per-test file
+        $handle = fopen($outputFile, 'w');
+        $process->run(function ($type, $buffer) use ($handle) {
+            fwrite($handle, $buffer);
+        });
+        fclose($handle);
+
+        $this->logger->info('Single test execution completed', [
+            'runId' => $run->getId(),
+            'testName' => $testName,
+            'exitCode' => $process->getExitCode(),
+            'outputFile' => $outputFile,
+        ]);
+
+        return [
+            'output' => $this->readOutputFile($outputFile),
+            'exitCode' => $process->getExitCode() ?? 1,
+            'outputFilePath' => $outputFile,
+        ];
+    }
+
+    /**
      * Get output file path for a test run.
      */
     public function getOutputFilePath(TestRun $run): string
@@ -107,9 +170,10 @@ class MftfExecutorService
      * SECURITY: All environment variable names and values are validated and escaped
      * to prevent command injection attacks.
      */
-    public function buildCommand(TestRun $run): string
+    public function buildCommand(TestRun $run, ?string $testNameOverride = null): string
     {
-        $filter = $run->getTestFilter();
+        // Use override for sequential execution, otherwise from run
+        $filter = $testNameOverride ?? $run->getTestFilter();
         if (empty($filter)) {
             throw new \InvalidArgumentException('MFTF requires a test filter (test name or group). Please specify --filter option.');
         }
@@ -186,8 +250,10 @@ class MftfExecutorService
         // MFTF binary path
         $mftfBin = $this->magentoRoot . '/vendor/bin/mftf';
 
-        // Build MFTF run command
-        $mftfParts = [$mftfBin . ' run:test'];
+        // Always use run:test - sequential group execution replaces run:group
+        $mftfCommand = 'run:test';
+
+        $mftfParts = [$mftfBin . ' ' . $mftfCommand];
         $mftfParts[] = escapeshellarg($filter);
         $mftfParts[] = '-fr'; // failed rerun flag
 
@@ -321,12 +387,13 @@ class MftfExecutorService
     private function hasErrorIndicators(string $output): bool
     {
         $errorPatterns = [
-            '/\[Exception\]/',                          // PHP/Codeception exception
+            '/\[.*Exception\]/',                        // Any exception (FastFailException, etc)
             '/ERRORS!\s*Tests:/',                       // Codeception error summary
             '/Fatal error:/i',                          // PHP fatal error
             '/Uncaught exception/i',                    // Uncaught exception
             '/failed to generate/i',                    // MFTF generation failure
             '/Step\s+\[.*?\]\s+.*?FAIL/s',              // Step failure without proper result line
+            '/^\s*FAIL\s*$/m',                          // Standalone FAIL line
         ];
 
         foreach ($errorPatterns as $pattern) {
@@ -442,20 +509,45 @@ class MftfExecutorService
      *
      * MFTF uses _CREDS suffix in tests to reference credentials from .credentials file.
      * This extracts relevant variables from .env and formats them for MFTF.
+     *
+     * Supports MAGENTO_API_AUTH_USERNAME and MAGENTO_API_AUTH_PASSWORD for separate
+     * API authentication when SSO browser login uses different credentials.
      */
     private function buildCredentialsCommand(string $envFile, string $credentialsFile): string
     {
         // Extract password/secret variables from .env and format for .credentials
         // Format: magento/VAR_NAME=value
+        // If MAGENTO_API_AUTH_USERNAME/PASSWORD is set, use it for MAGENTO_ADMIN_USERNAME/PASSWORD in credentials
+        // This allows SSO browser login to use different credentials than REST API auth
         $script = <<<'BASH'
             (
                 echo "# MFTF credentials auto-generated from .env"
                 echo "magento/tfa/OTP_SHARED_SECRET=ABCDEFGHIJKLMNOP"
-                
-                # Extract all PASSWORD, SECRET, KEY variables from .env
+
+                # Check if API auth overrides exist
+                API_AUTH_USER=$(grep -E "^MAGENTO_API_AUTH_USERNAME=" "$1" 2>/dev/null | cut -d'=' -f2- | sed "s/^['\"]//;s/['\"]$//")
+                API_AUTH_PASS=$(grep -E "^MAGENTO_API_AUTH_PASSWORD=" "$1" 2>/dev/null | cut -d'=' -f2- | sed "s/^['\"]//;s/['\"]$//")
+
+                # Extract all PASSWORD, SECRET, KEY, USERNAME variables from .env
                 grep -E "^(MAGENTO_ADMIN|MAGENTO_TEST|.*PASSWORD|.*SECRET|.*KEY)=" "$1" 2>/dev/null | while IFS='=' read -r key value; do
                     # Remove quotes from value
                     value=$(echo "$value" | sed "s/^['\"]//;s/['\"]$//")
+
+                    # Use API auth username for MAGENTO_ADMIN_USERNAME if override exists
+                    if [ "$key" = "MAGENTO_ADMIN_USERNAME" ] && [ -n "$API_AUTH_USER" ]; then
+                        value="$API_AUTH_USER"
+                    fi
+
+                    # Use API auth password for MAGENTO_ADMIN_PASSWORD if override exists
+                    if [ "$key" = "MAGENTO_ADMIN_PASSWORD" ] && [ -n "$API_AUTH_PASS" ]; then
+                        value="$API_AUTH_PASS"
+                    fi
+
+                    # Skip the API auth variables themselves
+                    if [ "$key" = "MAGENTO_API_AUTH_USERNAME" ] || [ "$key" = "MAGENTO_API_AUTH_PASSWORD" ]; then
+                        continue
+                    fi
+
                     echo "magento/${key}=${value}"
                 done
             ) > "$2"

@@ -128,6 +128,24 @@ class TestRun
     private ?string $outputFilePath = null;
 
     /**
+     * Current test name for sequential group execution.
+     */
+    #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
+    private ?string $currentTestName = null;
+
+    /**
+     * Total number of tests in sequential group execution.
+     */
+    #[ORM\Column(type: Types::INTEGER, nullable: true)]
+    private ?int $totalTests = null;
+
+    /**
+     * Number of completed tests in sequential group execution.
+     */
+    #[ORM\Column(type: Types::INTEGER, nullable: true)]
+    private ?int $completedTests = null;
+
+    /**
      * @var Collection<int, TestResult>
      */
     #[ORM\OneToMany(targetEntity: TestResult::class, mappedBy: 'testRun', cascade: ['persist', 'remove'], orphanRemoval: true)]
@@ -548,6 +566,36 @@ class TestRun
     {
         $this->completedAt = new \DateTimeImmutable();
         $this->status = self::STATUS_CANCELLED;
+
+        return $this;
+    }
+
+    public function getCurrentTestName(): ?string
+    {
+        return $this->currentTestName;
+    }
+
+    public function setCurrentTestName(?string $currentTestName): static
+    {
+        $this->currentTestName = $currentTestName;
+
+        return $this;
+    }
+
+    public function getTotalTests(): ?int
+    {
+        return $this->totalTests;
+    }
+
+    public function getCompletedTests(): ?int
+    {
+        return $this->completedTests;
+    }
+
+    public function setProgress(int $completed, int $total): static
+    {
+        $this->completedTests = $completed;
+        $this->totalTests = $total;
 
         return $this;
     }

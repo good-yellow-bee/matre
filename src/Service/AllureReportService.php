@@ -116,6 +116,91 @@ class AllureReportService
     }
 
     /**
+     * Copy Allure results for a specific test from shared directory to per-run directory.
+     * Used for incremental copying during sequential group execution.
+     * Only copies the most recent matching file to avoid stale data.
+     */
+    public function copyTestAllureResults(int $runId, string $testName): void
+    {
+        $sharedDir = $this->projectDir . '/var/mftf-results/allure-results';
+        $runDir = $this->getAllureResultsPath($runId);
+
+        if (!$this->filesystem->exists($sharedDir)) {
+            $this->logger->debug('Shared Allure directory not found', ['path' => $sharedDir]);
+
+            return;
+        }
+
+        $this->filesystem->mkdir($runDir);
+
+        // Find result files that match this test
+        $finder = new \Symfony\Component\Finder\Finder();
+        $finder->files()->in($sharedDir)->name('*-result.json');
+
+        $matchingFiles = [];
+
+        foreach ($finder as $file) {
+            $content = file_get_contents($file->getRealPath());
+            if ($content === false) {
+                $this->logger->warning('Failed to read Allure result file', [
+                    'file' => $file->getRealPath(),
+                ]);
+
+                continue;
+            }
+
+            $data = json_decode($content, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                $this->logger->warning('Failed to parse Allure JSON', [
+                    'file' => $file->getRealPath(),
+                    'error' => json_last_error_msg(),
+                ]);
+
+                continue;
+            }
+
+            // Check if this file belongs to the test
+            $allureName = $data['name'] ?? '';
+            $allureFullName = $data['fullName'] ?? '';
+
+            if (stripos($allureName, $testName) !== false || stripos($allureFullName, $testName) !== false) {
+                $matchingFiles[] = [
+                    'file' => $file,
+                    'data' => $data,
+                    'mtime' => $file->getMTime(),
+                ];
+            }
+        }
+
+        if (empty($matchingFiles)) {
+            $this->logger->debug('No matching Allure results found', [
+                'testName' => $testName,
+                'runId' => $runId,
+            ]);
+
+            return;
+        }
+
+        // Sort by mtime descending - only copy the newest matching file
+        usort($matchingFiles, fn ($a, $b) => $b['mtime'] <=> $a['mtime']);
+        $newest = $matchingFiles[0];
+        $file = $newest['file'];
+        $data = $newest['data'];
+
+        $targetFile = $runDir . '/' . $file->getFilename();
+        $this->filesystem->copy($file->getRealPath(), $targetFile, true);
+
+        // Also copy any attachments referenced in this result
+        $this->copyAttachments($data, $sharedDir, $runDir);
+
+        $this->logger->debug('Copied Allure result for test', [
+            'testName' => $testName,
+            'source' => $file->getRealPath(),
+            'target' => $targetFile,
+        ]);
+    }
+
+    /**
      * Clean up old reports.
      */
     public function cleanupExpired(): int
@@ -139,6 +224,46 @@ class AllureReportService
         }
 
         return $cleaned;
+    }
+
+    /**
+     * Copy attachment files referenced in Allure result.
+     */
+    private function copyAttachments(array $data, string $sourceDir, string $targetDir): void
+    {
+        $attachments = $data['attachments'] ?? [];
+
+        // Also check steps for attachments
+        $this->extractAttachmentsFromSteps($data['steps'] ?? [], $attachments);
+
+        foreach ($attachments as $attachment) {
+            $source = $attachment['source'] ?? null;
+            if (!$source) {
+                continue;
+            }
+
+            $sourcePath = $sourceDir . '/' . $source;
+            $targetPath = $targetDir . '/' . $source;
+
+            if ($this->filesystem->exists($sourcePath) && !$this->filesystem->exists($targetPath)) {
+                $this->filesystem->copy($sourcePath, $targetPath);
+            }
+        }
+    }
+
+    /**
+     * Recursively extract attachments from steps.
+     */
+    private function extractAttachmentsFromSteps(array $steps, array &$attachments): void
+    {
+        foreach ($steps as $step) {
+            if (!empty($step['attachments'])) {
+                $attachments = array_merge($attachments, $step['attachments']);
+            }
+            if (!empty($step['steps'])) {
+                $this->extractAttachmentsFromSteps($step['steps'], $attachments);
+            }
+        }
     }
 
     /**
@@ -229,6 +354,8 @@ class AllureReportService
                 'runId' => $runId,
                 'error' => $e->getMessage(),
             ]);
+
+            throw $e;
         }
 
         return $projectId;
@@ -306,6 +433,8 @@ class AllureReportService
                 'projectId' => $projectId,
                 'error' => $e->getMessage(),
             ]);
+
+            return false;
         }
 
         return $hasResultFiles;

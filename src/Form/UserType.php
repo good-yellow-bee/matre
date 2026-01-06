@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Form;
 
+use App\Entity\TestEnvironment;
 use App\Entity\User;
+use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
@@ -65,6 +67,39 @@ class UserType extends AbstractType
                     'class' => 'form-check-input',
                 ],
                 'help' => 'Whether this user account is active',
+            ])
+            ->add('notificationsEnabled', CheckboxType::class, [
+                'label' => 'Enable Notifications',
+                'required' => false,
+                'attr' => ['class' => 'form-check-input'],
+                'help' => 'Master toggle for all notifications',
+            ])
+            ->add('notificationTrigger', ChoiceType::class, [
+                'label' => 'Notify On',
+                'choices' => [
+                    'All test runs' => 'all',
+                    'Only failures' => 'failures',
+                ],
+                'attr' => ['class' => 'form-select'],
+            ])
+            ->add('notifyBySlack', CheckboxType::class, [
+                'label' => 'Slack Notifications',
+                'required' => false,
+                'attr' => ['class' => 'form-check-input'],
+            ])
+            ->add('notifyByEmail', CheckboxType::class, [
+                'label' => 'Email Notifications',
+                'required' => false,
+                'attr' => ['class' => 'form-check-input'],
+            ])
+            ->add('notificationEnvironments', EntityType::class, [
+                'class' => TestEnvironment::class,
+                'choice_label' => 'name',
+                'multiple' => true,
+                'expanded' => true,
+                'required' => false,
+                'label' => 'Notification Environments',
+                'help' => 'Select environments to receive notifications for',
             ]);
 
         // Only add password field for new users or when explicitly requested
