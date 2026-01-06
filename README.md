@@ -27,8 +27,11 @@ Enterprise-grade test automation orchestration for Magento 2.
 ### Reporting & Notifications
 - **Allure integration**: Interactive reports with 30-day retention
 - **Slack notifications**: Rich messages with status, duration, report links
-- **Email alerts**: Configurable recipient list
+- **Email alerts**: Per-user preferences with environment subscriptions
+- **Smart filtering**: Notify on all runs or failures only
 - **Result aggregation**: Merged MFTF + Playwright results in single view
+
+See [Notifications Guide](docs/operations/notifications.md) for configuration.
 
 ### Environment Configuration
 - **Database-stored variables**: Per-environment custom variables in DB
