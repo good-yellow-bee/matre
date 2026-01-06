@@ -176,9 +176,10 @@ class NotificationService
             $fields[] = [
                 'title' => 'Results',
                 'value' => sprintf(
-                    '✅ %d passed | ❌ %d failed | ⏭ %d skipped',
+                    '✅ %d passed | ❌ %d failed | 💔 %d broken | ⏭ %d skipped',
                     $counts['passed'],
                     $counts['failed'],
+                    $counts['broken'],
                     $counts['skipped'],
                 ),
                 'short' => false,
