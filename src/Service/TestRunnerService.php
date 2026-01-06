@@ -527,6 +527,9 @@ class TestRunnerService
             // Copy Allure results immediately so Steps are available in real-time
             $this->allureReportService->copyTestAllureResults($run->getId(), $testName);
 
+            // Generate incremental Allure report (debounced)
+            $this->allureReportService->generateIncrementalReport($run);
+
             // Collect screenshot immediately so it's visible in UI during execution
             $latestResults = array_filter($run->getResults()->toArray(), fn ($r) => $r->getTestName() === $testName || $r->getTestId() === $testName);
             foreach ($latestResults as $latestResult) {
