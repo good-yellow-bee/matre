@@ -83,6 +83,12 @@ class TestResult
     #[ORM\Column(type: Types::STRING, length: 500, nullable: true)]
     private ?string $allureResultPath = null;
 
+    /**
+     * Path to per-test output log file.
+     */
+    #[ORM\Column(type: Types::STRING, length: 500, nullable: true)]
+    private ?string $outputFilePath = null;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -275,5 +281,17 @@ class TestResult
     public function hasScreenshot(): bool
     {
         return $this->screenshotPath !== null;
+    }
+
+    public function getOutputFilePath(): ?string
+    {
+        return $this->outputFilePath;
+    }
+
+    public function setOutputFilePath(?string $outputFilePath): static
+    {
+        $this->outputFilePath = $outputFilePath;
+
+        return $this;
     }
 }

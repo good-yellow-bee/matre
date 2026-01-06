@@ -17,8 +17,19 @@ class CronJobApiControllerTest extends WebTestCase
 
     private const BASE_URL = '/api/cron-jobs';
 
+    /** @var int[] IDs of cron jobs created during tests */
+    private array $createdJobIds = [];
+
     protected function tearDown(): void
     {
+        // Clean up any CronJobs created during tests
+        if (!empty($this->createdJobIds) && $this->entityManager !== null) {
+            $this->entityManager->createQuery(
+                'DELETE FROM App\Entity\CronJob c WHERE c.id IN (:ids)',
+            )->execute(['ids' => $this->createdJobIds]);
+        }
+
+        $this->createdJobIds = [];
         $this->entityManager = null;
         parent::tearDown();
     }
@@ -223,6 +234,9 @@ class CronJobApiControllerTest extends WebTestCase
 
         $em->persist($job);
         $em->flush();
+
+        // Track for cleanup
+        $this->createdJobIds[] = $job->getId();
 
         return $job;
     }

@@ -5,13 +5,17 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Entity\TestRun;
+use App\Entity\User;
 use App\Form\TestRunType;
 use App\Message\TestRunMessage;
 use App\Repository\TestRunRepository;
 use App\Repository\TestSuiteRepository;
+use App\Repository\UserRepository;
 use App\Service\AllureStepParserService;
 use App\Service\ArtifactCollectorService;
+use App\Service\NotificationService;
 use App\Service\TestRunnerService;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -30,9 +34,12 @@ class TestRunController extends AbstractController
         private readonly TestRunnerService $testRunnerService,
         private readonly ArtifactCollectorService $artifactCollector,
         private readonly AllureStepParserService $allureStepParser,
+        private readonly EntityManagerInterface $entityManager,
         private readonly MessageBusInterface $messageBus,
         private readonly TestRunRepository $testRunRepository,
         private readonly TestSuiteRepository $testSuiteRepository,
+        private readonly NotificationService $notificationService,
+        private readonly UserRepository $userRepository,
         private readonly string $noVncUrl,
         private readonly string $allurePublicUrl,
     ) {
@@ -197,10 +204,57 @@ class TestRunController extends AbstractController
         return $this->redirectToRoute('admin_test_run_show', ['id' => $run->getId()]);
     }
 
+    #[Route('/{id}/resend-notification', name: 'admin_test_run_resend_notification', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function resendNotification(Request $request, int $id): Response
+    {
+        $run = $this->testRunRepository->find($id);
+        if (!$run) {
+            $this->addFlash('error', sprintf('Test run #%d does not exist.', $id));
+
+            return $this->redirectToRoute('admin_test_run_index');
+        }
+
+        if (!$this->isCsrfTokenValid('resend_notification' . $run->getId(), $request->request->get('_token'))) {
+            $this->addFlash('error', 'Invalid CSRF token.');
+
+            return $this->redirectToRoute('admin_test_run_show', ['id' => $run->getId()]);
+        }
+
+        if (!$run->isFinished()) {
+            $this->addFlash('error', 'Can only resend notifications for finished runs.');
+
+            return $this->redirectToRoute('admin_test_run_show', ['id' => $run->getId()]);
+        }
+
+        $slackSent = false;
+        $emailSent = false;
+
+        if ($this->userRepository->shouldSendSlackNotification($run)) {
+            $this->notificationService->sendSlackNotification($run);
+            $slackSent = true;
+        }
+
+        $usersToEmail = $this->userRepository->findUsersToNotifyByEmail($run);
+        $recipients = array_map(static fn (User $u) => $u->getEmail(), $usersToEmail);
+        if (!empty($recipients)) {
+            $this->notificationService->sendEmailNotification($run, $recipients);
+            $emailSent = true;
+        }
+
+        if ($slackSent || $emailSent) {
+            $channels = array_filter(['Slack' => $slackSent, 'Email' => $emailSent], fn ($v) => $v);
+            $this->addFlash('success', 'Notification sent via: ' . implode(', ', array_keys($channels)));
+        } else {
+            $this->addFlash('warning', 'No users subscribed to notifications for this environment.');
+        }
+
+        return $this->redirectToRoute('admin_test_run_show', ['id' => $run->getId()]);
+    }
+
     /**
      * Get live output for a running test.
      */
-    #[Route('/{id}/live-output', name: 'admin_test_run_live_output', methods: ['GET'], requirements: ['id' => '\d+'])]
+    #[Route('/{id}/live-output', name: 'admin_test_run_live_output', methods: ['GET'], requirements: ['id' => '\\d+'])]
     public function liveOutput(int $id): JsonResponse
     {
         $run = $this->testRunRepository->find($id);
@@ -210,21 +264,58 @@ class TestRunController extends AbstractController
             ], 404);
         }
 
-        $outputPath = $run->getOutputFilePath();
+        // For sequential group runs, return current test output
+        $currentTest = $run->getCurrentTestName();
+        $output = '';
 
-        if (!$outputPath || !file_exists($outputPath)) {
-            return new JsonResponse([
-                'output' => '',
-                'status' => $run->getStatus(),
-            ]);
+        if ($currentTest !== null) {
+            // Find current test's output file
+            $safeFileName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $currentTest);
+            $outputPath = $this->getParameter('kernel.project_dir')
+                . sprintf('/var/test-output/run-%d/%s.log', $run->getId(), $safeFileName);
+
+            if (file_exists($outputPath)) {
+                $output = $this->readTailOfFile($outputPath, 102400);
+            }
+        } else {
+            // Fallback to existing behavior for non-group runs
+            $outputPath = $run->getOutputFilePath();
+            if ($outputPath && file_exists($outputPath)) {
+                $output = $this->readTailOfFile($outputPath, 102400);
+            }
         }
 
-        // Read last 100KB to prevent huge responses
-        $content = $this->readTailOfFile($outputPath, 102400);
+        // Build progress string - show current test number (running), not just completed
+        $progress = null;
+        if ($run->getTotalTests() !== null) {
+            $completed = $run->getCompletedTests() ?? 0;
+            $total = $run->getTotalTests();
+            // If a test is currently running, show that test number (completed + 1)
+            $current = $currentTest !== null ? $completed + 1 : $completed;
+            $progress = sprintf('%d/%d', $current, $total);
+        }
+
+        // Build results array for live display
+        $results = [];
+        foreach ($run->getResults() as $result) {
+            $results[] = [
+                'id' => $result->getId(),
+                'testName' => $result->getTestName(),
+                'status' => $result->getStatus(),
+                'duration' => $result->getDuration(),
+                'errorMessage' => $result->getErrorMessage(),
+                'hasScreenshot' => $result->getScreenshotPath() !== null,
+                'hasOutputFile' => $result->getOutputFilePath() !== null,
+            ];
+        }
 
         return new JsonResponse([
-            'output' => $content,
             'status' => $run->getStatus(),
+            'currentTest' => $currentTest,
+            'progress' => $progress,
+            'output' => $output,
+            'resultCounts' => $run->getResultCounts(),
+            'results' => $results,
         ]);
     }
 
@@ -264,7 +355,46 @@ class TestRunController extends AbstractController
             ]);
         }
 
+        // Backfill duration from Allure if missing in DB
+        if ($result->getDuration() === null && isset($steps['duration']) && $steps['duration'] !== null) {
+            $result->setDuration($steps['duration']);
+            $this->entityManager->flush();
+        }
+
         return new JsonResponse($steps);
+    }
+
+    /**
+     * Get individual test output for sequential group runs.
+     */
+    #[Route('/{id}/results/{resultId}/output', name: 'admin_test_run_result_output', methods: ['GET'], requirements: ['id' => '\\d+', 'resultId' => '\\d+'])]
+    public function getTestOutput(TestRun $run, int $resultId): JsonResponse
+    {
+        $result = null;
+        foreach ($run->getResults() as $r) {
+            if ($r->getId() === $resultId) {
+                $result = $r;
+
+                break;
+            }
+        }
+
+        if (!$result) {
+            throw $this->createNotFoundException('Test result not found');
+        }
+
+        $outputPath = $result->getOutputFilePath();
+        if (!$outputPath || !file_exists($outputPath)) {
+            return $this->json(['output' => 'Output file not available']);
+        }
+
+        $output = $this->readTailOfFile($outputPath, 1024 * 1024); // 1MB limit
+
+        return $this->json([
+            'testName' => $result->getTestName(),
+            'status' => $result->getStatus(),
+            'output' => $output,
+        ]);
     }
 
     /**

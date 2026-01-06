@@ -187,8 +187,17 @@ class NotificationService
         }
 
         if ($run->getTestFilter()) {
+            $filterType = 'Filter';
+            if ($suite = $run->getSuite()) {
+                $suiteType = $suite->getType();
+                if (str_contains($suiteType, 'group')) {
+                    $filterType = 'Filter (Group)';
+                } elseif (str_contains($suiteType, 'test')) {
+                    $filterType = 'Filter (Test)';
+                }
+            }
             $fields[] = [
-                'title' => 'Filter',
+                'title' => $filterType,
                 'value' => $run->getTestFilter(),
                 'short' => false,
             ];

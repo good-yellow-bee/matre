@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Entity\TestEnvironment;
 use App\Entity\TestReport;
+use App\Entity\TestResult;
 use App\Entity\TestRun;
 use App\Entity\TestSuite;
 use App\Repository\TestRunRepository;
@@ -26,7 +27,9 @@ class TestRunnerService
         private readonly PlaywrightExecutorService $playwrightExecutor,
         private readonly AllureReportService $allureReportService,
         private readonly ArtifactCollectorService $artifactCollector,
+        private readonly AllureStepParserService $allureStepParser,
         private readonly LoggerInterface $logger,
+        private readonly TestDiscoveryService $testDiscovery,
         private readonly LockFactory $lockFactory,
     ) {
     }
@@ -124,6 +127,19 @@ class TestRunnerService
                 $run->setOutputFilePath($this->playwrightExecutor->getOutputFilePath($run));
             }
             $this->entityManager->flush();
+
+            // Check if this is a group run that should use sequential execution
+            $suite = $run->getSuite();
+            $isGroupRun = $suite !== null && $suite->getType() === TestSuite::TYPE_MFTF_GROUP;
+
+            if ($isGroupRun) {
+                // Sequential execution - one test at a time
+                // Note: Report generation and notifications are handled by the message handler
+                // (PHASE_REPORT and PHASE_NOTIFY) after executeRun returns
+                $this->executeGroupRun($run);
+
+                return;
+            }
 
             $allResults = [];
             $allurePaths = [];
@@ -244,6 +260,9 @@ class TestRunnerService
     {
         $this->logger->info('Generating reports', ['id' => $run->getId()]);
 
+        // Remember if run was already failed (so we can preserve that status)
+        $wasAlreadyFailed = $run->getStatus() === TestRun::STATUS_FAILED;
+
         $run->setStatus(TestRun::STATUS_REPORTING);
         $this->entityManager->flush();
 
@@ -266,6 +285,7 @@ class TestRunnerService
                     'id' => $run->getId(),
                     'error' => $e->getMessage(),
                 ]);
+
                 // Create placeholder report - run still completes
                 $report = new TestReport();
                 $report->setTestRun($run);
@@ -273,11 +293,21 @@ class TestRunnerService
                 $report->setFilePath('');
                 $report->setPublicUrl('');
                 $report->setGeneratedAt(new \DateTimeImmutable());
+
+                // Add warning to run output so user knows why report is missing
+                $run->setOutput(
+                    ($run->getOutput() ?? '') .
+                    "\n\n⚠️ Allure report generation failed: " . $e->getMessage(),
+                );
             }
             $this->entityManager->persist($report);
 
-            // Mark run as completed
-            $run->markCompleted();
+            // Only mark as completed if not already failed (preserve failure status)
+            if ($wasAlreadyFailed) {
+                $run->markFailed($run->getErrorMessage() ?? 'Test execution failed');
+            } else {
+                $run->markCompleted();
+            }
             $this->entityManager->flush();
 
             // Per-run directories are cleaned up by clearOldRunDirectories() (scheduled task)
@@ -351,5 +381,181 @@ class TestRunnerService
     public function hasRunningForEnvironment(TestEnvironment $environment): bool
     {
         return $this->testRunRepository->hasRunningForEnvironment($environment);
+    }
+
+    /**
+     * Execute a group test run sequentially (one test at a time).
+     */
+    private function executeGroupRun(TestRun $run): void
+    {
+        $groupName = $run->getTestFilter();
+
+        $this->logger->info('Starting sequential group execution', [
+            'runId' => $run->getId(),
+            'groupName' => $groupName,
+        ]);
+
+        // Get cloned module path (CRITICAL: use fresh clone, not cache!)
+        $modulePath = $this->moduleCloneService->getRunTargetPath($run->getId());
+
+        // Resolve group to individual tests from cloned module
+        $testNames = $this->testDiscovery->resolveGroupToTests($groupName, $modulePath);
+
+        if (empty($testNames)) {
+            $this->logger->error('No tests found in group', [
+                'groupName' => $groupName,
+                'modulePath' => $modulePath,
+            ]);
+            $run->markFailed("No tests found in group: {$groupName}");
+            $this->entityManager->flush();
+
+            return;
+        }
+
+        $totalTests = count($testNames);
+        $completedTests = 0;
+
+        $this->logger->info('Resolved group tests', [
+            'groupName' => $groupName,
+            'totalTests' => $totalTests,
+            'tests' => $testNames,
+        ]);
+
+        // Set initial progress
+        $run->setProgress(0, $totalTests);
+        $run->setStatus(TestRun::STATUS_RUNNING);
+        $this->entityManager->flush();
+
+        foreach ($testNames as $testName) {
+            // Check for cancellation between tests
+            $this->entityManager->refresh($run);
+            if ($run->getStatus() === TestRun::STATUS_CANCELLED) {
+                $this->logger->info('Run cancelled, stopping sequential execution', [
+                    'runId' => $run->getId(),
+                    'completedTests' => $completedTests,
+                    'totalTests' => $totalTests,
+                ]);
+
+                break;
+            }
+
+            // Update progress - mark current test
+            $run->setCurrentTestName($testName);
+            $run->setProgress($completedTests, $totalTests);
+            $this->entityManager->flush();
+
+            $this->logger->info('Executing test in group', [
+                'runId' => $run->getId(),
+                'testName' => $testName,
+                'progress' => ($completedTests + 1) . '/' . $totalTests,
+            ]);
+
+            try {
+                // Execute single test
+                $result = $this->mftfExecutor->executeSingleTest($run, $testName);
+
+                // Parse and create TestResult
+                $testResults = $this->mftfExecutor->parseResults($run, $result['output']);
+
+                if (empty($testResults)) {
+                    // Create a broken result if parsing failed
+                    $this->logger->warning('No results parsed for test, creating broken result', [
+                        'testName' => $testName,
+                    ]);
+                    $testResult = new TestResult();
+                    $testResult->setTestRun($run);
+                    $testResult->setTestName($testName);
+                    $testResult->setStatus(TestResult::STATUS_BROKEN);
+                    $testResult->setErrorMessage('Failed to parse test output');
+                    $testResult->setOutputFilePath($result['outputFilePath'] ?? null);
+                    $run->addResult($testResult);
+                    $this->entityManager->persist($testResult);
+                } else {
+                    foreach ($testResults as $testResult) {
+                        $testResult->setOutputFilePath($result['outputFilePath'] ?? null);
+                        $run->addResult($testResult);
+                        $this->entityManager->persist($testResult);
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Test crashed - create broken result and continue with next test
+                $this->logger->error('Test execution crashed, continuing with next test', [
+                    'runId' => $run->getId(),
+                    'testName' => $testName,
+                    'error' => $e->getMessage(),
+                ]);
+
+                $testResult = new TestResult();
+                $testResult->setTestRun($run);
+                $testResult->setTestName($testName);
+                $testResult->setStatus(TestResult::STATUS_BROKEN);
+                $testResult->setErrorMessage('Test crashed: ' . $e->getMessage());
+                $run->addResult($testResult);
+                $this->entityManager->persist($testResult);
+            }
+
+            // Copy Allure results immediately so Steps are available in real-time
+            $this->allureReportService->copyTestAllureResults($run->getId(), $testName);
+
+            // Collect screenshot immediately so it's visible in UI during execution
+            $latestResults = array_filter($run->getResults()->toArray(), fn ($r) => $r->getTestName() === $testName || $r->getTestId() === $testName);
+            foreach ($latestResults as $latestResult) {
+                $this->artifactCollector->collectTestScreenshot($run, $latestResult);
+
+                // Get duration from Allure if not available from MFTF output (crashed tests)
+                if ($latestResult->getDuration() === null) {
+                    $allureDuration = $this->allureStepParser->getDurationForResult($latestResult);
+                    if ($allureDuration !== null) {
+                        $latestResult->setDuration($allureDuration);
+                    }
+                }
+            }
+
+            ++$completedTests;
+            $this->entityManager->flush();
+        }
+
+        // Clear current test
+        $run->setCurrentTestName(null);
+        $run->setProgress($completedTests, $totalTests);
+        $this->entityManager->flush();
+
+        // Collect ALL artifacts at end (batch) - screenshot names unique per test
+        $this->logger->info('Collecting artifacts for group run', ['runId' => $run->getId()]);
+        $allResults = $run->getResults()->toArray();
+        $artifacts = $this->artifactCollector->collectArtifacts($run);
+        if (!empty($artifacts['screenshots'])) {
+            $this->artifactCollector->associateScreenshotsWithResults($allResults, $artifacts['screenshots']);
+        }
+
+        $this->entityManager->flush();
+
+        // Determine overall run status (only if not cancelled)
+        $this->entityManager->refresh($run);
+        if ($run->getStatus() !== TestRun::STATUS_CANCELLED) {
+            $failedCount = 0;
+            foreach ($allResults as $testResult) {
+                if ($testResult->isFailed() || $testResult->isBroken()) {
+                    ++$failedCount;
+                }
+            }
+
+            if ($failedCount > 0) {
+                $run->markFailed(sprintf('%d test(s) failed', $failedCount));
+            } else {
+                $run->markCompleted();
+            }
+        } else {
+            $failedCount = 0; // For logging
+        }
+
+        $this->entityManager->flush();
+
+        $this->logger->info('Sequential group execution completed', [
+            'runId' => $run->getId(),
+            'completedTests' => $completedTests,
+            'totalTests' => $totalTests,
+            'failedCount' => $failedCount,
+        ]);
     }
 }

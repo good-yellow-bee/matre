@@ -117,6 +117,66 @@ class ArtifactCollectorService
     }
 
     /**
+     * Collect and associate screenshot for a specific test (incremental during execution).
+     */
+    public function collectTestScreenshot(TestRun $run, TestResult $result): void
+    {
+        $sourcePath = $this->projectDir . '/' . $this->mftfResultsDir . '/run-' . $run->getId();
+        $targetPath = $this->getRunArtifactsPath($run);
+
+        if (!is_dir($sourcePath)) {
+            return;
+        }
+
+        $filesystem = new Filesystem();
+        $filesystem->mkdir($targetPath);
+
+        $testId = $result->getTestId();
+        $testName = $result->getTestName();
+
+        if (!$testId && !$testName) {
+            $this->logger->debug('Cannot collect screenshot: TestResult missing identifiers', [
+                'resultId' => $result->getId(),
+            ]);
+
+            return;
+        }
+
+        // Find screenshot matching this test
+        $finder = new Finder();
+        $finder->files()->in($sourcePath)->depth(0);
+
+        foreach (self::SCREENSHOT_EXTENSIONS as $ext) {
+            $finder->name('*.' . $ext);
+        }
+
+        foreach ($finder as $file) {
+            $filename = $file->getFilename();
+
+            // Match by test ID or test name
+            if (
+                ($testId && stripos($filename, $testId) !== false)
+                || ($testName && stripos($filename, $testName) !== false)
+            ) {
+                if ($file->getSize() > self::MAX_ARTIFACT_SIZE) {
+                    continue;
+                }
+
+                $targetFile = $targetPath . '/' . $filename;
+                $filesystem->copy($file->getRealPath(), $targetFile, true);
+                $result->setScreenshotPath($filename);
+
+                $this->logger->debug('Screenshot collected for test', [
+                    'test' => $testName,
+                    'screenshot' => $filename,
+                ]);
+
+                return; // Only need first matching screenshot
+            }
+        }
+    }
+
+    /**
      * Get the artifacts directory path for a specific run.
      */
     public function getRunArtifactsPath(TestRun $run): string

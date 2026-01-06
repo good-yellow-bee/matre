@@ -224,6 +224,63 @@ class TestDiscoveryService
     }
 
     /**
+     * Resolve MFTF group name to list of test names.
+     *
+     * @param string $groupName The group name to resolve
+     * @param string|null $modulePath Path to module directory (uses cache if null)
+     *
+     * @return array<string> Test names belonging to this group
+     */
+    public function resolveGroupToTests(string $groupName, ?string $modulePath = null): array
+    {
+        // CRITICAL: Use provided module path (cloned for this run) not cache
+        $basePath = $modulePath ?? $this->getCachePath();
+        if ($basePath === null) {
+            $this->logger->warning('No module path available for group resolution', [
+                'groupName' => $groupName,
+            ]);
+
+            return [];
+        }
+
+        $testDir = $this->findTestDirectory($basePath);
+        if ($testDir === null) {
+            $this->logger->warning('Test directory not found', [
+                'basePath' => $basePath,
+                'groupName' => $groupName,
+            ]);
+
+            return [];
+        }
+
+        $tests = [];
+        $finder = new Finder();
+        $finder->files()->in($testDir)->name('*.xml');
+
+        foreach ($finder as $file) {
+            $content = $file->getContents();
+            // Check if file has this group annotation
+            $pattern = '/<group\s+value="' . preg_quote($groupName, '/') . '"/';
+            if (preg_match($pattern, $content)) {
+                // Extract test name from same file
+                if (preg_match('/<test\s+name="([^"]+)"/', $content, $matches)) {
+                    $tests[] = $matches[1];
+                }
+            }
+        }
+
+        $this->logger->info('Resolved group to tests', [
+            'groupName' => $groupName,
+            'testCount' => count($tests),
+            'tests' => $tests,
+        ]);
+
+        sort($tests);
+
+        return array_values(array_unique($tests));
+    }
+
+    /**
      * Get last cache update time.
      */
     public function getLastUpdated(): ?\DateTimeInterface
