@@ -160,10 +160,14 @@ class AllureReportService
             }
 
             // Check if this file belongs to the test
+            // Normalize by removing hyphens - Allure uses "MOEC-2004" but test filter is "MOEC2004"
             $allureName = $data['name'] ?? '';
             $allureFullName = $data['fullName'] ?? '';
+            $normalizedAllureName = str_replace('-', '', $allureName);
+            $normalizedAllureFullName = str_replace('-', '', $allureFullName);
+            $normalizedTestName = str_replace('-', '', $testName);
 
-            if (stripos($allureName, $testName) !== false || stripos($allureFullName, $testName) !== false) {
+            if (stripos($normalizedAllureName, $normalizedTestName) !== false || stripos($normalizedAllureFullName, $normalizedTestName) !== false) {
                 $matchingFiles[] = [
                     'file' => $file,
                     'data' => $data,
@@ -188,14 +192,18 @@ class AllureReportService
         $data = $newest['data'];
 
         $targetFile = $runDir . '/' . $file->getFilename();
-        $this->filesystem->copy($file->getRealPath(), $targetFile, true);
+        $sourceFile = $file->getRealPath();
+        $this->filesystem->copy($sourceFile, $targetFile, true);
 
         // Also copy any attachments referenced in this result
         $this->copyAttachments($data, $sharedDir, $runDir);
 
+        // NOTE: Source files are NOT deleted here to avoid race conditions with concurrent tests.
+        // Cleanup happens via clearOldRunDirectories() scheduled task.
+
         $this->logger->debug('Copied Allure result for test', [
             'testName' => $testName,
-            'source' => $file->getRealPath(),
+            'source' => $sourceFile,
             'target' => $targetFile,
         ]);
     }

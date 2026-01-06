@@ -413,7 +413,11 @@ class TestRunnerService
         }
 
         $totalTests = count($testNames);
-        $completedTests = 0;
+        // Count already PASSED tests (for worker restart recovery)
+        // Only count passed - failed/broken tests will be retried
+        $completedTests = $run->getResults()->filter(
+            fn ($r) => $r->getStatus() === TestResult::STATUS_PASSED,
+        )->count();
 
         $this->logger->info('Resolved group tests', [
             'groupName' => $groupName,
@@ -421,12 +425,38 @@ class TestRunnerService
             'tests' => $testNames,
         ]);
 
-        // Set initial progress
-        $run->setProgress(0, $totalTests);
+        if ($completedTests > 0) {
+            $this->logger->info('Resuming group execution after restart', [
+                'runId' => $run->getId(),
+                'alreadyCompleted' => $completedTests,
+                'totalTests' => $totalTests,
+            ]);
+        }
+
+        // Set initial progress (may be non-zero on worker restart)
+        $run->setProgress($completedTests, $totalTests);
         $run->setStatus(TestRun::STATUS_RUNNING);
         $this->entityManager->flush();
 
         foreach ($testNames as $testName) {
+            // Skip tests that already have PASSED results (handles worker restart/retry)
+            // Only skip passed tests - failed/broken tests should be retried
+            $existingResult = $run->getResults()->filter(
+                fn ($r) => ($r->getTestName() === $testName || $r->getTestId() === $testName)
+                           && $r->getStatus() === TestResult::STATUS_PASSED,
+            )->first();
+
+            if ($existingResult) {
+                $this->logger->info('Skipping passed test (worker restart recovery)', [
+                    'runId' => $run->getId(),
+                    'testName' => $testName,
+                    'existingStatus' => $existingResult->getStatus(),
+                ]);
+                ++$completedTests;
+
+                continue;
+            }
+
             // Check for cancellation between tests
             $this->entityManager->refresh($run);
             if ($run->getStatus() === TestRun::STATUS_CANCELLED) {

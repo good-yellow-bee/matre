@@ -117,7 +117,7 @@ class ArtifactCollectorService
     }
 
     /**
-     * Collect and associate screenshot for a specific test (incremental during execution).
+     * Collect and associate screenshot and HTML for a specific test (incremental during execution).
      */
     public function collectTestScreenshot(TestRun $run, TestResult $result): void
     {
@@ -135,20 +135,23 @@ class ArtifactCollectorService
         $testName = $result->getTestName();
 
         if (!$testId && !$testName) {
-            $this->logger->debug('Cannot collect screenshot: TestResult missing identifiers', [
+            $this->logger->debug('Cannot collect artifacts: TestResult missing identifiers', [
                 'resultId' => $result->getId(),
             ]);
 
             return;
         }
 
-        // Find screenshot matching this test
+        // Collect all artifact types (screenshots + HTML)
+        $allExtensions = array_merge(self::SCREENSHOT_EXTENSIONS, self::HTML_EXTENSIONS);
+        $screenshotCollected = false;
+
         $finder = new Finder();
         $finder->files()->in($sourcePath)->depth(0);
 
-        foreach (self::SCREENSHOT_EXTENSIONS as $ext) {
-            $finder->name('*.' . $ext);
-        }
+        // Build pattern for all extensions
+        $patterns = array_map(fn ($ext) => '*.' . $ext, $allExtensions);
+        $finder->name($patterns);
 
         foreach ($finder as $file) {
             $filename = $file->getFilename();
@@ -164,14 +167,18 @@ class ArtifactCollectorService
 
                 $targetFile = $targetPath . '/' . $filename;
                 $filesystem->copy($file->getRealPath(), $targetFile, true);
-                $result->setScreenshotPath($filename);
 
-                $this->logger->debug('Screenshot collected for test', [
+                // Set screenshot path for first matching screenshot
+                $ext = strtolower($file->getExtension());
+                if (!$screenshotCollected && in_array($ext, self::SCREENSHOT_EXTENSIONS, true)) {
+                    $result->setScreenshotPath($filename);
+                    $screenshotCollected = true;
+                }
+
+                $this->logger->debug('Artifact collected for test', [
                     'test' => $testName,
-                    'screenshot' => $filename,
+                    'artifact' => $filename,
                 ]);
-
-                return; // Only need first matching screenshot
             }
         }
     }
