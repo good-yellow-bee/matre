@@ -18,6 +18,10 @@ class AllureReportService
     private const MAX_RETRIES = 3;
     private const INITIAL_RETRY_DELAY_MS = 500;
 
+    private const MIN_INCREMENTAL_REPORT_INTERVAL = 5.0; // seconds
+
+    private ?float $lastIncrementalReportTime = null;
+
     private readonly Filesystem $filesystem;
 
     public function __construct(
@@ -160,10 +164,14 @@ class AllureReportService
             }
 
             // Check if this file belongs to the test
+            // Normalize by removing hyphens - Allure uses "MOEC-2004" but test filter is "MOEC2004"
             $allureName = $data['name'] ?? '';
             $allureFullName = $data['fullName'] ?? '';
+            $normalizedAllureName = str_replace('-', '', $allureName);
+            $normalizedAllureFullName = str_replace('-', '', $allureFullName);
+            $normalizedTestName = str_replace('-', '', $testName);
 
-            if (stripos($allureName, $testName) !== false || stripos($allureFullName, $testName) !== false) {
+            if (stripos($normalizedAllureName, $normalizedTestName) !== false || stripos($normalizedAllureFullName, $normalizedTestName) !== false) {
                 $matchingFiles[] = [
                     'file' => $file,
                     'data' => $data,
@@ -188,16 +196,62 @@ class AllureReportService
         $data = $newest['data'];
 
         $targetFile = $runDir . '/' . $file->getFilename();
-        $this->filesystem->copy($file->getRealPath(), $targetFile, true);
+        $sourceFile = $file->getRealPath();
+        $this->filesystem->copy($sourceFile, $targetFile, true);
 
         // Also copy any attachments referenced in this result
         $this->copyAttachments($data, $sharedDir, $runDir);
 
+        // NOTE: Source files are NOT deleted here to avoid race conditions with concurrent tests.
+        // Cleanup happens via clearOldRunDirectories() scheduled task.
+
         $this->logger->debug('Copied Allure result for test', [
             'testName' => $testName,
-            'source' => $file->getRealPath(),
+            'source' => $sourceFile,
             'target' => $targetFile,
         ]);
+    }
+
+    /**
+     * Generate report incrementally during test execution.
+     * Debounced to avoid overwhelming Allure service with rapid test completions.
+     */
+    public function generateIncrementalReport(TestRun $run): void
+    {
+        // Debounce: skip if generated within MIN_INCREMENTAL_REPORT_INTERVAL
+        $now = microtime(true);
+        if ($this->lastIncrementalReportTime !== null
+            && ($now - $this->lastIncrementalReportTime) < self::MIN_INCREMENTAL_REPORT_INTERVAL) {
+            $this->logger->debug('Skipping incremental report (debounced)', [
+                'runId' => $run->getId(),
+                'timeSinceLast' => $now - $this->lastIncrementalReportTime,
+            ]);
+
+            return;
+        }
+
+        $resultsPath = $this->getAllureResultsPath($run->getId());
+
+        // Skip if no results yet
+        if (!$this->filesystem->exists($resultsPath)
+            || empty(glob($resultsPath . '/*-result.json'))) {
+            return;
+        }
+
+        try {
+            $this->triggerReportGeneration($run);
+            $this->lastIncrementalReportTime = microtime(true);
+
+            $this->logger->info('Incremental Allure report generated', [
+                'runId' => $run->getId(),
+            ]);
+        } catch (\Throwable $e) {
+            // Non-blocking: log and continue execution
+            $this->logger->warning('Incremental report generation failed (non-blocking)', [
+                'runId' => $run->getId(),
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -362,79 +416,88 @@ class AllureReportService
     }
 
     /**
-     * Send results files to Allure service.
+     * Send results files to Allure service in batches to avoid memory exhaustion.
      *
      * @return bool True if result/container files were sent, false if only attachments or nothing
      */
     private function sendResultsToAllure(string $projectId, string $resultsPath): bool
     {
-        $results = [];
         $hasResultFiles = false;
 
-        // Result JSONs (test results)
-        foreach (glob($resultsPath . '/*-result.json') as $file) {
-            $content = file_get_contents($file);
-            if ($content) {
-                $hasResultFiles = true;
-                $results[] = [
-                    'file_name' => basename($file),
-                    'content_base64' => base64_encode($content),
-                ];
-            }
-        }
+        // Collect all file paths (without loading content yet)
+        $resultFiles = glob($resultsPath . '/*-result.json') ?: [];
+        $containerFiles = glob($resultsPath . '/*-container.json') ?: [];
+        $attachmentFiles = glob($resultsPath . '/*-attachment') ?: [];
 
-        // Container JSONs (test suites/groups)
-        foreach (glob($resultsPath . '/*-container.json') as $file) {
-            $content = file_get_contents($file);
-            if ($content) {
-                $hasResultFiles = true;
-                $results[] = [
-                    'file_name' => basename($file),
-                    'content_base64' => base64_encode($content),
-                ];
-            }
-        }
+        $hasResultFiles = !empty($resultFiles) || !empty($containerFiles);
 
-        // Attachments (screenshots, HTML - critical for failed tests)
-        foreach (glob($resultsPath . '/*-attachment') as $file) {
-            $content = file_get_contents($file);
-            if ($content) {
-                $results[] = [
-                    'file_name' => basename($file),
-                    'content_base64' => base64_encode($content),
-                ];
-            }
-        }
+        // Batch size: ~20 files per batch to stay well under memory limit
+        $batchSize = 20;
+        $allFiles = array_merge($resultFiles, $containerFiles, $attachmentFiles);
 
-        if (empty($results)) {
+        if (empty($allFiles)) {
             return false;
         }
 
-        $this->logger->debug('Sending files to Allure', [
+        $this->logger->debug('Sending files to Allure in batches', [
             'projectId' => $projectId,
-            'fileCount' => count($results),
-            'hasResultFiles' => $hasResultFiles,
+            'totalFiles' => count($allFiles),
+            'batchSize' => $batchSize,
         ]);
 
-        try {
-            $this->executeWithRetry(
-                fn () => $this->httpClient->request(
-                    'POST',
-                    $this->allureUrl . '/allure-docker-service/send-results',
-                    [
-                        'query' => ['project_id' => $projectId],
-                        'json' => ['results' => $results],
-                    ],
-                ),
-                'send_allure_results',
-            );
-        } catch (\Throwable $e) {
-            $this->logger->error('Failed to send results to Allure after retries', [
+        // Process files in batches
+        $batches = array_chunk($allFiles, $batchSize);
+
+        foreach ($batches as $batchIndex => $batchFiles) {
+            $results = [];
+
+            foreach ($batchFiles as $file) {
+                $content = file_get_contents($file);
+                if ($content) {
+                    $results[] = [
+                        'file_name' => basename($file),
+                        'content_base64' => base64_encode($content),
+                    ];
+                }
+                // Free memory immediately
+                unset($content);
+            }
+
+            if (empty($results)) {
+                continue;
+            }
+
+            $this->logger->debug('Sending batch to Allure', [
                 'projectId' => $projectId,
-                'error' => $e->getMessage(),
+                'batch' => $batchIndex + 1,
+                'totalBatches' => count($batches),
+                'filesInBatch' => count($results),
             ]);
 
-            return false;
+            try {
+                $this->executeWithRetry(
+                    fn () => $this->httpClient->request(
+                        'POST',
+                        $this->allureUrl . '/allure-docker-service/send-results',
+                        [
+                            'query' => ['project_id' => $projectId],
+                            'json' => ['results' => $results],
+                        ],
+                    ),
+                    'send_allure_results',
+                );
+            } catch (\Throwable $e) {
+                $this->logger->error('Failed to send batch to Allure', [
+                    'projectId' => $projectId,
+                    'batch' => $batchIndex + 1,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return false;
+            }
+
+            // Free memory after each batch
+            unset($results);
         }
 
         return $hasResultFiles;

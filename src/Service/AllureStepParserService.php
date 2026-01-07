@@ -23,15 +23,26 @@ class AllureStepParserService
      */
     public function getStepsForResult(TestResult $result): ?array
     {
+        $this->logger->debug('Allure: getStepsForResult called', [
+            'resultId' => $result->getId(),
+            'testName' => $result->getTestName(),
+        ]);
+
         $allurePath = $result->getAllureResultPath();
+
+        $this->logger->debug('Allure: Stored path', ['allurePath' => $allurePath]);
 
         if (!$allurePath) {
             $allurePath = $this->findAllureFileForResult($result);
         }
 
         if (!$allurePath) {
+            $this->logger->debug('Allure: No path found, returning null');
+
             return null;
         }
+
+        $this->logger->debug('Allure: Parsing file', ['path' => $allurePath]);
 
         return $this->parseAllureFile($allurePath, $result);
     }
@@ -67,10 +78,19 @@ class AllureStepParserService
     {
         $testRun = $result->getTestRun();
         if (!$testRun) {
+            $this->logger->debug('Allure: TestRun not found for result', ['resultId' => $result->getId()]);
+
             return null;
         }
 
         $runDir = sprintf('%s/var/allure-results/run-%d', $this->projectDir, $testRun->getId());
+
+        $this->logger->debug('Allure: Searching for result file', [
+            'resultId' => $result->getId(),
+            'testName' => $result->getTestName(),
+            'testId' => $result->getTestId(),
+            'runDir' => $runDir,
+        ]);
 
         if (!is_dir($runDir)) {
             $this->logger->debug('Allure run directory not found: {dir}', ['dir' => $runDir]);
@@ -84,8 +104,10 @@ class AllureStepParserService
         $finder->files()->in($runDir)->name('*-result.json');
 
         $matchingFiles = [];
+        $filesScanned = 0;
 
         foreach ($finder as $file) {
+            ++$filesScanned;
             $content = file_get_contents($file->getRealPath());
             if (!$content) {
                 continue;
@@ -105,12 +127,19 @@ class AllureStepParserService
             }
         }
 
+        $this->logger->debug('Allure: Search complete', [
+            'filesScanned' => $filesScanned,
+            'matchesFound' => count($matchingFiles),
+        ]);
+
         if (empty($matchingFiles)) {
             return null;
         }
 
         // Sort by modification time descending - prefer most recent
         usort($matchingFiles, fn ($a, $b) => $b['mtime'] <=> $a['mtime']);
+
+        $this->logger->debug('Allure: Returning file', ['path' => $matchingFiles[0]['path']]);
 
         return $matchingFiles[0]['path'];
     }
