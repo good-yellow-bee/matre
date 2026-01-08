@@ -303,6 +303,7 @@ class TestRunController extends AbstractController
                 'testName' => $result->getTestName(),
                 'status' => $result->getStatus(),
                 'duration' => $result->getDuration(),
+                'durationFormatted' => $result->getDurationFormatted(),
                 'errorMessage' => $result->getErrorMessage(),
                 'hasScreenshot' => $result->getScreenshotPath() !== null,
                 'hasOutputFile' => $result->getOutputFilePath() !== null,

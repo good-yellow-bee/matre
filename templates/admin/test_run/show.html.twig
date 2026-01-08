@@ -180,7 +180,7 @@
                                     {{ result.status|upper }}
                                 </span>
                             </td>
-                            <td>{{ result.duration ? (result.duration ~ 's') : '-' }}</td>
+                            <td>{{ result.durationFormatted }}</td>
                             <td>
                                 <div class="btn-group btn-group-sm">
                                     <button type="button"
@@ -522,7 +522,7 @@
 
             // Duration cell (safe: textContent)
             const durationTd = document.createElement('td');
-            durationTd.textContent = result.duration ? result.duration + 's' : '-';
+            durationTd.textContent = result.durationFormatted || '-';
             tr.appendChild(durationTd);
 
             // Actions cell (safe: DOM construction)
