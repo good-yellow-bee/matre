@@ -322,36 +322,46 @@ class MftfExecutorService
             $results = $this->parseResultsFallback($run, $cleanOutput);
         }
 
-        // Exception detection: If still no results but output contains error indicators,
-        // create a synthetic broken result to avoid false "All tests passed" message
-        if (empty($results) && $this->hasErrorIndicators($cleanOutput)) {
-            $result = new TestResult();
-            $result->setTestRun($run);
-
-            // Extract test ID from output or use filter - just the ID is enough info
+        // If no results parsed, check for explicit success/failure indicators
+        if (empty($results)) {
             $testId = null;
 
-            // Try to extract from Cest name in output (e.g., MOEC2417Cest -> MOEC2417)
+            // Extract test ID from output or use filter
             if (preg_match('/([A-Z]+\d+)Cest/', $cleanOutput, $idMatch)) {
                 $testId = $idMatch[1];
-            }
-            // Fallback: Use run's test filter
-            elseif ($filter = $run->getTestFilter()) {
+            } elseif ($filter = $run->getTestFilter()) {
                 if (preg_match('/^([A-Z]+\d+)/', $filter, $idMatch)) {
                     $testId = $idMatch[1];
                 } else {
-                    $testId = $filter; // Use filter as-is if no ID pattern
+                    $testId = $filter;
                 }
             }
 
-            // Use test ID as both name and ID - simple and sufficient
-            $result->setTestName($testId ?? 'Unknown');
-            if ($testId) {
-                $result->setTestId($testId);
-            }
-            $result->setStatus(TestResult::STATUS_BROKEN);
+            // Check for explicit success indicators first
+            $hasExplicitSuccess = preg_match('/OK\s*\(\d+\s*test/', $cleanOutput)
+                               || preg_match('/^\s*PASSED\s*$/m', $cleanOutput);
 
-            $results[] = $result;
+            if ($hasExplicitSuccess) {
+                // Test passed but parsing failed - create synthetic PASSED result
+                $result = new TestResult();
+                $result->setTestRun($run);
+                $result->setTestName($testId ?? 'Unknown');
+                if ($testId) {
+                    $result->setTestId($testId);
+                }
+                $result->setStatus(TestResult::STATUS_PASSED);
+                $results[] = $result;
+            } elseif ($this->hasErrorIndicators($cleanOutput)) {
+                // Create synthetic broken result for real failures
+                $result = new TestResult();
+                $result->setTestRun($run);
+                $result->setTestName($testId ?? 'Unknown');
+                if ($testId) {
+                    $result->setTestId($testId);
+                }
+                $result->setStatus(TestResult::STATUS_BROKEN);
+                $results[] = $result;
+            }
         }
 
         // Extract duration from timing line and apply to results
@@ -383,9 +393,38 @@ class MftfExecutorService
 
     /**
      * Check if output contains error indicators that suggest test failure.
+     *
+     * Returns false if explicit success indicators are found (tests passed),
+     * even if cleanup/infrastructure exceptions occurred.
      */
     private function hasErrorIndicators(string $output): bool
     {
+        // First check for explicit success indicators - if tests passed,
+        // don't treat cleanup/infra exceptions as test failures
+        $successPatterns = [
+            '/OK\s*\(\d+\s*test/',                       // Codeception OK summary: "OK (1 test, 10 assertions)"
+            '/^\s*PASSED\s*$/m',                         // Standalone PASSED line
+        ];
+
+        foreach ($successPatterns as $pattern) {
+            if (preg_match($pattern, $output)) {
+                return false; // Tests passed, ignore cleanup exceptions
+            }
+        }
+
+        // Exclude known infrastructure/cleanup exceptions that don't indicate test failure
+        $excludedPatterns = [
+            '/AllureHelper.*unlink/s',                   // Allure cleanup race condition
+            '/unlink\(.*_generated.*Cest\.php\)/s',     // Generated test file cleanup
+        ];
+
+        foreach ($excludedPatterns as $pattern) {
+            if (preg_match($pattern, $output)) {
+                // Check if this is the ONLY exception - if so, not a real error
+                $output = preg_replace($pattern, '', $output);
+            }
+        }
+
         $errorPatterns = [
             '/\[.*Exception\]/',                        // Any exception (FastFailException, etc)
             '/ERRORS!\s*Tests:/',                       // Codeception error summary
