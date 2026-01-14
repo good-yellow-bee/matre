@@ -54,6 +54,12 @@ docker-compose up -d
 | Allure Reports | http://localhost:5050 |
 | Mailpit (dev) | http://localhost:8025 |
 
+### Run Database Migrations
+
+```bash
+docker-compose exec php php bin/console doctrine:migrations:migrate --no-interaction
+```
+
 ### Create Admin User
 
 ```bash
