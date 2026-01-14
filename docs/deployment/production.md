@@ -375,3 +375,99 @@ Before deploying:
 5. [ ] Permissions set correctly
 6. [ ] SSL certificate installed
 7. [ ] Backup strategy in place
+
+---
+
+## Troubleshooting
+
+### Snap Docker (Ubuntu)
+
+If Docker was installed via Ubuntu Snap, the `/opt` directory is read-only:
+
+```bash
+mkdir /opt/matre: read-only file system
+```
+
+**Solution:** Deploy to `/home/$USER/matre` instead of `/opt/matre`.
+
+```bash
+# Check if Docker is Snap-installed
+snap list docker
+
+# If yes, use home directory
+mkdir -p ~/matre
+cd ~/matre
+git clone https://github.com/good-yellow-bee/matre.git .
+```
+
+### Symfony Runtime Missing
+
+If you see errors like `vendor/autoload_runtime.php not found`:
+
+```bash
+# Regenerate autoloader (runs Composer plugins)
+docker-compose exec php composer dump-autoload --optimize
+
+# Clear and warm cache
+docker-compose exec php php bin/console cache:clear --env=prod
+docker-compose exec php php bin/console cache:warmup --env=prod
+```
+
+### Cache Permission Errors
+
+If you see `Permission denied` for `var/cache` or `var/log`:
+
+```bash
+# Fix ownership (inside container)
+docker-compose exec php chown -R www-data:www-data var
+
+# Or from host
+docker-compose exec -u root php chown -R www-data:www-data var
+docker-compose exec -u root php chmod -R 775 var
+
+# Warm cache as www-data
+docker-compose exec -u www-data php php bin/console cache:warmup --env=prod
+```
+
+### Traefik 504 Gateway Timeout
+
+If Traefik can't reach the application:
+
+```bash
+# Check nginx is on same network as Traefik
+docker network inspect matre_matre_network | grep matre_nginx
+
+# If missing, connect manually
+docker network connect matre_matre_network matre_traefik_prod
+
+# Check nginx is running
+docker-compose logs nginx
+```
+
+### Database Connection Refused
+
+```bash
+# Wait for DB to be healthy
+docker-compose ps db
+
+# Check DB logs
+docker-compose logs db
+
+# Test connection
+docker-compose exec php php bin/console dbal:run-sql "SELECT 1"
+```
+
+### Post-Deployment Commands
+
+After starting containers, always run:
+
+```bash
+# Run migrations
+docker-compose exec php php bin/console doctrine:migrations:migrate --no-interaction
+
+# Create admin user (first deploy only)
+docker-compose exec php php bin/console app:create-admin
+
+# Warm cache
+docker-compose exec php php bin/console cache:warmup --env=prod
+```

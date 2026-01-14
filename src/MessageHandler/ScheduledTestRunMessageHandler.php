@@ -7,7 +7,6 @@ namespace App\MessageHandler;
 use App\Entity\TestRun;
 use App\Message\ScheduledTestRunMessage;
 use App\Message\TestRunMessage;
-use App\Repository\TestEnvironmentRepository;
 use App\Repository\TestSuiteRepository;
 use App\Service\TestRunnerService;
 use Psr\Log\LoggerInterface;
@@ -17,14 +16,13 @@ use Symfony\Component\Messenger\MessageBusInterface;
 /**
  * Handles scheduled test suite execution.
  *
- * Creates test runs for all active environments when a suite is scheduled.
+ * Creates test runs for suite's configured environments when scheduled.
  */
 #[AsMessageHandler]
 class ScheduledTestRunMessageHandler
 {
     public function __construct(
         private readonly TestSuiteRepository $testSuiteRepository,
-        private readonly TestEnvironmentRepository $testEnvironmentRepository,
         private readonly TestRunnerService $testRunnerService,
         private readonly MessageBusInterface $messageBus,
         private readonly LoggerInterface $logger,
@@ -45,8 +43,19 @@ class ScheduledTestRunMessageHandler
             'suiteName' => $suite->getName(),
         ]);
 
-        // Get all active environments
-        $environments = $this->testEnvironmentRepository->findActive();
+        // Get suite's configured environments (filtered to active only)
+        $environments = $suite->getEnvironments()->filter(
+            fn ($env) => $env->isActive(),
+        );
+
+        if ($environments->isEmpty()) {
+            $this->logger->warning('No active environments configured for suite', [
+                'suiteId' => $suite->getId(),
+                'suiteName' => $suite->getName(),
+            ]);
+
+            return;
+        }
 
         foreach ($environments as $environment) {
             // Skip if there's already a running test for this environment

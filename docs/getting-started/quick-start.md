@@ -14,9 +14,11 @@ Get MATRE running and execute your first MFTF test in minutes.
 
 | Requirement | Details |
 |-------------|---------|
-| Docker | Docker Desktop or Docker Engine + Compose |
+| Docker | Docker Desktop or Docker Engine + Compose (see note below) |
 | Test Module | Git repository with MFTF tests (`TEST_MODULE_REPO` in `.env`) |
 | Magento Instance | Target environment with MFTF configured |
+
+> **Docker Note:** On Linux, Docker installed via Snap has restrictions (read-only `/opt`). For production deployments, use the official Docker APT repository: https://docs.docker.com/engine/install/ubuntu/
 
 ---
 
@@ -51,6 +53,12 @@ docker-compose up -d
 | Selenium Grid | http://localhost:4444 |
 | Allure Reports | http://localhost:5050 |
 | Mailpit (dev) | http://localhost:8025 |
+
+### Run Database Migrations
+
+```bash
+docker-compose exec php php bin/console doctrine:migrations:migrate --no-interaction
+```
 
 ### Create Admin User
 

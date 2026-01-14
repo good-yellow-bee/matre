@@ -84,3 +84,8 @@ docker/traefik/certs/*.pem
 /.php-cs-fixer.php
 /.php-cs-fixer.cache
 ###< friendsofphp/php-cs-fixer ###
+
+# SSH keys (do not commit)
+docker/ssh/id_*
+docker/ssh/config
+docker/ssh/known_hosts
