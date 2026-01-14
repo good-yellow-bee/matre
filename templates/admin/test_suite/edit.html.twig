@@ -60,11 +60,11 @@
 
                 <div class="mb-3">
                     {{ form_label(form.environments) }}
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mt-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mt-2 p-4 bg-slate-50 rounded-lg border border-slate-200">
                         {% for child in form.environments %}
-                            <div class="form-check">
-                                {{ form_widget(child, {'attr': {'class': 'form-check-input'}}) }}
-                                {{ form_label(child, null, {'label_attr': {'class': 'form-check-label text-sm'}}) }}
+                            <div class="flex items-center gap-2">
+                                {{ form_widget(child, {'attr': {'class': 'form-check-input m-0'}}) }}
+                                {{ form_label(child, null, {'label_attr': {'class': 'text-sm cursor-pointer m-0'}}) }}
                             </div>
                         {% else %}
                             <p class="text-slate-500 text-sm col-span-full">No active environments available</p>
@@ -92,7 +92,7 @@
                     <i class="bi bi-x-circle"></i> Cancel
                 </a>
             </div>
-        {{ form_end(form) }}
+        {{ form_end(form, {'render_rest': false}) }}
     </div>
 </div>
 {% endblock %}
