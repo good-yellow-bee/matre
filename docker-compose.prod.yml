@@ -43,7 +43,32 @@ services:
       - ./public:/app/public:ro
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
 
-  # VNC password for production
+  # noVNC with password + Traefik routing
   chrome-node:
     environment:
       SE_VNC_NO_PASSWORD: "false"
+    networks:
+      - matre_network
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.novnc.rule=Host(`${APP_DOMAIN}`) && PathPrefix(`/novnc`)"
+      - "traefik.http.routers.novnc.entrypoints=websecure"
+      - "traefik.http.routers.novnc.tls=true"
+      - "traefik.http.routers.novnc.middlewares=novnc-stripprefix"
+      - "traefik.http.middlewares.novnc-stripprefix.stripprefix.prefixes=/novnc"
+      - "traefik.http.services.novnc.loadbalancer.server.port=7900"
+
+  # Allure reports with Traefik routing
+  allure:
+    networks:
+      - matre_network
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.allure.rule=Host(`${APP_DOMAIN}`) && PathPrefix(`/allure`)"
+      - "traefik.http.routers.allure.entrypoints=websecure"
+      - "traefik.http.routers.allure.tls=true"
+      - "traefik.http.routers.allure.middlewares=allure-stripprefix"
+      - "traefik.http.middlewares.allure-stripprefix.stripprefix.prefixes=/allure"
+      - "traefik.http.services.allure.loadbalancer.server.port=5050"
