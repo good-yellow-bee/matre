@@ -50,6 +50,75 @@ Before starting, ensure you have:
 | SSH key or HTTPS credentials for your repos | Access to clone your test module |
 | A Magento 2 instance (dev/staging) | URL + admin credentials |
 
+### Magento 2 Instance Requirements
+
+Your target Magento instance must be properly configured for MFTF testing.
+
+**Supported Versions:**
+
+| Magento Version | MFTF Version | Status |
+|-----------------|--------------|--------|
+| 2.4.6+ | 4.x | ✅ Recommended |
+| 2.4.4 - 2.4.5 | 3.x | ✅ Supported |
+| 2.4.0 - 2.4.3 | 3.x | ⚠️ Limited support |
+| < 2.4.0 | 2.x | ❌ Not supported |
+
+**Required Magento Configuration:**
+
+```bash
+# On your Magento instance, run:
+
+# 1. Enable developer mode (recommended for testing)
+bin/magento deploy:mode:set developer
+
+# 2. Disable Two-Factor Auth for admin (required for MFTF)
+bin/magento module:disable Magento_AdminAdobeImsTwoFactorAuth Magento_TwoFactorAuth
+bin/magento setup:upgrade
+bin/magento cache:flush
+
+# 3. Verify Selenium can access the site
+# Ensure firewall allows connections from MATRE's Docker network
+```
+
+**Required `.env` Variables on Magento:**
+
+If running MFTF directly on Magento (not via MATRE), these are needed in `dev/tests/acceptance/.env`:
+
+```dotenv
+MAGENTO_BASE_URL=https://your-store.com/
+MAGENTO_BACKEND_NAME=admin
+MAGENTO_ADMIN_USERNAME=admin
+MAGENTO_ADMIN_PASSWORD=your-password
+BROWSER=chrome
+SELENIUM_HOST=selenium-hub  # Or MATRE's Selenium container IP
+```
+
+> **Note:** When using MATRE, these are configured in the Test Environment settings — not in Magento's `.env` file.
+
+**Verify Magento is MFTF-Ready:**
+
+```bash
+# On your Magento instance:
+
+# Check MFTF is installed
+composer show magento/magento2-functional-testing-framework
+
+# Generate MFTF files (validates configuration)
+vendor/bin/mftf generate:tests --remove
+
+# If errors occur, MFTF configuration needs fixing
+```
+
+**Common Magento Issues:**
+
+| Issue | Solution |
+|-------|----------|
+| Two-Factor Auth blocks admin login | Disable `Magento_TwoFactorAuth` module |
+| "Admin user doesn't have permissions" | Create dedicated MFTF admin with all roles |
+| Tests can't access storefront | Check firewall/security rules allow Selenium IP |
+| HTTPS certificate errors | Add valid SSL cert or configure Selenium to ignore SSL |
+| Session expires during tests | Increase admin session lifetime in Magento config |
+
 ---
 
 ## Step 1: Clone and Start MATRE
