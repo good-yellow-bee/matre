@@ -6,6 +6,8 @@ namespace App\Entity;
 
 use App\Repository\TestSuiteRepository;
 use App\Validator\ValidCronExpression;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
@@ -90,6 +92,12 @@ class TestSuite
     #[ORM\Column(type: Types::INTEGER, nullable: true)]
     private ?int $estimatedDuration = null;
 
+    /** @var Collection<int, TestEnvironment> */
+    #[ORM\ManyToMany(targetEntity: TestEnvironment::class)]
+    #[ORM\JoinTable(name: 'matre_test_suite_environments')]
+    #[Assert\Count(min: 1, minMessage: 'Select at least one environment.')]
+    private Collection $environments;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -99,6 +107,7 @@ class TestSuite
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
+        $this->environments = new ArrayCollection();
     }
 
     public function __toString(): string
@@ -250,5 +259,27 @@ class TestSuite
     public function isScheduled(): bool
     {
         return $this->cronExpression !== null;
+    }
+
+    /** @return Collection<int, TestEnvironment> */
+    public function getEnvironments(): Collection
+    {
+        return $this->environments;
+    }
+
+    public function addEnvironment(TestEnvironment $environment): static
+    {
+        if (!$this->environments->contains($environment)) {
+            $this->environments->add($environment);
+        }
+
+        return $this;
+    }
+
+    public function removeEnvironment(TestEnvironment $environment): static
+    {
+        $this->environments->removeElement($environment);
+
+        return $this;
     }
 }

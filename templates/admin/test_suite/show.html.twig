@@ -42,6 +42,20 @@
                         </td>
                     </tr>
                     <tr>
+                        <th>Environments</th>
+                        <td>
+                            {% if suite.environments|length > 0 %}
+                                <div class="d-flex flex-wrap gap-1">
+                                    {% for env in suite.environments %}
+                                        <span class="badge bg-slate-600">{{ env.code }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <span class="text-muted">No environments selected</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
                         <th>Created</th>
                         <td>{{ suite.createdAt|date('Y-m-d H:i:s') }}</td>
                     </tr>

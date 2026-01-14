@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Form;
 
+use App\Entity\TestEnvironment;
 use App\Entity\TestSuite;
+use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
@@ -43,6 +45,17 @@ class TestSuiteType extends AbstractType
                 'required' => false,
                 'help' => 'Schedule (e.g., "0 2 * * *" for 2 AM daily). Leave empty for manual runs only.',
                 'attr' => ['class' => 'form-control', 'placeholder' => '0 2 * * *'],
+            ])
+            ->add('environments', EntityType::class, [
+                'class' => TestEnvironment::class,
+                'choice_label' => fn (TestEnvironment $env) => $env->getCode() . ' - ' . $env->getName(),
+                'multiple' => true,
+                'expanded' => true,
+                'query_builder' => fn ($repo) => $repo->createQueryBuilder('e')
+                    ->where('e.isActive = true')
+                    ->orderBy('e.code', 'ASC'),
+                'label' => 'Target Environments',
+                'help' => 'Scheduled runs will execute on selected environments only',
             ])
             ->add('description', TextareaType::class, [
                 'label' => 'Description',
