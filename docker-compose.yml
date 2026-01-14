@@ -13,6 +13,7 @@ services:
     volumes:
       - .:/app
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./docker/ssh:/home/www-data/.ssh:ro
     env_file: .env
     environment:
       APP_SECRET: "matre-dev-secret"
@@ -24,6 +25,7 @@ services:
       MAILER_DSN: "smtp://mailpit:1025"
       ALLURE_URL: http://allure:5050
       ALLURE_PUBLIC_URL: http://matre.local:5050
+      GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /home/www-data/.ssh/id_ed25519"
     depends_on:
       - frontend-build
       - db
@@ -327,6 +329,7 @@ services:
       - ./var/playwright-results:/app/var/playwright-results
       - ./var/allure-results:/app/var/allure-results
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./docker/ssh:/home/www-data/.ssh:ro
     env_file: .env
     environment:
       DB_HOST: db
@@ -338,6 +341,7 @@ services:
       SELENIUM_PORT: 4444
       ALLURE_URL: http://allure:5050
       ALLURE_PUBLIC_URL: http://matre.local:5050
+      GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /home/www-data/.ssh/id_ed25519"
     depends_on:
       db:
         condition: service_healthy

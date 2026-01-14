@@ -24,6 +24,7 @@ RUN apk add --no-cache \
     file \
     git \
     curl \
+    openssh-client \
     libzip-dev \
     libpng-dev \
     jpeg-dev \
