@@ -158,6 +158,18 @@
 </style>
 {% endblock %}
 
+{% block javascripts %}
+{{ parent() }}
+<script>
+document.querySelector('form').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        this.submit();
+    }
+});
+</script>
+{% endblock %}
+
 {% block body %}
 <section class="auth-hero">
     <div class="login-card">

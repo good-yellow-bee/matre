@@ -231,6 +231,148 @@ docker-compose restart matre_test_worker
 
 ---
 
+## Git Access for Private Repositories
+
+MATRE clones your test module repository on each test run. For private repos, configure authentication.
+
+### Option 1: SSH Key (Recommended)
+
+SSH keys provide secure, password-less access to Git repositories.
+
+**1. Generate SSH Key (if needed)**
+
+```bash
+# Generate new key
+ssh-keygen -t ed25519 -C "matre@local" -f ~/.ssh/matre_key
+
+# Or use existing key
+ls ~/.ssh/id_*
+```
+
+**2. Add Public Key to Git Provider**
+
+Copy public key and add to GitHub/GitLab/Bitbucket:
+
+```bash
+cat ~/.ssh/matre_key.pub
+# or
+cat ~/.ssh/id_ed25519.pub
+```
+
+- **GitHub:** Settings → SSH Keys → New SSH Key
+- **GitLab:** Preferences → SSH Keys → Add Key
+- **Bitbucket:** Personal Settings → SSH Keys → Add Key
+
+**3. Mount SSH Key in Docker**
+
+Add to `docker-compose.yml` under `php` service:
+
+```yaml
+services:
+  php:
+    volumes:
+      - ~/.ssh:/root/.ssh:ro  # Mount SSH keys (read-only)
+```
+
+Or mount specific key:
+
+```yaml
+volumes:
+  - ~/.ssh/matre_key:/root/.ssh/id_ed25519:ro
+  - ~/.ssh/known_hosts:/root/.ssh/known_hosts:ro
+```
+
+**4. Configure Known Hosts**
+
+Pre-populate known hosts to avoid interactive prompts:
+
+```bash
+# Add GitHub/GitLab/Bitbucket to known_hosts
+ssh-keyscan github.com >> ~/.ssh/known_hosts
+ssh-keyscan gitlab.com >> ~/.ssh/known_hosts
+ssh-keyscan bitbucket.org >> ~/.ssh/known_hosts
+```
+
+**5. Test SSH Access**
+
+```bash
+docker-compose exec php ssh -T git@github.com
+# Should see: "Hi username! You've successfully authenticated..."
+```
+
+### Option 2: HTTPS with Token
+
+For HTTPS repositories, use personal access tokens.
+
+**1. Create Access Token**
+
+- **GitHub:** Settings → Developer settings → Personal access tokens → Generate
+  - Scope: `repo` (full repository access)
+- **GitLab:** Preferences → Access Tokens → Add
+  - Scope: `read_repository`
+- **Bitbucket:** Personal Settings → App passwords → Create
+  - Permission: Repository read
+
+**2. Configure in `.env`**
+
+```dotenv
+TEST_MODULE_REPO=https://github.com/your-org/your-tests.git
+REPO_USERNAME=your-username
+REPO_PASSWORD=ghp_xxxxxxxxxxxx  # Your token
+```
+
+**3. Test HTTPS Access**
+
+```bash
+docker-compose exec php git ls-remote $TEST_MODULE_REPO
+```
+
+### Troubleshooting Git Access
+
+**"Permission denied (publickey)"**
+
+```bash
+# Check SSH key is mounted
+docker-compose exec php ls -la /root/.ssh/
+
+# Verify key permissions
+docker-compose exec php chmod 600 /root/.ssh/id_*
+docker-compose exec php chmod 700 /root/.ssh
+
+# Test SSH connection with verbose output
+docker-compose exec php ssh -vT git@github.com
+```
+
+**"Host key verification failed"**
+
+```bash
+# Add host to known_hosts
+ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+# Or disable strict host checking (less secure)
+docker-compose exec php sh -c 'echo "StrictHostKeyChecking no" >> /root/.ssh/config'
+```
+
+**"Authentication failed" (HTTPS)**
+
+- Verify token has `repo` scope
+- Check token hasn't expired
+- Ensure `REPO_USERNAME` and `REPO_PASSWORD` are set in `.env`
+
+**Clone times out**
+
+Large repositories may timeout. Options:
+
+```dotenv
+# Increase timeout (seconds)
+GIT_CLONE_TIMEOUT=600
+
+# Use shallow clone
+GIT_CLONE_DEPTH=1
+```
+
+---
+
 ## ARM64 Support (M1/M2 Macs)
 
 Docker uses Chromium instead of Chrome for ARM64 compatibility. Anti-bot flags enabled by default for testing on protected sites.
