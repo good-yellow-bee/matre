@@ -12,7 +12,6 @@ services:
     container_name: matre_php
     volumes:
       - .:/app
-      - matre_vendor:/app/vendor
       - /var/run/docker.sock:/var/run/docker.sock
     env_file: .env
     environment:
@@ -108,7 +107,6 @@ services:
     restart: unless-stopped
     volumes:
       - .:/app
-      - matre_vendor:/app/vendor
     env_file: .env
     environment:
       DB_HOST: db
@@ -169,6 +167,7 @@ services:
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:-}
     networks:
       - traefik
+      - matre_network  # Required to route to nginx
     restart: unless-stopped
 
   # ===========================================
@@ -323,7 +322,6 @@ services:
     restart: unless-stopped
     volumes:
       - .:/app
-      - matre_vendor:/app/vendor
       - ./var/test-modules:/app/var/test-modules
       - ./var/mftf-results:/app/var/mftf-results
       - ./var/playwright-results:/app/var/playwright-results
@@ -354,7 +352,6 @@ services:
 
 volumes:
   matre_db_data:
-  matre_vendor:
   matre_magento_code:
   matre_magento_db_data:
   matre_magento_opensearch_data:

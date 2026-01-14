@@ -61,11 +61,14 @@ RUN apk add --no-cache docker-cli
 # Copy composer files first for layer caching
 COPY composer.json composer.lock symfony.lock ./
 
-# Install dependencies (cached unless composer files change)
-RUN composer install --prefer-dist --no-scripts --no-progress
+# Install dependencies without autoloader or scripts (cached unless composer files change)
+RUN composer install --prefer-dist --no-progress --no-scripts --no-autoloader
 
 # Copy application code
 COPY . .
+
+# Generate autoloader (runs Composer plugins like symfony/runtime to create autoload_runtime.php)
+RUN composer dump-autoload --optimize
 
 # Set permissions for cache and logs
 RUN mkdir -p var/cache var/log \
@@ -82,8 +85,8 @@ ARG APP_ENV=prod
 # Copy composer files first for layer caching
 COPY composer.json composer.lock symfony.lock ./
 
-# Install production dependencies (cached unless composer files change)
-RUN composer install --no-dev --no-scripts --optimize-autoloader
+# Install production dependencies without autoloader or scripts (cached unless composer files change)
+RUN composer install --no-dev --no-progress --no-scripts --no-autoloader
 
 # Copy application code
 COPY . .
@@ -91,13 +94,16 @@ COPY . .
 # Copy built frontend assets from the frontend build stage
 COPY --from=frontend_build /app/public/build /app/public/build
 
-# Set permissions for cache and logs
+# Generate optimized autoloader (runs Composer plugins like symfony/runtime to create autoload_runtime.php)
+RUN composer dump-autoload --optimize --classmap-authoritative
+
+# Set permissions for cache and logs BEFORE cache warmup
 RUN mkdir -p var/cache var/log \
     && chown -R www-data:www-data var \
     && chmod -R 775 var
 
-# Run composer scripts (e.g., for cache warming)
-RUN APP_ENV=$APP_ENV composer run-script post-install-cmd
+# Run composer scripts as www-data (cache warmup creates files)
+RUN su www-data -s /bin/sh -c "APP_ENV=$APP_ENV composer run-script post-install-cmd"
 
 # Clean up for smallest possible image
 RUN composer clear-cache \
