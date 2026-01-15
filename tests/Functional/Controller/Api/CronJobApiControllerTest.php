@@ -23,7 +23,7 @@ class CronJobApiControllerTest extends WebTestCase
     protected function tearDown(): void
     {
         // Clean up any CronJobs created during tests
-        if (!empty($this->createdJobIds) && $this->entityManager !== null) {
+        if (!empty($this->createdJobIds) && null !== $this->entityManager) {
             $this->entityManager->createQuery(
                 'DELETE FROM App\Entity\CronJob c WHERE c.id IN (:ids)',
             )->execute(['ids' => $this->createdJobIds]);
@@ -42,7 +42,7 @@ class CronJobApiControllerTest extends WebTestCase
     {
         $client = self::createClient();
 
-        $client->request('GET', self::BASE_URL . '/list');
+        $client->request('GET', self::BASE_URL.'/list');
 
         $this->assertResponseRedirects('/login');
     }
@@ -52,7 +52,7 @@ class CronJobApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsUser($client);
 
-        $client->request('GET', self::BASE_URL . '/list');
+        $client->request('GET', self::BASE_URL.'/list');
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -67,7 +67,7 @@ class CronJobApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $this->createCronJob();
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '/list');
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'/list');
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertArrayHasKey('data', $data);
@@ -82,7 +82,7 @@ class CronJobApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsAdmin($client);
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '/list?page=1&perPage=5');
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'/list?page=1&perPage=5');
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertLessThanOrEqual(5, count($data['data']));
@@ -97,7 +97,7 @@ class CronJobApiControllerTest extends WebTestCase
         $suffix = bin2hex(random_bytes(4));
         $this->createCronJob("SearchableCron_{$suffix}");
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . "/list?search=SearchableCron_{$suffix}");
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL."/list?search=SearchableCron_{$suffix}");
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertGreaterThanOrEqual(1, count($data['data']));
@@ -111,7 +111,7 @@ class CronJobApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsAdmin($client);
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '/list?sort=name&order=desc');
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'/list?sort=name&order=desc');
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertEquals(1, $data['page']);
@@ -127,7 +127,7 @@ class CronJobApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $job = $this->createCronJob();
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '/' . $job->getId());
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'/'.$job->getId());
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertEquals($job->getId(), $data['id']);
@@ -142,7 +142,7 @@ class CronJobApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsAdmin($client);
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '/99999');
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'/99999');
 
         $this->assertJsonError($response, 404);
     }
@@ -157,7 +157,7 @@ class CronJobApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $job = $this->createCronJob();
 
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $job->getId() . '/toggle-active');
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL.'/'.$job->getId().'/toggle-active');
 
         $this->assertJsonError($response, 403, 'CSRF');
     }
@@ -178,7 +178,7 @@ class CronJobApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $job = $this->createCronJob();
 
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $job->getId() . '/run');
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL.'/'.$job->getId().'/run');
 
         $this->assertJsonError($response, 403, 'CSRF');
     }
@@ -199,7 +199,7 @@ class CronJobApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $job = $this->createCronJob();
 
-        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/' . $job->getId());
+        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL.'/'.$job->getId());
 
         $this->assertJsonError($response, 403, 'CSRF');
     }
@@ -216,7 +216,7 @@ class CronJobApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
 
         // 404 check happens before CSRF validation in the controller
-        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/99999');
+        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL.'/99999');
 
         $this->assertJsonError($response, 404);
     }

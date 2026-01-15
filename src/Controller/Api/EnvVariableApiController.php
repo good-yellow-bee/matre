@@ -44,10 +44,10 @@ class EnvVariableApiController extends AbstractController
             $sort = 'name';
         }
 
-        $order = strtoupper($order) === 'DESC' ? 'DESC' : 'ASC';
+        $order = 'DESC' === strtoupper($order) ? 'DESC' : 'ASC';
 
         // Use native SQL for JSON filtering if environment specified
-        if ($environment !== null && $environment !== 'global') {
+        if (null !== $environment && 'global' !== $environment) {
             $conn = $this->entityManager->getConnection();
             $sql = 'SELECT * FROM matre_global_env_variables v
                     WHERE JSON_CONTAINS(v.environments, :env)';
@@ -55,7 +55,7 @@ class EnvVariableApiController extends AbstractController
 
             if ('' !== $search) {
                 $sql .= ' AND (LOWER(v.name) LIKE :search OR LOWER(v.description) LIKE :search OR LOWER(v.used_in_tests) LIKE :search)';
-                $params['search'] = '%' . mb_strtolower($search) . '%';
+                $params['search'] = '%'.mb_strtolower($search).'%';
             }
 
             $sql .= " ORDER BY v.{$sort} {$order}";
@@ -73,16 +73,16 @@ class EnvVariableApiController extends AbstractController
             ], $rawResults);
         } else {
             $qb = $this->repository->createQueryBuilder('v')
-                ->orderBy('v.' . $sort, $order);
+                ->orderBy('v.'.$sort, $order);
 
             if ('' !== $search) {
                 $qb
                     ->andWhere('LOWER(v.name) LIKE :search OR LOWER(v.description) LIKE :search OR LOWER(v.usedInTests) LIKE :search')
-                    ->setParameter('search', '%' . mb_strtolower($search) . '%');
+                    ->setParameter('search', '%'.mb_strtolower($search).'%');
             }
 
             // Filter global only (environments IS NULL)
-            if ($environment === 'global') {
+            if ('global' === $environment) {
                 $qb->andWhere('v.environments IS NULL');
             }
 

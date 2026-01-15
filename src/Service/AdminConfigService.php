@@ -159,7 +159,7 @@ class AdminConfigService
      */
     public function getEntityDefaults(?string $key = null): mixed
     {
-        if ($key === null) {
+        if (null === $key) {
             return self::ENTITY_DEFAULTS;
         }
 
@@ -186,7 +186,7 @@ class AdminConfigService
     public function getSiteSetting(string $key): mixed
     {
         $settings = $this->getSiteSettings();
-        $getter = 'get' . ucfirst($key);
+        $getter = 'get'.ucfirst($key);
 
         if (method_exists($settings, $getter)) {
             return $settings->$getter();
@@ -198,8 +198,8 @@ class AdminConfigService
     /**
      * Check if a user has access to a specific menu item.
      *
-     * @param string $entityName The entity name
-     * @param array<string> $userRoles The user's roles
+     * @param string        $entityName The entity name
+     * @param array<string> $userRoles  The user's roles
      *
      * @return bool True if the user has access, false otherwise
      */
@@ -207,7 +207,7 @@ class AdminConfigService
     {
         $config = $this->getEntityConfig($entityName);
 
-        if ($config === null) {
+        if (null === $config) {
             return false;
         }
 
@@ -270,9 +270,9 @@ class AdminConfigService
     /**
      * Get breadcrumb trail for admin pages.
      *
-     * @param string $entityName The current entity
-     * @param string|null $action The current action (e.g., 'index', 'edit', 'new')
-     * @param string|null $title Optional title for the current page
+     * @param string      $entityName The current entity
+     * @param string|null $action     The current action (e.g., 'index', 'edit', 'new')
+     * @param string|null $title      Optional title for the current page
      *
      * @return array<array{label: string, url: string|null}> Breadcrumb items
      */
@@ -284,13 +284,13 @@ class AdminConfigService
 
         $config = $this->getEntityConfig($entityName);
 
-        if ($config !== null) {
+        if (null !== $config) {
             $breadcrumbs[] = [
                 'label' => $config['label'],
-                'url' => $action === 'index' ? null : $config['route'],
+                'url' => 'index' === $action ? null : $config['route'],
             ];
 
-            if ($action !== null && $action !== 'index') {
+            if (null !== $action && 'index' !== $action) {
                 $actionLabel = match ($action) {
                     'new' => 'New',
                     'edit' => 'Edit',

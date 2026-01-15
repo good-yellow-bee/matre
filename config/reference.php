@@ -128,7 +128,7 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *     http_method_override?: bool, // Set true to enable support for the '_method' request parameter to determine the intended HTTP method on POST requests. // Default: false
  *     allowed_http_method_override?: list<string>|null,
  *     trust_x_sendfile_type_header?: scalar|null, // Set true to enable support for xsendfile in binary file responses. // Default: "%env(bool:default::SYMFONY_TRUST_X_SENDFILE_TYPE_HEADER)%"
- *     ide?: scalar|null, // Default: "%env(default::SYMFONY_IDE)%"
+ *     ide?: scalar|null, // Default: null
  *     test?: bool,
  *     default_locale?: scalar|null, // Default: "en"
  *     set_locale_from_accept_language?: bool, // Whether to use the Accept-Language HTTP header to set the Request locale (only when the "_locale" request attribute is not passed). // Default: false
@@ -281,11 +281,11 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *         }>,
  *     },
  *     asset_mapper?: bool|array{ // Asset Mapper configuration
- *         enabled?: bool, // Default: false
+ *         enabled?: bool, // Default: true
  *         paths?: array<string, scalar|null>,
  *         excluded_patterns?: list<scalar|null>,
  *         exclude_dotfiles?: bool, // If true, any files starting with "." will be excluded from the asset mapper. // Default: true
- *         server?: bool, // If true, a "dev server" will return the assets from the public directory (true in "debug" mode only by default). // Default: true
+ *         server?: bool, // If true, a "dev server" will return the assets from the public directory (true in "debug" mode only by default). // Default: false
  *         public_prefix?: scalar|null, // The public path where the assets will be written to (and served from when "server" is true). // Default: "/assets/"
  *         missing_import_mode?: "strict"|"warn"|"ignore", // Behavior if an asset cannot be found when imported from JavaScript or CSS files - e.g. "import './non-existent.js'". "strict" means an exception is thrown, "warn" means a warning is logged, "ignore" means the import is left as-is. // Default: "warn"
  *         extensions?: array<string, scalar|null>,
@@ -405,7 +405,7 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *     },
  *     php_errors?: array{ // PHP errors handling configuration
  *         log?: mixed, // Use the application logger instead of the PHP logger for logging PHP errors. // Default: true
- *         throw?: bool, // Throw PHP errors as \ErrorException instances. // Default: true
+ *         throw?: bool, // Throw PHP errors as \ErrorException instances. // Default: false
  *     },
  *     exceptions?: array<string, array{ // Default: []
  *         log_level?: scalar|null, // The level of log message. Null to let Symfony decide. // Default: null
@@ -468,13 +468,13 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *     scheduler?: bool|array{ // Scheduler configuration
  *         enabled?: bool, // Default: true
  *     },
- *     disallow_search_engine_index?: bool, // Enabled by default when debug is enabled. // Default: true
+ *     disallow_search_engine_index?: bool, // Enabled by default when debug is enabled. // Default: false
  *     http_client?: bool|array{ // HTTP Client configuration
  *         enabled?: bool, // Default: true
  *         max_host_connections?: int, // The maximum number of connections to a single host.
  *         default_options?: array{
  *             headers?: array<string, mixed>,
- *             vars?: array<string, mixed>,
+ *             vars?: list<mixed>,
  *             max_redirects?: int, // The maximum number of redirects to follow.
  *             http_version?: scalar|null, // The default HTTP version, typically 1.1 or 2.0, leave to null for the best version.
  *             resolve?: array<string, scalar|null>,
@@ -497,7 +497,7 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *                 md5?: mixed,
  *             },
  *             crypto_method?: scalar|null, // The minimum version of TLS to accept; must be one of STREAM_CRYPTO_METHOD_TLSv*_CLIENT constants.
- *             extra?: array<string, mixed>,
+ *             extra?: list<mixed>,
  *             rate_limiter?: scalar|null, // Rate limiter name to use for throttling requests. // Default: null
  *             caching?: bool|array{ // Caching configuration.
  *                 enabled?: bool, // Default: false
@@ -550,7 +550,7 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *                 md5?: mixed,
  *             },
  *             crypto_method?: scalar|null, // The minimum version of TLS to accept; must be one of STREAM_CRYPTO_METHOD_TLSv*_CLIENT constants.
- *             extra?: array<string, mixed>,
+ *             extra?: list<mixed>,
  *             rate_limiter?: scalar|null, // Rate limiter name to use for throttling requests. // Default: null
  *             caching?: bool|array{ // Caching configuration.
  *                 enabled?: bool, // Default: false
@@ -731,8 +731,8 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *             platform_service?: scalar|null, // Deprecated: The "platform_service" configuration key is deprecated since doctrine-bundle 2.9. DBAL 4 will not support setting a custom platform via connection params anymore.
  *             auto_commit?: bool,
  *             schema_filter?: scalar|null,
- *             logging?: bool, // Default: true
- *             profiling?: bool, // Default: true
+ *             logging?: bool, // Default: false
+ *             profiling?: bool, // Default: false
  *             profiling_collect_backtrace?: bool, // Enables collecting backtraces when profiling is enabled // Default: false
  *             profiling_collect_schema_errors?: bool, // Enables collecting schema errors when profiling is enabled // Default: true
  *             disable_type_comments?: bool,
@@ -871,7 +871,7 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *                     pool?: scalar|null,
  *                 },
  *                 region_lock_lifetime?: scalar|null, // Default: 60
- *                 log_enabled?: bool, // Default: true
+ *                 log_enabled?: bool, // Default: false
  *                 region_lifetime?: scalar|null, // Default: 3600
  *                 enabled?: bool, // Default: true
  *                 factory?: scalar|null,
@@ -940,13 +940,6 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *     organize_migrations?: scalar|null, // Organize migrations mode. Possible values are: "BY_YEAR", "BY_YEAR_AND_MONTH", false // Default: false
  *     enable_profiler?: bool, // Whether or not to enable the profiler collector to calculate and visualize migration status. This adds some queries overhead. // Default: false
  *     transactional?: bool, // Whether or not to wrap migrations in a single transaction. // Default: true
- * }
- * @psalm-type DebugConfig = array{
- *     max_items?: int, // Max number of displayed items past the first level, -1 means no limit. // Default: 2500
- *     min_depth?: int, // Minimum tree depth to clone all the items, 1 is default. // Default: 1
- *     max_string_length?: int, // Max length of displayed strings, -1 means no limit. // Default: -1
- *     dump_destination?: scalar|null, // A stream URL where dumps should be written to. // Default: null
- *     theme?: "dark"|"light", // Changes the color of the dump() output when rendered directly on the templating. "dark" (default) or "light". // Default: "dark"
  * }
  * @psalm-type TwigConfig = array{
  *     form_themes?: list<scalar|null>,
@@ -1551,18 +1544,12 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *         },
  *     }>,
  * }
- * @psalm-type MakerConfig = array{
- *     root_namespace?: scalar|null, // Default: "App"
- *     generate_final_classes?: bool, // Default: true
- *     generate_final_entities?: bool, // Default: false
- * }
  * @psalm-type FlysystemConfig = array{
  *     storages?: array<string, array{ // Default: []
  *         adapter: scalar|null,
  *         options?: list<mixed>,
  *         visibility?: scalar|null, // Default: null
  *         directory_visibility?: scalar|null, // Default: null
- *         retain_visibility?: bool|null, // Default: null
  *         case_sensitive?: bool, // Default: true
  *         disable_asserts?: bool, // Default: false
  *         public_url?: list<scalar|null>,
@@ -1593,6 +1580,18 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *         parameters?: list<scalar|null>,
  *         template?: scalar|null, // Default: "@SchebTwoFactor/Authentication/form.html.twig"
  *     },
+ * }
+ * @psalm-type DebugConfig = array{
+ *     max_items?: int, // Max number of displayed items past the first level, -1 means no limit. // Default: 2500
+ *     min_depth?: int, // Minimum tree depth to clone all the items, 1 is default. // Default: 1
+ *     max_string_length?: int, // Max length of displayed strings, -1 means no limit. // Default: -1
+ *     dump_destination?: scalar|null, // A stream URL where dumps should be written to. // Default: null
+ *     theme?: "dark"|"light", // Changes the color of the dump() output when rendered directly on the templating. "dark" (default) or "light". // Default: "dark"
+ * }
+ * @psalm-type MakerConfig = array{
+ *     root_namespace?: scalar|null, // Default: "App"
+ *     generate_final_classes?: bool, // Default: true
+ *     generate_final_entities?: bool, // Default: false
  * }
  * @psalm-type ConfigType = array{
  *     imports?: ImportsConfig,

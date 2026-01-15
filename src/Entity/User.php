@@ -235,7 +235,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, TwoFact
     public function removeRole(string $role): static
     {
         $key = array_search($role, $this->roles, true);
-        if ($key !== false) {
+        if (false !== $key) {
             unset($this->roles[$key]);
             $this->roles = array_values($this->roles); // Re-index array
         }
@@ -346,7 +346,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, TwoFact
      */
     public function isTotpAuthenticationEnabled(): bool
     {
-        return $this->isTotpEnabled && $this->totpSecret !== null;
+        return $this->isTotpEnabled && null !== $this->totpSecret;
     }
 
     /**
@@ -362,7 +362,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, TwoFact
      */
     public function getTotpAuthenticationConfiguration(): ?TotpConfigurationInterface
     {
-        if ($this->totpSecret === null) {
+        if (null === $this->totpSecret) {
             return null;
         }
 

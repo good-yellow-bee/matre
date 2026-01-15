@@ -89,7 +89,7 @@ class CronRunCommand extends Command
             // Refresh job to get latest status
             $this->entityManager->refresh($job);
 
-            if ($job->getLastStatus() === 'success') {
+            if ('success' === $job->getLastStatus()) {
                 $io->success('Job completed successfully');
             } else {
                 $io->error(sprintf('Job failed with status: %s', $job->getLastStatus()));

@@ -36,7 +36,7 @@ class CredentialEncryptionService
      */
     public function encrypt(string $plaintext): string
     {
-        if ($plaintext === '') {
+        if ('' === $plaintext) {
             return '';
         }
 
@@ -56,12 +56,12 @@ class CredentialEncryptionService
             self::TAG_LENGTH,
         );
 
-        if ($ciphertext === false) {
+        if (false === $ciphertext) {
             throw new \RuntimeException('Encryption failed');
         }
 
         // Combine IV + tag + ciphertext and base64 encode
-        return base64_encode($iv . $tag . $ciphertext);
+        return base64_encode($iv.$tag.$ciphertext);
     }
 
     /**
@@ -75,12 +75,12 @@ class CredentialEncryptionService
      */
     public function decrypt(string $encrypted): string
     {
-        if ($encrypted === '') {
+        if ('' === $encrypted) {
             return '';
         }
 
         $data = base64_decode($encrypted, true);
-        if ($data === false) {
+        if (false === $data) {
             throw new \RuntimeException('Invalid encrypted data format');
         }
 
@@ -106,7 +106,7 @@ class CredentialEncryptionService
             $tag,
         );
 
-        if ($plaintext === false) {
+        if (false === $plaintext) {
             throw new \RuntimeException('Decryption failed - data may be corrupted or tampered');
         }
 
@@ -118,12 +118,12 @@ class CredentialEncryptionService
      */
     public function isEncrypted(string $value): bool
     {
-        if ($value === '') {
+        if ('' === $value) {
             return false;
         }
 
         $data = base64_decode($value, true);
-        if ($data === false) {
+        if (false === $data) {
             return false;
         }
 
@@ -138,7 +138,7 @@ class CredentialEncryptionService
      */
     public function encryptIfNeeded(string $value): string
     {
-        if ($value === '' || $this->isEncrypted($value)) {
+        if ('' === $value || $this->isEncrypted($value)) {
             return $value;
         }
 
@@ -150,7 +150,7 @@ class CredentialEncryptionService
      */
     public function decryptSafe(string $value): string
     {
-        if ($value === '') {
+        if ('' === $value) {
             return '';
         }
 

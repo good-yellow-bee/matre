@@ -49,7 +49,7 @@ class CronJobMessageHandler
 
         // Acquire lock with 1-hour TTL to prevent concurrent execution
         $lock = $this->lockFactory->createLock(
-            'cron_job_' . $cronJob->getId(),
+            'cron_job_'.$cronJob->getId(),
             ttl: 3600,
         );
 
@@ -90,7 +90,7 @@ class CronJobMessageHandler
 
             $exitCode = $this->application->doRun($input, $output);
 
-            $cronJob->setLastStatus($exitCode === 0 ? CronJob::STATUS_SUCCESS : CronJob::STATUS_FAILED);
+            $cronJob->setLastStatus(0 === $exitCode ? CronJob::STATUS_SUCCESS : CronJob::STATUS_FAILED);
             $cronJob->setLastOutput($output->fetch());
 
             $this->logger->info('Cron job completed', [
@@ -100,7 +100,7 @@ class CronJobMessageHandler
             ]);
         } catch (\Throwable $e) {
             $cronJob->setLastStatus(CronJob::STATUS_FAILED);
-            $cronJob->setLastOutput($e->getMessage() . "\n" . $e->getTraceAsString());
+            $cronJob->setLastOutput($e->getMessage()."\n".$e->getTraceAsString());
 
             $this->logger->error('Cron job failed with exception', [
                 'job_id' => $cronJob->getId(),

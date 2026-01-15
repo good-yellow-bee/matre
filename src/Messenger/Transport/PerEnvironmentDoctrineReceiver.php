@@ -53,7 +53,7 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
                 $this->tableName,
             ),
             [
-                'prefix' => self::QUEUE_PREFIX . '%',
+                'prefix' => self::QUEUE_PREFIX.'%',
                 'stale_threshold' => $staleThreshold,
                 'now' => new \DateTimeImmutable(),
             ],
@@ -65,7 +65,7 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
 
         foreach ($queues as $queueName) {
             $envelope = $this->fetchFromQueue($queueName);
-            if ($envelope !== null) {
+            if (null !== $envelope) {
                 yield $envelope;
             }
         }
@@ -110,7 +110,7 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
     private function fetchFromQueue(string $queueName): ?Envelope
     {
         $envId = $this->extractEnvId($queueName);
-        $lockKey = 'test_runner_env_processing_' . $envId;
+        $lockKey = 'test_runner_env_processing_'.$envId;
         $lock = $this->lockFactory->createLock($lockKey, self::LOCK_TTL);
 
         // Try to acquire env lock (non-blocking)
@@ -155,7 +155,7 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
             }
 
             // Log redelivery of stuck message
-            if ($row['delivered_at'] !== null) {
+            if (null !== $row['delivered_at']) {
                 $this->logger->warning('Redelivering stuck message', [
                     'id' => $row['id'],
                     'queueName' => $queueName,

@@ -197,8 +197,8 @@ class CronJob
     public function setLastOutput(?string $lastOutput): static
     {
         // Truncate to 10KB to prevent excessive storage
-        if ($lastOutput !== null && mb_strlen($lastOutput) > 10240) {
-            $lastOutput = mb_substr($lastOutput, 0, 10240) . "\n... [truncated]";
+        if (null !== $lastOutput && mb_strlen($lastOutput) > 10240) {
+            $lastOutput = mb_substr($lastOutput, 0, 10240)."\n... [truncated]";
         }
         $this->lastOutput = $lastOutput;
 
@@ -243,7 +243,7 @@ class CronJob
      */
     public function isRunning(): bool
     {
-        return $this->lastStatus === self::STATUS_RUNNING;
+        return self::STATUS_RUNNING === $this->lastStatus;
     }
 
     /**
@@ -251,6 +251,6 @@ class CronJob
      */
     public function wasSuccessful(): bool
     {
-        return $this->lastStatus === self::STATUS_SUCCESS;
+        return self::STATUS_SUCCESS === $this->lastStatus;
     }
 }

@@ -39,7 +39,7 @@ class PasswordResetService
     /**
      * Create a password reset request for a user.
      *
-     * @param string $email The user's email address
+     * @param string      $email     The user's email address
      * @param string|null $ipAddress The requester's IP address
      *
      * @return bool True if reset request was created and email sent
@@ -49,7 +49,7 @@ class PasswordResetService
         $user = $this->userRepository->findOneBy(['email' => $email]);
 
         // Always return true to prevent email enumeration
-        if ($user === null || !$user->isEnabled()) {
+        if (null === $user || !$user->isEnabled()) {
             return true;
         }
 
@@ -68,7 +68,7 @@ class PasswordResetService
         $resetRequest->setUser($user);
         $resetRequest->setToken($token);
         $resetRequest->setExpiresAt(
-            (new \DateTimeImmutable())->modify('+' . self::TOKEN_LIFETIME . ' seconds'),
+            (new \DateTimeImmutable())->modify('+'.self::TOKEN_LIFETIME.' seconds'),
         );
         $resetRequest->setIpAddress($ipAddress);
 
@@ -114,7 +114,7 @@ class PasswordResetService
     /**
      * Reset a user's password using a valid token.
      *
-     * @param string $token The reset token
+     * @param string $token       The reset token
      * @param string $newPassword The new password
      *
      * @return bool True if password was reset successfully
@@ -123,7 +123,7 @@ class PasswordResetService
     {
         $resetRequest = $this->validateToken($token);
 
-        if ($resetRequest === null) {
+        if (null === $resetRequest) {
             return false;
         }
 

@@ -72,7 +72,7 @@ class TestRunMessageHandler
         }
 
         // Acquire lock to prevent concurrent execution
-        $lock = $this->lockFactory->createLock('test_run_' . $runId, 3600);
+        $lock = $this->lockFactory->createLock('test_run_'.$runId, 3600);
         if (!$lock->acquire()) {
             $this->logger->warning('Could not acquire lock for test run', ['runId' => $runId]);
 
@@ -86,7 +86,7 @@ class TestRunMessageHandler
                 TestRunMessage::PHASE_REPORT => $this->handleReport($run),
                 TestRunMessage::PHASE_NOTIFY => $this->handleNotify($run),
                 TestRunMessage::PHASE_CLEANUP => $this->handleCleanup($run),
-                default => throw new \InvalidArgumentException('Unknown phase: ' . $phase),
+                default => throw new \InvalidArgumentException('Unknown phase: '.$phase),
             };
         } catch (\Throwable $e) {
             $this->logger->error('Test run phase failed', [
@@ -145,7 +145,7 @@ class TestRunMessageHandler
     private function handleReport(TestRun $run): void
     {
         // Generate reports for all runs except cancelled (we need reports to see what failed!)
-        if ($run->getStatus() !== TestRun::STATUS_CANCELLED) {
+        if (TestRun::STATUS_CANCELLED !== $run->getStatus()) {
             try {
                 $this->testRunnerService->generateReports($run);
             } catch (\Throwable $e) {

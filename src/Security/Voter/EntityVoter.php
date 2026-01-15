@@ -42,7 +42,7 @@ class EntityVoter extends Voter
         }
 
         // For CREATE, subject might be a class name string
-        if ($attribute === self::CREATE) {
+        if (self::CREATE === $attribute) {
             if (is_string($subject)) {
                 return isset(self::ENTITY_PERMISSIONS[$subject]);
             }
@@ -71,7 +71,7 @@ class EntityVoter extends Voter
         $className = is_object($subject) ? get_class($subject) : $subject;
         $permissions = self::ENTITY_PERMISSIONS[$className] ?? null;
 
-        if ($permissions === null) {
+        if (null === $permissions) {
             return false;
         }
 
@@ -83,7 +83,7 @@ class EntityVoter extends Voter
             default => null,
         };
 
-        if ($operation === null) {
+        if (null === $operation) {
             return false;
         }
 

@@ -8,7 +8,7 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * Phase 3 Migration: Content Management Entities
+ * Phase 3 Migration: Content Management Entities.
  *
  * Creates tables for:
  * - resymf_themes (UI theme configuration)

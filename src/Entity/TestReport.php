@@ -173,7 +173,7 @@ class TestReport
      */
     public function isExpired(): bool
     {
-        if ($this->expiresAt === null) {
+        if (null === $this->expiresAt) {
             return false;
         }
 
@@ -185,7 +185,7 @@ class TestReport
      */
     public function isAllure(): bool
     {
-        return $this->reportType === self::TYPE_ALLURE;
+        return self::TYPE_ALLURE === $this->reportType;
     }
 
     /**
@@ -193,6 +193,6 @@ class TestReport
      */
     public function hasPublicUrl(): bool
     {
-        return $this->publicUrl !== null;
+        return null !== $this->publicUrl;
     }
 }

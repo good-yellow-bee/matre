@@ -51,7 +51,7 @@ class CredentialEncryptionListener
         if ($entity instanceof TestEnvironment) {
             if ($args->hasChangedField('adminPassword')) {
                 $value = $args->getNewValue('adminPassword');
-                if ($value !== null && $value !== '') {
+                if (null !== $value && '' !== $value) {
                     $encrypted = $this->encryptionService->encryptIfNeeded($value);
                     $args->setNewValue('adminPassword', $encrypted);
                     $entity->setAdminPassword($encrypted);
@@ -62,7 +62,7 @@ class CredentialEncryptionListener
         if ($entity instanceof User) {
             if ($args->hasChangedField('totpSecret')) {
                 $value = $args->getNewValue('totpSecret');
-                if ($value !== null && $value !== '') {
+                if (null !== $value && '' !== $value) {
                     $encrypted = $this->encryptionService->encryptIfNeeded($value);
                     $args->setNewValue('totpSecret', $encrypted);
                     $entity->setTotpSecret($encrypted);
@@ -86,7 +86,7 @@ class CredentialEncryptionListener
     {
         if ($entity instanceof TestEnvironment) {
             $password = $entity->getAdminPassword();
-            if ($password !== null && $password !== '') {
+            if (null !== $password && '' !== $password) {
                 $entity->setAdminPassword(
                     $this->encryptionService->encryptIfNeeded($password),
                 );
@@ -95,7 +95,7 @@ class CredentialEncryptionListener
 
         if ($entity instanceof User) {
             $totpSecret = $entity->getTotpSecret();
-            if ($totpSecret !== null && $totpSecret !== '') {
+            if (null !== $totpSecret && '' !== $totpSecret) {
                 $entity->setTotpSecret(
                     $this->encryptionService->encryptIfNeeded($totpSecret),
                 );
@@ -110,7 +110,7 @@ class CredentialEncryptionListener
     {
         if ($entity instanceof TestEnvironment) {
             $password = $entity->getAdminPassword();
-            if ($password !== null && $password !== '') {
+            if (null !== $password && '' !== $password) {
                 $entity->setAdminPassword(
                     $this->encryptionService->decryptSafe($password),
                 );
@@ -119,7 +119,7 @@ class CredentialEncryptionListener
 
         if ($entity instanceof User) {
             $totpSecret = $entity->getTotpSecret();
-            if ($totpSecret !== null && $totpSecret !== '') {
+            if (null !== $totpSecret && '' !== $totpSecret) {
                 $entity->setTotpSecret(
                     $this->encryptionService->decryptSafe($totpSecret),
                 );

@@ -106,7 +106,7 @@ class LoadFixturesCommand extends Command
 
         if (!empty($groups)) {
             $arguments['--group'] = $groups;
-            $io->note('Loading fixture groups: ' . implode(', ', $groups));
+            $io->note('Loading fixture groups: '.implode(', ', $groups));
         }
 
         // Don't ask for confirmation again, we already did
@@ -116,7 +116,7 @@ class LoadFixturesCommand extends Command
         $fixturesInput = new ArrayInput($arguments);
         $returnCode = $application->doRun($fixturesInput, $output);
 
-        if ($returnCode === Command::SUCCESS) {
+        if (Command::SUCCESS === $returnCode) {
             $io->success([
                 'Fixtures loaded successfully!',
                 'Your database now contains sample data for development and testing.',

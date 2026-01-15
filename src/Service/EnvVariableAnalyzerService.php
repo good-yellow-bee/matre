@@ -73,7 +73,7 @@ class EnvVariableAnalyzerService
         $usage = [];
         $testDir = $this->findTestDirectory($modulePath);
 
-        if ($testDir === null) {
+        if (null === $testDir) {
             return [];
         }
 
@@ -164,7 +164,7 @@ class EnvVariableAnalyzerService
      */
     public function getDefaultModulePath(): string
     {
-        return $this->projectDir . '/var/test-modules/current';
+        return $this->projectDir.'/var/test-modules/current';
     }
 
     /**
@@ -180,7 +180,7 @@ class EnvVariableAnalyzerService
         ];
 
         foreach ($patterns as $pattern) {
-            $testDir = rtrim($modulePath, '/') . $pattern;
+            $testDir = rtrim($modulePath, '/').$pattern;
             if (is_dir($testDir)) {
                 return $testDir;
             }
@@ -201,7 +201,7 @@ class EnvVariableAnalyzerService
         ];
 
         foreach ($patterns as $pattern) {
-            $dir = rtrim($modulePath, '/') . $pattern;
+            $dir = rtrim($modulePath, '/').$pattern;
             if (is_dir($dir)) {
                 return $dir;
             }
@@ -218,7 +218,7 @@ class EnvVariableAnalyzerService
     private function parseActionGroupEnvVars(string $modulePath): array
     {
         $actionGroupDir = $this->findActionGroupDirectory($modulePath);
-        if ($actionGroupDir === null) {
+        if (null === $actionGroupDir) {
             return [];
         }
 
@@ -255,7 +255,7 @@ class EnvVariableAnalyzerService
     private function parseTestActionGroupRefs(string $modulePath): array
     {
         $testDir = $this->findTestDirectory($modulePath);
-        if ($testDir === null) {
+        if (null === $testDir) {
             return [];
         }
 

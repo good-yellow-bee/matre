@@ -48,7 +48,7 @@ class TestSuiteType extends AbstractType
             ])
             ->add('environments', EntityType::class, [
                 'class' => TestEnvironment::class,
-                'choice_label' => fn (TestEnvironment $env) => $env->getCode() . ' - ' . $env->getName(),
+                'choice_label' => fn (TestEnvironment $env) => $env->getCode().' - '.$env->getName(),
                 'multiple' => true,
                 'expanded' => true,
                 'query_builder' => fn ($repo) => $repo->createQueryBuilder('e')

@@ -184,7 +184,7 @@ class GlobalEnvVariable
      */
     public function addEnvironment(string $environment): static
     {
-        if ($this->environments === null) {
+        if (null === $this->environments) {
             $this->environments = [];
         }
 

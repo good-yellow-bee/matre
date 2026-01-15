@@ -109,7 +109,7 @@ class TestRunnerService
         // Per-env lock - serializes same-env runs to prevent artifact contamination
         // Different-env runs can still be parallel (per-run dirs isolate artifacts)
         $envLock = $this->lockFactory->createLock(
-            'mftf_execution_env_' . $run->getEnvironment()->getId(),
+            'mftf_execution_env_'.$run->getEnvironment()->getId(),
             3600, // 1 hour timeout
         );
         $envLock->acquire(true); // blocking
@@ -120,16 +120,16 @@ class TestRunnerService
             $type = $run->getType();
 
             // Set output file path so live streaming can find it
-            if ($type === TestRun::TYPE_MFTF || $type === TestRun::TYPE_BOTH) {
+            if (TestRun::TYPE_MFTF === $type || TestRun::TYPE_BOTH === $type) {
                 $run->setOutputFilePath($this->mftfExecutor->getOutputFilePath($run));
-            } elseif ($type === TestRun::TYPE_PLAYWRIGHT) {
+            } elseif (TestRun::TYPE_PLAYWRIGHT === $type) {
                 $run->setOutputFilePath($this->playwrightExecutor->getOutputFilePath($run));
             }
             $this->entityManager->flush();
 
             // Check if this is a group run that should use sequential execution
             $suite = $run->getSuite();
-            $isGroupRun = $suite !== null && $suite->getType() === TestSuite::TYPE_MFTF_GROUP;
+            $isGroupRun = null !== $suite && TestSuite::TYPE_MFTF_GROUP === $suite->getType();
 
             if ($isGroupRun) {
                 // Sequential execution - one test at a time
@@ -148,9 +148,9 @@ class TestRunnerService
 
             try {
                 // Execute MFTF tests
-                if ($type === TestRun::TYPE_MFTF || $type === TestRun::TYPE_BOTH) {
+                if (TestRun::TYPE_MFTF === $type || TestRun::TYPE_BOTH === $type) {
                     $mftfResult = $this->mftfExecutor->execute($run, $outputCallback);
-                    $output .= "=== MFTF Output ===\n" . $mftfResult['output'] . "\n\n";
+                    $output .= "=== MFTF Output ===\n".$mftfResult['output']."\n\n";
 
                     // Check for fatal errors that prevent test execution
                     $isFatalError = preg_match('/ERROR: \d+ Test\(s\) failed to generate/i', $mftfResult['output'])
@@ -167,7 +167,7 @@ class TestRunnerService
                     $allurePaths[] = $this->mftfExecutor->getAllureResultsPath();
 
                     // Track failure but don't exit early - continue to collect artifacts
-                    if ($mftfResult['exitCode'] !== 0) {
+                    if (0 !== $mftfResult['exitCode']) {
                         $executionFailed = true;
                         if ($isFatalError) {
                             if (preg_match('/ERROR: \d+ Test\(s\) failed to generate/i', $mftfResult['output'])) {
@@ -180,15 +180,15 @@ class TestRunnerService
                             $failedCount = count(array_filter($mftfResults, fn ($r) => $r->isFailed()));
                             $failureReason = $failedCount > 0
                                 ? sprintf('%d test(s) failed', $failedCount)
-                                : 'MFTF execution failed with exit code ' . $mftfResult['exitCode'];
+                                : 'MFTF execution failed with exit code '.$mftfResult['exitCode'];
                         }
                     }
                 }
 
                 // Execute Playwright tests
-                if ($type === TestRun::TYPE_PLAYWRIGHT || $type === TestRun::TYPE_BOTH) {
+                if (TestRun::TYPE_PLAYWRIGHT === $type || TestRun::TYPE_BOTH === $type) {
                     $playwrightResult = $this->playwrightExecutor->execute($run, $outputCallback);
-                    $output .= "=== Playwright Output ===\n" . $playwrightResult['output'] . "\n\n";
+                    $output .= "=== Playwright Output ===\n".$playwrightResult['output']."\n\n";
 
                     // ALWAYS parse results (even on failure) to capture partial test data
                     $playwrightResults = $this->playwrightExecutor->parseResults($run, $playwrightResult['output']);
@@ -201,13 +201,13 @@ class TestRunnerService
                     $allurePaths[] = $this->playwrightExecutor->getAllureResultsPath();
 
                     // Track failure but don't exit early
-                    if ($playwrightResult['exitCode'] !== 0) {
+                    if (0 !== $playwrightResult['exitCode']) {
                         $executionFailed = true;
                         $failedCount = count(array_filter($playwrightResults, fn ($r) => $r->isFailed()));
                         $pwReason = $failedCount > 0
                             ? sprintf('%d test(s) failed', $failedCount)
-                            : 'Playwright execution failed with exit code ' . $playwrightResult['exitCode'];
-                        $failureReason = $failureReason ? $failureReason . '; ' . $pwReason : $pwReason;
+                            : 'Playwright execution failed with exit code '.$playwrightResult['exitCode'];
+                        $failureReason = $failureReason ? $failureReason.'; '.$pwReason : $pwReason;
                     }
                 }
 
@@ -241,7 +241,7 @@ class TestRunnerService
                     'id' => $run->getId(),
                     'error' => $e->getMessage(),
                 ]);
-                $run->setOutput($output . "\n\nERROR: " . $e->getMessage());
+                $run->setOutput($output."\n\nERROR: ".$e->getMessage());
                 $run->markFailed($e->getMessage());
                 $this->entityManager->flush();
 
@@ -260,7 +260,7 @@ class TestRunnerService
         $this->logger->info('Generating reports', ['id' => $run->getId()]);
 
         // Remember if run was already failed (so we can preserve that status)
-        $wasAlreadyFailed = $run->getStatus() === TestRun::STATUS_FAILED;
+        $wasAlreadyFailed = TestRun::STATUS_FAILED === $run->getStatus();
 
         $run->setStatus(TestRun::STATUS_REPORTING);
         $this->entityManager->flush();
@@ -269,11 +269,11 @@ class TestRunnerService
             $allurePaths = [];
             $type = $run->getType();
 
-            if ($type === TestRun::TYPE_MFTF || $type === TestRun::TYPE_BOTH) {
+            if (TestRun::TYPE_MFTF === $type || TestRun::TYPE_BOTH === $type) {
                 $allurePaths[] = $this->mftfExecutor->getAllureResultsPath();
             }
 
-            if ($type === TestRun::TYPE_PLAYWRIGHT || $type === TestRun::TYPE_BOTH) {
+            if (TestRun::TYPE_PLAYWRIGHT === $type || TestRun::TYPE_BOTH === $type) {
                 $allurePaths[] = $this->playwrightExecutor->getAllureResultsPath();
             }
 
@@ -295,8 +295,8 @@ class TestRunnerService
 
                 // Add warning to run output so user knows why report is missing
                 $run->setOutput(
-                    ($run->getOutput() ?? '') .
-                    "\n\n⚠️ Allure report generation failed: " . $e->getMessage(),
+                    ($run->getOutput() ?? '').
+                    "\n\n⚠️ Allure report generation failed: ".$e->getMessage(),
                 );
             }
             $this->entityManager->persist($report);
@@ -323,7 +323,7 @@ class TestRunnerService
                 'id' => $run->getId(),
                 'error' => $e->getMessage(),
             ]);
-            $run->markFailed('Report generation failed: ' . $e->getMessage());
+            $run->markFailed('Report generation failed: '.$e->getMessage());
             $this->entityManager->flush();
 
             throw $e;
@@ -412,7 +412,7 @@ class TestRunnerService
         // Count already PASSED tests (for worker restart recovery)
         // Only count passed - failed/broken tests will be retried
         $completedTests = $run->getResults()->filter(
-            fn ($r) => $r->getStatus() === TestResult::STATUS_PASSED,
+            fn ($r) => TestResult::STATUS_PASSED === $r->getStatus(),
         )->count();
 
         $this->logger->info('Resolved group tests', [
@@ -439,7 +439,7 @@ class TestRunnerService
             // Only skip passed tests - failed/broken tests should be retried
             $existingResult = $run->getResults()->filter(
                 fn ($r) => ($r->getTestName() === $testName || $r->getTestId() === $testName)
-                           && $r->getStatus() === TestResult::STATUS_PASSED,
+                           && TestResult::STATUS_PASSED === $r->getStatus(),
             )->first();
 
             if ($existingResult) {
@@ -455,7 +455,7 @@ class TestRunnerService
 
             // Check for cancellation between tests
             $this->entityManager->refresh($run);
-            if ($run->getStatus() === TestRun::STATUS_CANCELLED) {
+            if (TestRun::STATUS_CANCELLED === $run->getStatus()) {
                 $this->logger->info('Run cancelled, stopping sequential execution', [
                     'runId' => $run->getId(),
                     'completedTests' => $completedTests,
@@ -473,7 +473,7 @@ class TestRunnerService
             $this->logger->info('Executing test in group', [
                 'runId' => $run->getId(),
                 'testName' => $testName,
-                'progress' => ($completedTests + 1) . '/' . $totalTests,
+                'progress' => ($completedTests + 1).'/'.$totalTests,
             ]);
 
             try {
@@ -515,7 +515,7 @@ class TestRunnerService
                 $testResult->setTestRun($run);
                 $testResult->setTestName($testName);
                 $testResult->setStatus(TestResult::STATUS_BROKEN);
-                $testResult->setErrorMessage('Test crashed: ' . $e->getMessage());
+                $testResult->setErrorMessage('Test crashed: '.$e->getMessage());
                 $run->addResult($testResult);
                 $this->entityManager->persist($testResult);
             }
@@ -532,9 +532,9 @@ class TestRunnerService
                 $this->artifactCollector->collectTestScreenshot($run, $latestResult);
 
                 // Get duration from Allure if not available from MFTF output (crashed tests)
-                if ($latestResult->getDuration() === null) {
+                if (null === $latestResult->getDuration()) {
                     $allureDuration = $this->allureStepParser->getDurationForResult($latestResult);
-                    if ($allureDuration !== null) {
+                    if (null !== $allureDuration) {
                         $latestResult->setDuration($allureDuration);
                     }
                 }
@@ -561,7 +561,7 @@ class TestRunnerService
 
         // Determine overall run status (only if not cancelled)
         $this->entityManager->refresh($run);
-        if ($run->getStatus() !== TestRun::STATUS_CANCELLED) {
+        if (TestRun::STATUS_CANCELLED !== $run->getStatus()) {
             $failedCount = 0;
             foreach ($allResults as $testResult) {
                 if ($testResult->isFailed() || $testResult->isBroken()) {

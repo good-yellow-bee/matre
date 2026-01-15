@@ -33,7 +33,7 @@ class TestRunType extends AbstractType
             ])
             ->add('suite', EntityType::class, [
                 'class' => TestSuite::class,
-                'choice_label' => fn (TestSuite $suite) => $suite->getTypeLabel() . ': ' . $suite->getName(),
+                'choice_label' => fn (TestSuite $suite) => $suite->getTypeLabel().': '.$suite->getName(),
                 'query_builder' => fn (TestSuiteRepository $repo) => $repo->createQueryBuilder('s')
                     ->where('s.isActive = :active')
                     ->setParameter('active', true)

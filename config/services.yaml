@@ -56,13 +56,19 @@ services:
             $repoPassword: '%env(REPO_PASSWORD)%'
             $devModulePath: '%env(DEV_MODULE_PATH)%'
 
+    # Per-environment Magento container pool for parallel test execution
+    App\Service\MagentoContainerPoolService:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+            $magentoImage: '%env(MAGENTO_IMAGE)%'
+            $networkName: 'matre_network'
+
     App\Service\MftfExecutorService:
         arguments:
             $projectDir: '%kernel.project_dir%'
             $seleniumHost: '%env(SELENIUM_HOST)%'
             $seleniumPort: '%env(int:SELENIUM_PORT)%'
             $magentoRoot: '%env(MAGENTO_ROOT)%'
-            $magentoContainer: '%env(MAGENTO_CONTAINER)%'
             $testModulePath: '%env(TEST_MODULE_PATH)%'
 
     App\Service\PlaywrightExecutorService:

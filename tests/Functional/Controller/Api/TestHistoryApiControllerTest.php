@@ -33,7 +33,7 @@ class TestHistoryApiControllerTest extends WebTestCase
     {
         $client = self::createClient();
 
-        $client->request('GET', self::BASE_URL . '?testId=SomeTest&environmentId=1');
+        $client->request('GET', self::BASE_URL.'?testId=SomeTest&environmentId=1');
 
         $this->assertResponseRedirects('/login');
     }
@@ -45,7 +45,7 @@ class TestHistoryApiControllerTest extends WebTestCase
         $env = $this->createTestEnvironment();
 
         // Will return empty data but should be allowed
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '?testId=SomeTest&environmentId=' . $env->getId());
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'?testId=SomeTest&environmentId='.$env->getId());
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertArrayHasKey('data', $data);
@@ -55,7 +55,7 @@ class TestHistoryApiControllerTest extends WebTestCase
     {
         $client = self::createClient();
 
-        $client->request('GET', self::BASE_URL . '/test-ids');
+        $client->request('GET', self::BASE_URL.'/test-ids');
 
         $this->assertResponseRedirects('/login');
     }
@@ -69,7 +69,7 @@ class TestHistoryApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsUser($client);
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '?environmentId=1');
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'?environmentId=1');
 
         $this->assertJsonError($response, 400);
     }
@@ -79,7 +79,7 @@ class TestHistoryApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsUser($client);
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '?testId=SomeTest');
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'?testId=SomeTest');
 
         $this->assertJsonError($response, 400);
     }
@@ -89,7 +89,7 @@ class TestHistoryApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsUser($client);
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '?testId=SomeTest&environmentId=99999');
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'?testId=SomeTest&environmentId=99999');
 
         $this->assertJsonError($response, 404);
     }
@@ -103,7 +103,7 @@ class TestHistoryApiControllerTest extends WebTestCase
         $testId = "TestClass_{$suffix}";
         $this->createTestRunWithResult($env, $testId);
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . "?testId={$testId}&environmentId=" . $env->getId());
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL."?testId={$testId}&environmentId=".$env->getId());
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertArrayHasKey('data', $data);
@@ -123,7 +123,7 @@ class TestHistoryApiControllerTest extends WebTestCase
         $this->loginAsUser($client);
         $env = $this->createTestEnvironment();
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '?testId=SomeTest&environmentId=' . $env->getId() . '&limit=5');
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'?testId=SomeTest&environmentId='.$env->getId().'&limit=5');
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertLessThanOrEqual(5, count($data['data']));
@@ -135,7 +135,7 @@ class TestHistoryApiControllerTest extends WebTestCase
         $this->loginAsUser($client);
         $env = $this->createTestEnvironment();
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '?testId=SomeTest&environmentId=' . $env->getId());
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'?testId=SomeTest&environmentId='.$env->getId());
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertArrayHasKey('meta', $data);
@@ -156,7 +156,7 @@ class TestHistoryApiControllerTest extends WebTestCase
         $suffix = bin2hex(random_bytes(4));
         $this->createTestRunWithResult($env, "UniqueTest_{$suffix}");
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '/test-ids');
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'/test-ids');
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertArrayHasKey('data', $data);

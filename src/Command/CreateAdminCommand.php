@@ -160,7 +160,7 @@ class CreateAdminCommand extends Command
         if (count($errors) > 0) {
             $io->error('Validation failed:');
             foreach ($errors as $error) {
-                $io->writeln('  - ' . $error->getMessage());
+                $io->writeln('  - '.$error->getMessage());
             }
 
             return Command::FAILURE;
@@ -171,7 +171,7 @@ class CreateAdminCommand extends Command
             $this->entityManager->persist($user);
             $this->entityManager->flush();
         } catch (\Exception $e) {
-            $io->error('Failed to create admin user: ' . $e->getMessage());
+            $io->error('Failed to create admin user: '.$e->getMessage());
 
             return Command::FAILURE;
         }

@@ -35,7 +35,7 @@ class SettingsFixtures extends Fixture
         echo "   - Site Name: {$settings->getSiteName()}\n";
         echo "   - Admin Panel Title: {$settings->getAdminPanelTitle()}\n";
         echo "   - Default Locale: {$settings->getDefaultLocale()}\n";
-        echo '   - Headless Mode: ' . ($settings->isHeadlessMode() ? 'Yes' : 'No') . "\n";
+        echo '   - Headless Mode: '.($settings->isHeadlessMode() ? 'Yes' : 'No')."\n";
         echo "\n💡 Customize these settings via the admin panel.\n";
     }
 }

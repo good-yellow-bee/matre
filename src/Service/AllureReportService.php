@@ -93,7 +93,7 @@ class AllureReportService
             );
 
             foreach ($iterator as $item) {
-                $target = $targetPath . '/' . $iterator->getSubPathname();
+                $target = $targetPath.'/'.$iterator->getSubPathname();
                 if ($item->isDir()) {
                     $this->filesystem->mkdir($target);
                 } else {
@@ -108,7 +108,7 @@ class AllureReportService
      */
     public function getReportUrl(string $projectId): string
     {
-        return $this->allurePublicUrl . '/allure-docker-service/projects/' . $projectId . '/reports/latest/index.html';
+        return $this->allurePublicUrl.'/allure-docker-service/projects/'.$projectId.'/reports/latest/index.html';
     }
 
     /**
@@ -116,7 +116,7 @@ class AllureReportService
      */
     public function getAllureResultsPath(int $runId): string
     {
-        return $this->projectDir . '/var/allure-results/run-' . $runId;
+        return $this->projectDir.'/var/allure-results/run-'.$runId;
     }
 
     /**
@@ -126,7 +126,7 @@ class AllureReportService
      */
     public function copyTestAllureResults(int $runId, string $testName): void
     {
-        $sharedDir = $this->projectDir . '/var/mftf-results/allure-results';
+        $sharedDir = $this->projectDir.'/var/mftf-results/allure-results';
         $runDir = $this->getAllureResultsPath($runId);
 
         if (!$this->filesystem->exists($sharedDir)) {
@@ -145,7 +145,7 @@ class AllureReportService
 
         foreach ($finder as $file) {
             $content = file_get_contents($file->getRealPath());
-            if ($content === false) {
+            if (false === $content) {
                 $this->logger->warning('Failed to read Allure result file', [
                     'file' => $file->getRealPath(),
                 ]);
@@ -154,7 +154,7 @@ class AllureReportService
             }
 
             $data = json_decode($content, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
+            if (JSON_ERROR_NONE !== json_last_error()) {
                 $this->logger->warning('Failed to parse Allure JSON', [
                     'file' => $file->getRealPath(),
                     'error' => json_last_error_msg(),
@@ -171,7 +171,7 @@ class AllureReportService
             $normalizedAllureFullName = str_replace('-', '', $allureFullName);
             $normalizedTestName = str_replace('-', '', $testName);
 
-            if (stripos($normalizedAllureName, $normalizedTestName) !== false || stripos($normalizedAllureFullName, $normalizedTestName) !== false) {
+            if (false !== stripos($normalizedAllureName, $normalizedTestName) || false !== stripos($normalizedAllureFullName, $normalizedTestName)) {
                 $matchingFiles[] = [
                     'file' => $file,
                     'data' => $data,
@@ -195,7 +195,7 @@ class AllureReportService
         $file = $newest['file'];
         $data = $newest['data'];
 
-        $targetFile = $runDir . '/' . $file->getFilename();
+        $targetFile = $runDir.'/'.$file->getFilename();
         $sourceFile = $file->getRealPath();
         $this->filesystem->copy($sourceFile, $targetFile, true);
 
@@ -220,7 +220,7 @@ class AllureReportService
     {
         // Debounce: skip if generated within MIN_INCREMENTAL_REPORT_INTERVAL
         $now = microtime(true);
-        if ($this->lastIncrementalReportTime !== null
+        if (null !== $this->lastIncrementalReportTime
             && ($now - $this->lastIncrementalReportTime) < self::MIN_INCREMENTAL_REPORT_INTERVAL) {
             $this->logger->debug('Skipping incremental report (debounced)', [
                 'runId' => $run->getId(),
@@ -234,7 +234,7 @@ class AllureReportService
 
         // Skip if no results yet
         if (!$this->filesystem->exists($resultsPath)
-            || empty(glob($resultsPath . '/*-result.json'))) {
+            || empty(glob($resultsPath.'/*-result.json'))) {
             return;
         }
 
@@ -260,13 +260,13 @@ class AllureReportService
     public function cleanupExpired(): int
     {
         $cleaned = 0;
-        $basePath = $this->projectDir . '/var/allure-results';
+        $basePath = $this->projectDir.'/var/allure-results';
 
         if (!$this->filesystem->exists($basePath)) {
             return 0;
         }
 
-        $dirs = glob($basePath . '/run-*');
+        $dirs = glob($basePath.'/run-*');
         foreach ($dirs as $dir) {
             // Extract run ID and check if report is expired
             // This should be called with expired reports from database
@@ -296,8 +296,8 @@ class AllureReportService
                 continue;
             }
 
-            $sourcePath = $sourceDir . '/' . $source;
-            $targetPath = $targetDir . '/' . $source;
+            $sourcePath = $sourceDir.'/'.$source;
+            $targetPath = $targetDir.'/'.$source;
 
             if ($this->filesystem->exists($sourcePath) && !$this->filesystem->exists($targetPath)) {
                 $this->filesystem->copy($sourcePath, $targetPath);
@@ -365,7 +365,7 @@ class AllureReportService
         try {
             // Create project if not exists (with retry)
             $this->executeWithRetry(
-                fn () => $this->httpClient->request('POST', $this->allureUrl . '/allure-docker-service/projects', [
+                fn () => $this->httpClient->request('POST', $this->allureUrl.'/allure-docker-service/projects', [
                     'json' => ['id' => $projectId],
                 ]),
                 'create_allure_project',
@@ -398,7 +398,7 @@ class AllureReportService
             $this->executeWithRetry(
                 fn () => $this->httpClient->request(
                     'GET',
-                    $this->allureUrl . '/allure-docker-service/generate-report',
+                    $this->allureUrl.'/allure-docker-service/generate-report',
                     ['query' => ['project_id' => $projectId]],
                 ),
                 'generate_allure_report',
@@ -425,9 +425,9 @@ class AllureReportService
         $hasResultFiles = false;
 
         // Collect all file paths (without loading content yet)
-        $resultFiles = glob($resultsPath . '/*-result.json') ?: [];
-        $containerFiles = glob($resultsPath . '/*-container.json') ?: [];
-        $attachmentFiles = glob($resultsPath . '/*-attachment') ?: [];
+        $resultFiles = glob($resultsPath.'/*-result.json') ?: [];
+        $containerFiles = glob($resultsPath.'/*-container.json') ?: [];
+        $attachmentFiles = glob($resultsPath.'/*-attachment') ?: [];
 
         $hasResultFiles = !empty($resultFiles) || !empty($containerFiles);
 
@@ -478,7 +478,7 @@ class AllureReportService
                 $this->executeWithRetry(
                     fn () => $this->httpClient->request(
                         'POST',
-                        $this->allureUrl . '/allure-docker-service/send-results',
+                        $this->allureUrl.'/allure-docker-service/send-results',
                         [
                             'query' => ['project_id' => $projectId],
                             'json' => ['results' => $results],

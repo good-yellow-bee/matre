@@ -37,7 +37,7 @@ final class Version20251206060309 extends AbstractMigration
         // Drop FK if exists (MySQL-compatible check)
         $fks = $schemaManager->listTableForeignKeys('resymf_users');
         foreach ($fks as $fk) {
-            if (strtoupper($fk->getName()) === 'FK_USER_THEME') {
+            if ('FK_USER_THEME' === strtoupper($fk->getName())) {
                 $this->addSql('ALTER TABLE resymf_users DROP FOREIGN KEY `FK_USER_THEME`');
 
                 break;

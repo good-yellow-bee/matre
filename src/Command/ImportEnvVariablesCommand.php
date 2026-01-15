@@ -127,7 +127,7 @@ class ImportEnvVariablesCommand extends Command
         }
 
         // Check if module exists
-        $envDataPath = $modulePath . '/' . self::ENV_DATA_PATH;
+        $envDataPath = $modulePath.'/'.self::ENV_DATA_PATH;
         if (!is_dir($envDataPath)) {
             $io->error(sprintf(
                 'Module not found at %s. Use --clone to fetch from TEST_MODULE_REPO.',
@@ -214,7 +214,7 @@ class ImportEnvVariablesCommand extends Command
             // Try to find existing by name+value (for merge)
             $existingByNameValue = $this->globalEnvRepository->findByNameAndValue($name, $value);
 
-            if ($existingByNameValue !== null && !$asGlobal) {
+            if (null !== $existingByNameValue && !$asGlobal) {
                 // Same name+value exists, add environment to it
                 if (!$existingByNameValue->appliesToEnvironment($environment)) {
                     $existingByNameValue->addEnvironment($environment);
@@ -231,14 +231,14 @@ class ImportEnvVariablesCommand extends Command
                 // Check if same name exists (different value)
                 $existingByName = $this->globalEnvRepository->findByName($name);
 
-                if ($existingByName !== null && $overwrite) {
+                if (null !== $existingByName && $overwrite) {
                     // Overwrite existing
                     $existingByName->setValue($value);
                     $existingByName->setEnvironments($targetEnvs);
                     $existingByName->setUsedInTests($usedInTestsStr);
                     $status = 'updated';
                     ++$stats['updated'];
-                } elseif ($existingByName !== null && !$overwrite) {
+                } elseif (null !== $existingByName && !$overwrite) {
                     // Different value but not overwriting - create new
                     $entity = new GlobalEnvVariable();
                     $entity->setName($name);
@@ -261,9 +261,9 @@ class ImportEnvVariablesCommand extends Command
                 }
             }
 
-            $displayValue = strlen($value) > 40 ? substr($value, 0, 37) . '...' : $value;
+            $displayValue = strlen($value) > 40 ? substr($value, 0, 37).'...' : $value;
             $displayTests = count($usedInTests) > 3
-                ? implode(', ', array_slice($usedInTests, 0, 3)) . sprintf(' (+%d)', count($usedInTests) - 3)
+                ? implode(', ', array_slice($usedInTests, 0, 3)).sprintf(' (+%d)', count($usedInTests) - 3)
                 : implode(', ', $usedInTests);
             $displayEnv = $asGlobal ? 'Global' : $environment;
 

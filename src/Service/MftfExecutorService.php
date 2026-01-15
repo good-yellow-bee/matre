@@ -20,11 +20,11 @@ class MftfExecutorService
         private readonly LoggerInterface $logger,
         private readonly GlobalEnvVariableRepository $globalEnvVariableRepository,
         private readonly ShellEscapeService $shellEscapeService,
+        private readonly MagentoContainerPoolService $containerPool,
         private readonly string $projectDir,
         private readonly string $seleniumHost,
         private readonly int $seleniumPort,
         private readonly string $magentoRoot,
-        private readonly string $magentoContainer,
         private readonly string $testModulePath = 'app/code/SiiPoland/Catalog',
     ) {
     }
@@ -57,12 +57,15 @@ class MftfExecutorService
         // Store output path on run for async tracking
         $run->setOutputFilePath($outputFile);
 
+        // Get per-environment container (enables parallel execution)
+        $container = $this->containerPool->getContainerForEnvironment($run->getEnvironment());
+
         // Execute via docker
         // Force ANSI color output for better styled logs
         $process = new Process([
             'docker', 'exec',
             '-e', 'TERM=xterm-256color',
-            $this->magentoContainer,
+            $container,
             'bash', '-c',
             $mftfCommand,
         ]);
@@ -72,7 +75,7 @@ class MftfExecutorService
         $handle = fopen($outputFile, 'w');
         $process->run(function ($type, $buffer) use ($handle, $outputCallback) {
             fwrite($handle, $buffer);
-            if ($outputCallback !== null) {
+            if (null !== $outputCallback) {
                 $outputCallback($buffer);
             }
         });
@@ -125,11 +128,14 @@ class MftfExecutorService
         // Build command with test name override
         $mftfCommand = $this->buildCommand($run, $testName);
 
+        // Get per-environment container (enables parallel execution)
+        $container = $this->containerPool->getContainerForEnvironment($run->getEnvironment());
+
         // Execute via Docker (same pattern as execute())
         $process = new Process([
             'docker', 'exec',
             '-e', 'TERM=xterm-256color',
-            $this->magentoContainer,
+            $container,
             'bash', '-c',
             $mftfCommand,
         ]);
@@ -161,7 +167,7 @@ class MftfExecutorService
      */
     public function getOutputFilePath(TestRun $run): string
     {
-        return $this->projectDir . '/var/test-output/mftf-run-' . $run->getId() . '.log';
+        return $this->projectDir.'/var/test-output/mftf-run-'.$run->getId().'.log';
     }
 
     /**
@@ -184,8 +190,8 @@ class MftfExecutorService
         // Create symlink from mounted TestModule to expected Magento path
         // Docker mounts var/test-modules/current -> /var/www/html/app/code/TestModule
         // We symlink TestModule -> app/code/SiiPoland/Catalog (as defined by TEST_MODULE_PATH)
-        $modulePath = $this->magentoRoot . '/' . $this->testModulePath;
-        $mountedModulePath = $this->magentoRoot . '/app/code/TestModule';
+        $modulePath = $this->magentoRoot.'/'.$this->testModulePath;
+        $mountedModulePath = $this->magentoRoot.'/app/code/TestModule';
 
         // Create parent directory and symlink
         $parts[] = sprintf('mkdir -p %s', escapeshellarg(dirname($modulePath)));
@@ -193,8 +199,8 @@ class MftfExecutorService
         $parts[] = sprintf('ln -sf %s %s', escapeshellarg($mountedModulePath), escapeshellarg($modulePath));
 
         // Change to acceptance test directory
-        $acceptanceDir = $this->magentoRoot . '/dev/tests/acceptance';
-        $parts[] = 'cd ' . escapeshellarg($acceptanceDir);
+        $acceptanceDir = $this->magentoRoot.'/dev/tests/acceptance';
+        $parts[] = 'cd '.escapeshellarg($acceptanceDir);
 
         // MFTF bug workaround: Reorder Codeception extensions so AllureCodeception
         // writes result.json BEFORE TestContextExtension throws exception on test failure.
@@ -210,9 +216,9 @@ class MftfExecutorService
         // 3. TestEnvironment entity values (can override)
         // 4. Infrastructure overrides (Selenium)
         $env = $run->getEnvironment();
-        $envFileName = '.env.' . $env->getName(); // e.g., .env.stage-us
-        $moduleEnvFile = $mountedModulePath . '/Cron/data/' . $envFileName;
-        $mftfEnvFile = $acceptanceDir . '/.env';
+        $envFileName = '.env.'.$env->getName(); // e.g., .env.stage-us
+        $moduleEnvFile = $mountedModulePath.'/Cron/data/'.$envFileName;
+        $mftfEnvFile = $acceptanceDir.'/.env';
 
         // Layer 1: Start with global + environment-specific variables from database
         // SECURITY: Validate and escape all variables to prevent command injection
@@ -222,7 +228,7 @@ class MftfExecutorService
             foreach ($globalVars as $key => $value) {
                 try {
                     // SECURITY: Validate variable name and build safe env file line
-                    $globalContent .= $this->shellEscapeService->buildEnvFileLine($key, $value) . "\n";
+                    $globalContent .= $this->shellEscapeService->buildEnvFileLine($key, $value)."\n";
                 } catch (\InvalidArgumentException $e) {
                     // Log and skip invalid variables rather than failing the entire run
                     $this->logger->warning('Skipping invalid environment variable', [
@@ -245,16 +251,16 @@ class MftfExecutorService
         $parts[] = sprintf('echo %s >> %s', escapeshellarg($seleniumPortLine), escapeshellarg($mftfEnvFile));
 
         // Generate credentials file from env variables (MFTF requires this for _CREDS references)
-        $credentialsFile = $acceptanceDir . '/.credentials';
+        $credentialsFile = $acceptanceDir.'/.credentials';
         $parts[] = $this->buildCredentialsCommand($mftfEnvFile, $credentialsFile);
 
         // MFTF binary path
-        $mftfBin = $this->magentoRoot . '/vendor/bin/mftf';
+        $mftfBin = $this->magentoRoot.'/vendor/bin/mftf';
 
         // Always use run:test - sequential group execution replaces run:group
         $mftfCommand = 'run:test';
 
-        $mftfParts = [$mftfBin . ' ' . $mftfCommand];
+        $mftfParts = [$mftfBin.' '.$mftfCommand];
         $mftfParts[] = escapeshellarg($filter);
         $mftfParts[] = '-fr'; // failed rerun flag
 
@@ -270,14 +276,14 @@ class MftfExecutorService
         // Use ; to run regardless of MFTF exit code (we want artifacts even on failure)
         // NOTE: Allure results are NOT moved here - they're in a separate Docker mount
         // and AllureReportService handles copying them to per-run directory.
-        $runOutputDir = 'tests/_output/run-' . $runId;
+        $runOutputDir = 'tests/_output/run-'.$runId;
         $moveCommands = [
-            'mkdir -p ' . escapeshellarg($runOutputDir),
-            'find tests/_output -maxdepth 1 -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.gif" -o -name "*.html" \) -exec mv {} ' . escapeshellarg($runOutputDir) . '/ \; 2>/dev/null || true',
+            'mkdir -p '.escapeshellarg($runOutputDir),
+            'find tests/_output -maxdepth 1 -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.gif" -o -name "*.html" \) -exec mv {} '.escapeshellarg($runOutputDir).'/ \; 2>/dev/null || true',
         ];
 
         // Append move commands with ; so they run regardless of test result
-        return $mainCommand . ' ; ' . implode(' && ', $moveCommands);
+        return $mainCommand.' ; '.implode(' && ', $moveCommands);
     }
 
     /**
@@ -306,7 +312,7 @@ class MftfExecutorService
             foreach ($matches as $match) {
                 $result = new TestResult();
                 $result->setTestRun($run);
-                $result->setTestName($match[1] . ':' . $match[2]); // e.g., "MOEC5157Cest:Moec5157"
+                $result->setTestName($match[1].':'.$match[2]); // e.g., "MOEC5157Cest:Moec5157"
                 $result->setStatus($this->mapStatus($match[3]));
 
                 // Extract test ID from Cest name (e.g., MOEC5157Cest -> MOEC5157)
@@ -377,7 +383,7 @@ class MftfExecutorService
      */
     public function getOutputPath(): string
     {
-        return $this->projectDir . '/var/mftf-results';
+        return $this->projectDir.'/var/mftf-results';
     }
 
     /**
@@ -388,7 +394,7 @@ class MftfExecutorService
      */
     public function getAllureResultsPath(): string
     {
-        return $this->projectDir . '/var/mftf-results/allure-results';
+        return $this->projectDir.'/var/mftf-results/allure-results';
     }
 
     /**
@@ -461,7 +467,7 @@ class MftfExecutorService
         // Read last N bytes for large files
         $handle = fopen($path, 'r');
         fseek($handle, -$maxBytes, SEEK_END);
-        $content = '... [truncated - showing last ' . round($maxBytes / 1024) . "KB]\n" . fread($handle, $maxBytes);
+        $content = '... [truncated - showing last '.round($maxBytes / 1024)."KB]\n".fread($handle, $maxBytes);
         fclose($handle);
 
         return $content;
@@ -503,7 +509,7 @@ class MftfExecutorService
         foreach ($testNames as $i => $test) {
             $result = new TestResult();
             $result->setTestRun($run);
-            $result->setTestName($test['cest'] . ':' . $test['method']);
+            $result->setTestName($test['cest'].':'.$test['method']);
 
             // Determine status based on position vs counts
             $status = ($i < $passedCount) ? TestResult::STATUS_PASSED : TestResult::STATUS_FAILED;

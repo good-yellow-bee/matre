@@ -51,12 +51,12 @@ class GlobalEnvVariableRepository extends ServiceEntityRepository
     public function invalidateCache(): void
     {
         // Clear global cache
-        $this->cache->delete(self::CACHE_KEY . '_global');
+        $this->cache->delete(self::CACHE_KEY.'_global');
 
         // Clear all known environment caches
         try {
             foreach ($this->getDistinctEnvironments() as $env) {
-                $this->cache->delete(self::CACHE_KEY . '_' . $env);
+                $this->cache->delete(self::CACHE_KEY.'_'.$env);
             }
         } catch (\Throwable) {
             // Ignore cache clearing errors
@@ -138,7 +138,7 @@ class GlobalEnvVariableRepository extends ServiceEntityRepository
 
         $result = $conn->executeQuery($sql)->fetchFirstColumn();
 
-        return array_filter($result, fn ($v) => $v !== null && $v !== '');
+        return array_filter($result, fn ($v) => null !== $v && '' !== $v);
     }
 
     /**
@@ -154,7 +154,7 @@ class GlobalEnvVariableRepository extends ServiceEntityRepository
      */
     public function getAllAsKeyValue(?string $environment = null): array
     {
-        $cacheKey = self::CACHE_KEY . ($environment ? '_' . $environment : '_global');
+        $cacheKey = self::CACHE_KEY.($environment ? '_'.$environment : '_global');
 
         return $this->cache->get($cacheKey, function (ItemInterface $item) use ($environment): array {
             $item->expiresAfter(self::CACHE_TTL);
@@ -173,7 +173,7 @@ class GlobalEnvVariableRepository extends ServiceEntityRepository
             }
 
             // If environment specified, get env-specific vars and merge (override)
-            if ($environment !== null) {
+            if (null !== $environment) {
                 // Use native SQL for JSON_CONTAINS
                 $conn = $this->getEntityManager()->getConnection();
                 $sql = 'SELECT name, value FROM matre_global_env_variables

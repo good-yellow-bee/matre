@@ -71,13 +71,13 @@ class TestRunRepository extends ServiceEntityRepository
             ->leftJoin('r.suite', 's');
 
         foreach ($criteria as $field => $value) {
-            if ($field === 'environment') {
+            if ('environment' === $field) {
                 $qb->andWhere('e.id = :envId')->setParameter('envId', $value);
-            } elseif ($field === 'status') {
+            } elseif ('status' === $field) {
                 $qb->andWhere('r.status = :status')->setParameter('status', $value);
-            } elseif ($field === 'type') {
+            } elseif ('type' === $field) {
                 $qb->andWhere('r.type = :type')->setParameter('type', $value);
-            } elseif ($field === 'suite') {
+            } elseif ('suite' === $field) {
                 $qb->andWhere('s.id = :suiteId')->setParameter('suiteId', $value);
             }
         }

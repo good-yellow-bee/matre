@@ -33,7 +33,7 @@ class TestEnvironmentApiControllerTest extends WebTestCase
         $client = self::createClient();
         $env = $this->createTestEnvironment();
 
-        $client->request('GET', self::BASE_URL . '/' . $env->getId() . '/env-variables');
+        $client->request('GET', self::BASE_URL.'/'.$env->getId().'/env-variables');
 
         $this->assertResponseRedirects('/login');
     }
@@ -44,7 +44,7 @@ class TestEnvironmentApiControllerTest extends WebTestCase
         $this->loginAsUser($client);
         $env = $this->createTestEnvironment();
 
-        $client->request('GET', self::BASE_URL . '/' . $env->getId() . '/env-variables');
+        $client->request('GET', self::BASE_URL.'/'.$env->getId().'/env-variables');
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -59,7 +59,7 @@ class TestEnvironmentApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $env = $this->createTestEnvironment(['API_KEY' => 'secret123']);
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '/' . $env->getId() . '/env-variables');
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'/'.$env->getId().'/env-variables');
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertArrayHasKey('global', $data);
@@ -76,7 +76,7 @@ class TestEnvironmentApiControllerTest extends WebTestCase
         $globalVar = $this->createGlobalEnvVariable();
         $env = $this->createTestEnvironment();
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '/' . $env->getId() . '/env-variables');
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'/'.$env->getId().'/env-variables');
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertNotEmpty($data['global']);
@@ -100,13 +100,13 @@ class TestEnvironmentApiControllerTest extends WebTestCase
             'ENV_SPECIFIC_VAR' => 'env_value',
         ]);
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '/' . $env->getId() . '/env-variables');
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'/'.$env->getId().'/env-variables');
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertNotEmpty($data['environment']);
         $found = false;
         foreach ($data['environment'] as $var) {
-            if ($var['name'] === 'ENV_SPECIFIC_VAR') {
+            if ('ENV_SPECIFIC_VAR' === $var['name']) {
                 $found = true;
                 $this->assertFalse($var['isGlobal']);
                 $this->assertEquals('env_value', $var['value']);
@@ -127,7 +127,7 @@ class TestEnvironmentApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $env = $this->createTestEnvironment();
 
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $env->getId() . '/env-variables', [
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL.'/'.$env->getId().'/env-variables', [
             'variables' => [['name' => 'NEW_VAR', 'value' => 'value']],
         ]);
 
@@ -150,7 +150,7 @@ class TestEnvironmentApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $env = $this->createTestEnvironment();
 
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $env->getId() . '/env-variables/import', [
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL.'/'.$env->getId().'/env-variables/import', [
             'content' => 'API_KEY=secret123',
         ]);
 

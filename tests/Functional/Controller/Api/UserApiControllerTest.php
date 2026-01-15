@@ -79,7 +79,7 @@ class UserApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsAdmin($client);
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '?page=1&limit=5');
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'?page=1&limit=5');
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertLessThanOrEqual(5, count($data['items']));
@@ -96,7 +96,7 @@ class UserApiControllerTest extends WebTestCase
         $suffix = bin2hex(random_bytes(4));
         $this->createUser("searchable_{$suffix}", "searchable_{$suffix}@test.com");
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . "?q=searchable_{$suffix}");
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL."?q=searchable_{$suffix}");
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertCount(1, $data['items']);
@@ -113,7 +113,7 @@ class UserApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $user = $this->createUser();
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '/' . $user->getId());
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'/'.$user->getId());
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertEquals($user->getUsername(), $data['username']);
@@ -125,7 +125,7 @@ class UserApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsAdmin($client);
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '/99999');
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'/99999');
 
         $this->assertJsonError($response, 404, 'not found');
     }
@@ -198,7 +198,7 @@ class UserApiControllerTest extends WebTestCase
 
         $response = $this->jsonRequest($client, 'POST', self::BASE_URL, [
             'username' => $existingUser->getUsername(),
-            'email' => 'new_unique_' . bin2hex(random_bytes(4)) . '@test.com',
+            'email' => 'new_unique_'.bin2hex(random_bytes(4)).'@test.com',
             'password' => 'Password123!',
         ]);
 
@@ -213,7 +213,7 @@ class UserApiControllerTest extends WebTestCase
         $existingUser = $this->createUser();
 
         $response = $this->jsonRequest($client, 'POST', self::BASE_URL, [
-            'username' => 'unique_newuser_' . bin2hex(random_bytes(4)),
+            'username' => 'unique_newuser_'.bin2hex(random_bytes(4)),
             'email' => $existingUser->getEmail(),
             'password' => 'Password123!',
         ]);
@@ -252,7 +252,7 @@ class UserApiControllerTest extends WebTestCase
         $newUsername = "updated_{$suffix}";
         $newEmail = "updated_{$suffix}@test.com";
 
-        $response = $this->jsonRequest($client, 'PUT', self::BASE_URL . '/' . $user->getId(), [
+        $response = $this->jsonRequest($client, 'PUT', self::BASE_URL.'/'.$user->getId(), [
             'username' => $newUsername,
             'email' => $newEmail,
         ]);
@@ -272,7 +272,7 @@ class UserApiControllerTest extends WebTestCase
         $user = $this->createUser();
         $oldHash = $user->getPassword();
 
-        $response = $this->jsonRequest($client, 'PUT', self::BASE_URL . '/' . $user->getId(), [
+        $response = $this->jsonRequest($client, 'PUT', self::BASE_URL.'/'.$user->getId(), [
             'username' => $user->getUsername(),
             'email' => $user->getEmail(),
             'password' => 'NewPassword123!',
@@ -288,7 +288,7 @@ class UserApiControllerTest extends WebTestCase
         $client = self::createClient();
         $admin = $this->loginAsAdmin($client);
 
-        $response = $this->jsonRequest($client, 'PUT', self::BASE_URL . '/' . $admin->getId(), [
+        $response = $this->jsonRequest($client, 'PUT', self::BASE_URL.'/'.$admin->getId(), [
             'username' => $admin->getUsername(),
             'email' => $admin->getEmail(),
             'isActive' => false,
@@ -308,7 +308,7 @@ class UserApiControllerTest extends WebTestCase
         $user = $this->createUser();
         $userId = $user->getId();
 
-        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/' . $userId);
+        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL.'/'.$userId);
 
         $data = $this->assertJsonResponse($response, 200);
         $this->assertTrue($data['success']);
@@ -322,7 +322,7 @@ class UserApiControllerTest extends WebTestCase
         $client = self::createClient();
         $admin = $this->loginAsAdmin($client);
 
-        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/' . $admin->getId());
+        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL.'/'.$admin->getId());
 
         $this->assertJsonError($response, 400, 'cannot delete your own');
     }
@@ -333,7 +333,7 @@ class UserApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
 
         // Uses ParamConverter which returns Symfony's 404, not JSON
-        $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/99999');
+        $this->jsonRequest($client, 'DELETE', self::BASE_URL.'/99999');
 
         $this->assertResponseStatusCodeSame(404);
     }
@@ -348,7 +348,7 @@ class UserApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $suffix = bin2hex(random_bytes(4));
 
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/validate-username', [
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL.'/validate-username', [
             'username' => "unique_{$suffix}",
         ]);
 
@@ -362,7 +362,7 @@ class UserApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $existingUser = $this->createUser();
 
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/validate-username', [
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL.'/validate-username', [
             'username' => $existingUser->getUsername(),
         ]);
 
@@ -376,7 +376,7 @@ class UserApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $suffix = bin2hex(random_bytes(4));
 
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/validate-email', [
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL.'/validate-email', [
             'email' => "newemail_{$suffix}@test.com",
         ]);
 
@@ -390,7 +390,7 @@ class UserApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $existingUser = $this->createUser();
 
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/validate-email', [
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL.'/validate-email', [
             'email' => $existingUser->getEmail(),
         ]);
 
@@ -403,7 +403,7 @@ class UserApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsAdmin($client);
 
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/validate-username', [
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL.'/validate-username', [
             'username' => 'invalid username!', // Contains space and special char
         ]);
 
@@ -416,7 +416,7 @@ class UserApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsAdmin($client);
 
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/validate-email', [
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL.'/validate-email', [
             'email' => 'not-an-email',
         ]);
 
