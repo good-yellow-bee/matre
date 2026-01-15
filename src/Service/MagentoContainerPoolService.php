@@ -22,6 +22,7 @@ class MagentoContainerPoolService
         private readonly string $projectDir,
         private readonly string $magentoImage,
         private readonly string $networkName,
+        private readonly string $codeVolume,
     ) {
     }
 
@@ -95,7 +96,7 @@ class MagentoContainerPoolService
             '--name', $name,
             '--network', $this->networkName,
             // Shared code volume (writable - needed for nested mounts)
-            '-v', 'matre_magento_code:/var/www/html',
+            '-v', $this->codeVolume.':/var/www/html',
             // Test module (read-only)
             '-v', $testModulePath.':/var/www/html/app/code/TestModule:ro',
             // MFTF results (writable - for screenshots, output)
