@@ -8,6 +8,7 @@ use App\Entity\TestEnvironment;
 use App\Entity\TestResult;
 use App\Entity\TestRun;
 use App\Repository\GlobalEnvVariableRepository;
+use App\Service\MagentoContainerPoolService;
 use App\Service\MftfExecutorService;
 use App\Service\Security\ShellEscapeService;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -27,6 +28,8 @@ class MftfExecutorServiceTest extends TestCase
 
     private MockObject&ShellEscapeService $shellEscapeService;
 
+    private MockObject&MagentoContainerPoolService $containerPool;
+
     private MftfExecutorService $service;
 
     protected function setUp(): void
@@ -34,16 +37,21 @@ class MftfExecutorServiceTest extends TestCase
         $this->logger = $this->createMock(LoggerInterface::class);
         $this->envRepository = $this->createMock(GlobalEnvVariableRepository::class);
         $this->shellEscapeService = $this->createMock(ShellEscapeService::class);
+        $this->containerPool = $this->createMock(MagentoContainerPoolService::class);
+
+        // Mock container pool to return a fixed container name
+        $this->containerPool->method('getContainerForEnvironment')
+            ->willReturn('matre_magento_env_1');
 
         $this->service = new MftfExecutorService(
             $this->logger,
             $this->envRepository,
             $this->shellEscapeService,
+            $this->containerPool,
             '/app',
             'selenium-hub',
             4444,
             '/var/www/html',
-            'magento',
             'app/code/SiiPoland/Catalog',
         );
     }
@@ -108,7 +116,7 @@ class MftfExecutorServiceTest extends TestCase
         $command = $this->service->buildCommand($run);
 
         $this->assertStringContainsString('ln -sf', $command);
-        $this->assertStringContainsString('/var/www/html/app/code/Test/run-1', $command);
+        $this->assertStringContainsString('/var/www/html/app/code/TestModule', $command);
         $this->assertStringContainsString('/var/www/html/app/code/SiiPoland/Catalog', $command);
     }
 
@@ -182,7 +190,7 @@ class MftfExecutorServiceTest extends TestCase
         $this->shellEscapeService->expects($this->atLeast(3))
             ->method('buildEnvFileLine')
             ->willReturnCallback(function ($key, $value) {
-                if ($key === 'INVALID_VAR') {
+                if ('INVALID_VAR' === $key) {
                     throw new \InvalidArgumentException('Invalid variable name');
                 }
 
@@ -311,9 +319,9 @@ class MftfExecutorServiceTest extends TestCase
     {
         $run = $this->createTestRun();
 
-        $output = "\033[32mMOEC5157Cest:\033[0m Moec5157\n" .
-                  "I am on page \"/admin\"\n" .
-                  "\033[32mPASSED\033[0m\n\n" .
+        $output = "\033[32mMOEC5157Cest:\033[0m Moec5157\n".
+                  "I am on page \"/admin\"\n".
+                  "\033[32mPASSED\033[0m\n\n".
                   'Time: 01:00.000';
 
         $results = $this->service->parseResults($run, $output);
