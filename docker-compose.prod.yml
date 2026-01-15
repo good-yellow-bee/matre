@@ -1,5 +1,5 @@
 # Production override for ABB server deployment
-# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml --profile production up -d
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --scale test-worker=4
 #
 # IMPORTANT: After starting, run:
 # 1. docker exec matre_php php bin/console doctrine:migrations:migrate --no-interaction
@@ -23,6 +23,10 @@ services:
       APP_DEBUG: "0"
     volumes: []  # No volume mounts - use image vendor
 
+  # Test workers - scale for parallel execution across environments
+  # Usage: docker-compose ... up -d --scale test-worker=4
+  # Each worker handles different environment (per-env locking prevents conflicts)
+  # Match SE_NODE_MAX_SESSIONS in chrome-node for optimal parallelism
   test-worker:
     environment:
       APP_ENV: prod
@@ -49,6 +53,7 @@ services:
   chrome-node:
     environment:
       SE_VNC_NO_PASSWORD: "false"
+      SE_NODE_MAX_SESSIONS: 4  # Parallel browser sessions (match test-worker scale)
     networks:
       - matre_network
       - traefik

@@ -204,7 +204,7 @@ services:
       SE_EVENT_BUS_HOST: selenium-hub
       SE_EVENT_BUS_PUBLISH_PORT: 4442
       SE_EVENT_BUS_SUBSCRIBE_PORT: 4443
-      SE_NODE_MAX_SESSIONS: 2
+      SE_NODE_MAX_SESSIONS: ${SE_NODE_MAX_SESSIONS:-2}
       SE_NODE_SESSION_TIMEOUT: 300
       SE_VNC_NO_PASSWORD: ${SE_VNC_NO_PASSWORD:-true}
       # Chromium anti-bot detection flags (hides navigator.webdriver)
@@ -315,11 +315,12 @@ services:
       - matre_network
 
   # Test Worker - Consumes per-environment test_runner queue
+  # Supports parallel execution: docker-compose up -d --scale test-worker=N
+  # Each worker processes different environments concurrently (per-env locking)
   test-worker:
     build:
       context: .
       target: app_dev
-    container_name: matre_test_worker
     command: php bin/console messenger:consume test_runner_per_env --time-limit=3600 -vv
     restart: unless-stopped
     volumes:
