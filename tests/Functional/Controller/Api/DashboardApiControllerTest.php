@@ -26,7 +26,7 @@ class DashboardApiControllerTest extends WebTestCase
     {
         $client = self::createClient();
 
-        $client->request('GET', self::BASE_URL . '/stats');
+        $client->request('GET', self::BASE_URL.'/stats');
 
         $this->assertResponseRedirects('/login');
     }
@@ -36,7 +36,7 @@ class DashboardApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsUser($client);
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '/stats');
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'/stats');
 
         $this->assertJsonResponse($response, 200);
     }
@@ -46,7 +46,7 @@ class DashboardApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsUser($client);
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '/stats');
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'/stats');
         $data = $this->assertJsonResponse($response, 200);
 
         // Check user stats
@@ -69,7 +69,7 @@ class DashboardApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsUser($client);
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '/stats');
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'/stats');
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertArrayHasKey('activity', $data);

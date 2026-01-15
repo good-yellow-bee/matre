@@ -143,16 +143,16 @@ class TestSuiteRepository extends ServiceEntityRepository
      */
     public function findNextAvailableCopyName(string $baseName): string
     {
-        $name = $baseName . ' (Copy)';
+        $name = $baseName.' (Copy)';
         if (!$this->findByName($name)) {
             return $name;
         }
 
         $i = 2;
-        while ($this->findByName($baseName . " (Copy $i)")) {
+        while ($this->findByName($baseName." (Copy $i)")) {
             ++$i;
         }
 
-        return $baseName . " (Copy $i)";
+        return $baseName." (Copy $i)";
     }
 }

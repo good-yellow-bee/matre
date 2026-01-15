@@ -277,10 +277,10 @@ class AllureStepParserService
         // Strategy 1: Match by testId (e.g., "MOEC2417") - most reliable
         if ($testId) {
             $testIdUpper = strtoupper($testId);
-            if (stripos($allureName, $testIdUpper) !== false) {
+            if (false !== stripos($allureName, $testIdUpper)) {
                 return true;
             }
-            if (stripos($allureFullName, $testIdUpper) !== false) {
+            if (false !== stripos($allureFullName, $testIdUpper)) {
                 return true;
             }
         }
@@ -291,7 +291,7 @@ class AllureStepParserService
         $allureTestId = $this->extractTestId($allureName);
         $resultTestId = $this->extractTestId($testName);
 
-        if ($allureTestId && $resultTestId && strcasecmp($allureTestId, $resultTestId) === 0) {
+        if ($allureTestId && $resultTestId && 0 === strcasecmp($allureTestId, $resultTestId)) {
             return true;
         }
 

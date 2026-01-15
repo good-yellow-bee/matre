@@ -39,7 +39,7 @@ class UserApiController extends AbstractController
         $limit = max(1, min(50, $request->query->getInt('limit', 10)));
         $search = trim((string) $request->query->get('q', ''));
         $sortField = $request->query->get('sort', 'createdAt');
-        $sortOrder = strtoupper($request->query->get('order', 'DESC')) === 'ASC' ? 'ASC' : 'DESC';
+        $sortOrder = 'ASC' === strtoupper($request->query->get('order', 'DESC')) ? 'ASC' : 'DESC';
 
         // Validate sort field to prevent SQL injection
         $allowedSortFields = ['id', 'username', 'email', 'isActive', 'createdAt', 'updatedAt'];
@@ -48,12 +48,12 @@ class UserApiController extends AbstractController
         }
 
         $qb = $users->createQueryBuilder('u')
-            ->orderBy('u.' . $sortField, $sortOrder);
+            ->orderBy('u.'.$sortField, $sortOrder);
 
         if ('' !== $search) {
             $qb
                 ->andWhere('LOWER(u.username) LIKE :q OR LOWER(u.email) LIKE :q')
-                ->setParameter('q', '%' . mb_strtolower($search) . '%');
+                ->setParameter('q', '%'.mb_strtolower($search).'%');
         }
 
         $qb
@@ -282,7 +282,7 @@ class UserApiController extends AbstractController
                ->setParameter('id', $excludeId);
         }
 
-        $exists = $qb->getQuery()->getOneOrNullResult() !== null;
+        $exists = null !== $qb->getQuery()->getOneOrNullResult();
 
         return $this->json([
             'valid' => !$exists,
@@ -318,7 +318,7 @@ class UserApiController extends AbstractController
                ->setParameter('id', $excludeId);
         }
 
-        $exists = $qb->getQuery()->getOneOrNullResult() !== null;
+        $exists = null !== $qb->getQuery()->getOneOrNullResult();
 
         return $this->json([
             'valid' => !$exists,
@@ -357,7 +357,7 @@ class UserApiController extends AbstractController
                    ->setParameter('id', $existing->getId());
             }
 
-            if ($qb->getQuery()->getOneOrNullResult() !== null) {
+            if (null !== $qb->getQuery()->getOneOrNullResult()) {
                 $errors['username'] = 'This username is already taken';
             }
         }
@@ -380,7 +380,7 @@ class UserApiController extends AbstractController
                    ->setParameter('id', $existing->getId());
             }
 
-            if ($qb->getQuery()->getOneOrNullResult() !== null) {
+            if (null !== $qb->getQuery()->getOneOrNullResult()) {
                 $errors['email'] = 'This email address is already registered';
             }
         }

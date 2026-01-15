@@ -8,7 +8,7 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * Migration for Phase 6: Services
+ * Migration for Phase 6: Services.
  *
  * Creates the password_reset_requests table for handling password reset functionality.
  */

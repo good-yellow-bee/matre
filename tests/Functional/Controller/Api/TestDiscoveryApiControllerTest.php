@@ -31,7 +31,7 @@ class TestDiscoveryApiControllerTest extends WebTestCase
     {
         $client = self::createClient();
 
-        $client->request('GET', self::BASE_URL . '?type=mftf_group');
+        $client->request('GET', self::BASE_URL.'?type=mftf_group');
 
         $this->assertResponseRedirects('/login');
     }
@@ -41,7 +41,7 @@ class TestDiscoveryApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsUser($client);
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '?type=mftf_group');
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'?type=mftf_group');
 
         // Should return success even if cache not available
         $data = $this->assertJsonResponse($response, 200);
@@ -53,7 +53,7 @@ class TestDiscoveryApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsUser($client);
 
-        $client->request('POST', self::BASE_URL . '/refresh');
+        $client->request('POST', self::BASE_URL.'/refresh');
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -79,7 +79,7 @@ class TestDiscoveryApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsUser($client);
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '?type=invalid_type');
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'?type=invalid_type');
         $data = $this->assertJsonResponse($response, 400);
 
         $this->assertFalse($data['success']);
@@ -91,7 +91,7 @@ class TestDiscoveryApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsUser($client);
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '?type=' . TestSuite::TYPE_MFTF_GROUP);
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'?type='.TestSuite::TYPE_MFTF_GROUP);
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertTrue($data['success']);
@@ -105,7 +105,7 @@ class TestDiscoveryApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsUser($client);
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '?type=' . TestSuite::TYPE_MFTF_TEST);
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'?type='.TestSuite::TYPE_MFTF_TEST);
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertTrue($data['success']);
@@ -117,7 +117,7 @@ class TestDiscoveryApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsUser($client);
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '?type=' . TestSuite::TYPE_PLAYWRIGHT_GROUP);
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'?type='.TestSuite::TYPE_PLAYWRIGHT_GROUP);
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertTrue($data['success']);
@@ -135,7 +135,7 @@ class TestDiscoveryApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsUser($client);
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '/status');
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'/status');
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertArrayHasKey('available', $data);
@@ -151,7 +151,7 @@ class TestDiscoveryApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsAdmin($client);
 
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/refresh');
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL.'/refresh');
 
         $this->assertJsonError($response, 403);
     }

@@ -53,7 +53,7 @@ class ValidateSslConfigCommand extends Command
 
         // Check LETSENCRYPT_EMAIL when resolver is set
         $email = $_ENV['LETSENCRYPT_EMAIL'] ?? '';
-        if ($certResolver === 'letsencrypt') {
+        if ('letsencrypt' === $certResolver) {
             if (empty($email)) {
                 $checks[] = ['LETSENCRYPT_EMAIL', 'Not set', 'error'];
                 $io->error('LETSENCRYPT_EMAIL is required when CERT_RESOLVER=letsencrypt');
@@ -71,7 +71,7 @@ class ValidateSslConfigCommand extends Command
 
         // Check for production readiness
         $appEnv = $_ENV['APP_ENV'] ?? 'dev';
-        if ($certResolver === 'letsencrypt' && $appEnv !== 'prod') {
+        if ('letsencrypt' === $certResolver && 'prod' !== $appEnv) {
             $io->warning(sprintf(
                 'APP_ENV=%s with Let\'s Encrypt. Consider APP_ENV=prod for production.',
                 $appEnv,
@@ -96,7 +96,7 @@ class ValidateSslConfigCommand extends Command
         $io->table(['', 'Variable', 'Value'], $rows);
 
         // Production checklist
-        if ($certResolver === 'letsencrypt' && !$hasErrors) {
+        if ('letsencrypt' === $certResolver && !$hasErrors) {
             $io->section('Production Deployment Checklist');
             $io->listing([
                 'DNS A record points to this server',

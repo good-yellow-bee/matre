@@ -160,7 +160,7 @@ class TestRunController extends AbstractController
             return $this->redirectToRoute('admin_test_run_index');
         }
 
-        if ($this->isCsrfTokenValid('cancel' . $run->getId(), $request->request->get('_token'))) {
+        if ($this->isCsrfTokenValid('cancel'.$run->getId(), $request->request->get('_token'))) {
             if ($run->canBeCancelled()) {
                 $this->testRunnerService->cancelRun($run);
                 $this->addFlash('success', sprintf('Test run #%d cancelled.', $run->getId()));
@@ -184,7 +184,7 @@ class TestRunController extends AbstractController
             return $this->redirectToRoute('admin_test_run_index');
         }
 
-        if ($this->isCsrfTokenValid('retry' . $run->getId(), $request->request->get('_token'))) {
+        if ($this->isCsrfTokenValid('retry'.$run->getId(), $request->request->get('_token'))) {
             $newRun = $this->testRunnerService->retryRun($run);
 
             // Dispatch async execution
@@ -214,7 +214,7 @@ class TestRunController extends AbstractController
             return $this->redirectToRoute('admin_test_run_index');
         }
 
-        if (!$this->isCsrfTokenValid('resend_notification' . $run->getId(), $request->request->get('_token'))) {
+        if (!$this->isCsrfTokenValid('resend_notification'.$run->getId(), $request->request->get('_token'))) {
             $this->addFlash('error', 'Invalid CSRF token.');
 
             return $this->redirectToRoute('admin_test_run_show', ['id' => $run->getId()]);
@@ -243,7 +243,7 @@ class TestRunController extends AbstractController
 
         if ($slackSent || $emailSent) {
             $channels = array_filter(['Slack' => $slackSent, 'Email' => $emailSent], fn ($v) => $v);
-            $this->addFlash('success', 'Notification sent via: ' . implode(', ', array_keys($channels)));
+            $this->addFlash('success', 'Notification sent via: '.implode(', ', array_keys($channels)));
         } else {
             $this->addFlash('warning', 'No users subscribed to notifications for this environment.');
         }
@@ -268,11 +268,11 @@ class TestRunController extends AbstractController
         $currentTest = $run->getCurrentTestName();
         $output = '';
 
-        if ($currentTest !== null) {
+        if (null !== $currentTest) {
             // Find current test's output file
             $safeFileName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $currentTest);
             $outputPath = $this->getParameter('kernel.project_dir')
-                . sprintf('/var/test-output/run-%d/%s.log', $run->getId(), $safeFileName);
+                .sprintf('/var/test-output/run-%d/%s.log', $run->getId(), $safeFileName);
 
             if (file_exists($outputPath)) {
                 $output = $this->readTailOfFile($outputPath, 102400);
@@ -287,11 +287,11 @@ class TestRunController extends AbstractController
 
         // Build progress string - show current test number (running), not just completed
         $progress = null;
-        if ($run->getTotalTests() !== null) {
+        if (null !== $run->getTotalTests()) {
             $completed = $run->getCompletedTests() ?? 0;
             $total = $run->getTotalTests();
             // If a test is currently running, show that test number (completed + 1)
-            $current = $currentTest !== null ? $completed + 1 : $completed;
+            $current = null !== $currentTest ? $completed + 1 : $completed;
             $progress = sprintf('%d/%d', $current, $total);
         }
 
@@ -305,8 +305,8 @@ class TestRunController extends AbstractController
                 'duration' => $result->getDuration(),
                 'durationFormatted' => $result->getDurationFormatted(),
                 'errorMessage' => $result->getErrorMessage(),
-                'hasScreenshot' => $result->getScreenshotPath() !== null,
-                'hasOutputFile' => $result->getOutputFilePath() !== null,
+                'hasScreenshot' => null !== $result->getScreenshotPath(),
+                'hasOutputFile' => null !== $result->getOutputFilePath(),
             ];
         }
 
@@ -357,7 +357,7 @@ class TestRunController extends AbstractController
         }
 
         // Backfill duration from Allure if missing in DB
-        if ($result->getDuration() === null && isset($steps['duration']) && $steps['duration'] !== null) {
+        if (null === $result->getDuration() && isset($steps['duration']) && null !== $steps['duration']) {
             $result->setDuration($steps['duration']);
             $this->entityManager->flush();
         }
@@ -413,6 +413,6 @@ class TestRunController extends AbstractController
         $content = fread($handle, $maxBytes);
         fclose($handle);
 
-        return '... [truncated - showing last ' . round($maxBytes / 1024) . "KB]\n" . $content;
+        return '... [truncated - showing last '.round($maxBytes / 1024)."KB]\n".$content;
     }
 }

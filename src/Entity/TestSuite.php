@@ -258,7 +258,7 @@ class TestSuite
      */
     public function isScheduled(): bool
     {
-        return $this->cronExpression !== null;
+        return null !== $this->cronExpression;
     }
 
     /** @return Collection<int, TestEnvironment> */

@@ -18,6 +18,6 @@ final readonly class EnvironmentQueueStamp implements StampInterface
 
     public function getQueueName(): string
     {
-        return 'test_runner_env_' . $this->environmentId;
+        return 'test_runner_env_'.$this->environmentId;
     }
 }

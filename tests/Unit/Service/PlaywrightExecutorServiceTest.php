@@ -229,7 +229,7 @@ class PlaywrightExecutorServiceTest extends TestCase
         $this->shellEscapeService->expects($this->atLeast(2))
             ->method('buildExportStatement')
             ->willReturnCallback(function ($key, $value) {
-                if ($key === 'INVALID_VAR') {
+                if ('INVALID_VAR' === $key) {
                     throw new \InvalidArgumentException('Invalid variable');
                 }
 

@@ -73,7 +73,7 @@ class UserController extends AbstractController
     #[Route('/{id}/delete', name: 'admin_user_delete', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function delete(Request $request, User $user): Response
     {
-        if ($this->isCsrfTokenValid('delete' . $user->getId(), $request->request->get('_token'))) {
+        if ($this->isCsrfTokenValid('delete'.$user->getId(), $request->request->get('_token'))) {
             // Prevent users from deleting themselves
             if ($user === $this->getUser()) {
                 $this->addFlash('error', 'You cannot delete your own account.');
@@ -99,7 +99,7 @@ class UserController extends AbstractController
     #[Route('/{id}/toggle-active', name: 'admin_user_toggle_active', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function toggleActive(Request $request, User $user): Response
     {
-        if ($this->isCsrfTokenValid('toggle' . $user->getId(), $request->request->get('_token'))) {
+        if ($this->isCsrfTokenValid('toggle'.$user->getId(), $request->request->get('_token'))) {
             // Prevent users from deactivating themselves
             if ($user === $this->getUser()) {
                 $this->addFlash('error', 'You cannot deactivate your own account.');
@@ -125,7 +125,7 @@ class UserController extends AbstractController
     #[Route('/{id}/reset-2fa', name: 'admin_user_reset_2fa', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function reset2fa(Request $request, User $user): Response
     {
-        if ($this->isCsrfTokenValid('reset2fa' . $user->getId(), $request->request->get('_token'))) {
+        if ($this->isCsrfTokenValid('reset2fa'.$user->getId(), $request->request->get('_token'))) {
             $user->setTotpSecret(null);
             $user->setIsTotpEnabled(false);
             $this->entityManager->flush();

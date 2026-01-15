@@ -34,7 +34,7 @@ class CheckMagentoCommand extends Command
         // Check if Magento container is running
         $io->section('Docker Container Status');
 
-        $process = new Process(['docker', 'ps', '--filter', 'name=' . $this->magentoContainer, '--format', '{{.Status}}']);
+        $process = new Process(['docker', 'ps', '--filter', 'name='.$this->magentoContainer, '--format', '{{.Status}}']);
         $process->run();
 
         if ($process->isSuccessful() && !empty(trim($process->getOutput()))) {
@@ -77,7 +77,7 @@ class CheckMagentoCommand extends Command
         ]);
         $process->run();
 
-        if (trim($process->getOutput()) === 'installed') {
+        if ('installed' === trim($process->getOutput())) {
             $checks['mftf'] = ['MFTF Binary', 'Installed', 'success'];
 
             // Check MFTF version
@@ -143,7 +143,7 @@ class CheckMagentoCommand extends Command
                 default => '•',
             };
             $rows[] = [$icon, $name, $status];
-            if ($level === 'error') {
+            if ('error' === $level) {
                 $hasErrors = true;
             }
         }

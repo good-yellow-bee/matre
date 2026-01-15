@@ -35,7 +35,7 @@ class ShellEscapeService
      */
     public function validateEnvVarName(string $name): void
     {
-        if ($name === '') {
+        if ('' === $name) {
             throw new \InvalidArgumentException('Environment variable name cannot be empty');
         }
 
@@ -122,7 +122,7 @@ class ShellEscapeService
     public function quoteEnvFileValue(string $value): string
     {
         // Empty value
-        if ($value === '') {
+        if ('' === $value) {
             return "''";
         }
 
@@ -133,7 +133,7 @@ class ShellEscapeService
 
         // Use single quotes and escape embedded single quotes
         // 'foo'bar' becomes 'foo'\''bar'
-        return "'" . str_replace("'", "'\\''", $value) . "'";
+        return "'".str_replace("'", "'\\''", $value)."'";
     }
 
     /**
@@ -150,7 +150,7 @@ class ShellEscapeService
         $basename = basename($filename);
 
         // Reject empty result
-        if ($basename === '' || $basename === '.' || $basename === '..') {
+        if ('' === $basename || '.' === $basename || '..' === $basename) {
             throw new \InvalidArgumentException('Invalid filename');
         }
 
@@ -166,26 +166,26 @@ class ShellEscapeService
     {
         // Resolve real paths
         $realBase = realpath($baseDir);
-        if ($realBase === false) {
+        if (false === $realBase) {
             throw new \InvalidArgumentException('Base directory does not exist');
         }
 
         // For files that may not exist yet, resolve parent
         $realPath = realpath($path);
-        if ($realPath === false) {
+        if (false === $realPath) {
             // File doesn't exist, check parent directory
             $parent = dirname($path);
             $realParent = realpath($parent);
-            if ($realParent === false) {
+            if (false === $realParent) {
                 throw new \InvalidArgumentException('Path parent directory does not exist');
             }
 
             // Reconstruct with real parent
-            $realPath = $realParent . '/' . basename($path);
+            $realPath = $realParent.'/'.basename($path);
         }
 
         // Ensure path starts with base directory
-        if (!str_starts_with($realPath . '/', $realBase . '/')) {
+        if (!str_starts_with($realPath.'/', $realBase.'/')) {
             throw new \InvalidArgumentException('Path escapes allowed directory');
         }
 

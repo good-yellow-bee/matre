@@ -177,7 +177,7 @@ class TestResult
      */
     public function getDurationFormatted(): ?string
     {
-        if ($this->duration === null) {
+        if (null === $this->duration) {
             return null;
         }
 
@@ -248,7 +248,7 @@ class TestResult
      */
     public function isPassed(): bool
     {
-        return $this->status === self::STATUS_PASSED;
+        return self::STATUS_PASSED === $this->status;
     }
 
     /**
@@ -256,7 +256,7 @@ class TestResult
      */
     public function isFailed(): bool
     {
-        return $this->status === self::STATUS_FAILED;
+        return self::STATUS_FAILED === $this->status;
     }
 
     /**
@@ -264,7 +264,7 @@ class TestResult
      */
     public function isSkipped(): bool
     {
-        return $this->status === self::STATUS_SKIPPED;
+        return self::STATUS_SKIPPED === $this->status;
     }
 
     /**
@@ -272,7 +272,7 @@ class TestResult
      */
     public function isBroken(): bool
     {
-        return $this->status === self::STATUS_BROKEN;
+        return self::STATUS_BROKEN === $this->status;
     }
 
     /**
@@ -280,7 +280,7 @@ class TestResult
      */
     public function hasScreenshot(): bool
     {
-        return $this->screenshotPath !== null;
+        return null !== $this->screenshotPath;
     }
 
     public function getOutputFilePath(): ?string

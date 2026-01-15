@@ -33,7 +33,7 @@ class HtmlSanitizerExtension extends AbstractExtension
      */
     public function sanitizeHtml(?string $html): string
     {
-        if ($html === null || $html === '') {
+        if (null === $html || '' === $html) {
             return '';
         }
 

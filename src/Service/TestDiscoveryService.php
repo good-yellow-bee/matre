@@ -39,7 +39,7 @@ class TestDiscoveryService
      */
     public function isCacheAvailable(): bool
     {
-        return $this->getCachePath() !== null;
+        return null !== $this->getCachePath();
     }
 
     /**
@@ -50,14 +50,14 @@ class TestDiscoveryService
         // Dev mode takes priority
         if (!empty($this->devModulePath)) {
             $path = $this->resolveDevPath();
-            if ($path !== null && is_dir($path)) {
+            if (null !== $path && is_dir($path)) {
                 return $path;
             }
         }
 
         // Check persistent cache
-        $cachePath = $this->projectDir . '/' . self::CACHE_DIR;
-        if (is_dir($cachePath . '/.git')) {
+        $cachePath = $this->projectDir.'/'.self::CACHE_DIR;
+        if (is_dir($cachePath.'/.git')) {
             return $cachePath;
         }
 
@@ -76,17 +76,17 @@ class TestDiscoveryService
         // Dev mode: use local module
         if (!empty($this->devModulePath)) {
             $path = $this->resolveDevPath();
-            if ($path !== null && is_dir($path)) {
+            if (null !== $path && is_dir($path)) {
                 return $path;
             }
 
             throw new \RuntimeException(sprintf('Dev module path does not exist: %s', $this->devModulePath));
         }
 
-        $cachePath = $this->projectDir . '/' . self::CACHE_DIR;
+        $cachePath = $this->projectDir.'/'.self::CACHE_DIR;
 
         // Already cloned
-        if (is_dir($cachePath . '/.git')) {
+        if (is_dir($cachePath.'/.git')) {
             return $cachePath;
         }
 
@@ -110,9 +110,9 @@ class TestDiscoveryService
             return;
         }
 
-        $cachePath = $this->projectDir . '/' . self::CACHE_DIR;
+        $cachePath = $this->projectDir.'/'.self::CACHE_DIR;
 
-        if (!is_dir($cachePath . '/.git')) {
+        if (!is_dir($cachePath.'/.git')) {
             // Not cloned yet, do initial clone
             $this->cloneRepository($cachePath);
 
@@ -138,7 +138,7 @@ class TestDiscoveryService
 
         // Reset to remote branch
         $process = new Process(
-            ['git', 'reset', '--hard', 'origin/' . $this->moduleBranch],
+            ['git', 'reset', '--hard', 'origin/'.$this->moduleBranch],
             $cachePath,
         );
         $process->setTimeout(60);
@@ -161,12 +161,12 @@ class TestDiscoveryService
     public function getMftfTests(): array
     {
         $cachePath = $this->getCachePath();
-        if ($cachePath === null) {
+        if (null === $cachePath) {
             return [];
         }
 
         $testDir = $this->findTestDirectory($cachePath);
-        if ($testDir === null) {
+        if (null === $testDir) {
             return [];
         }
 
@@ -195,12 +195,12 @@ class TestDiscoveryService
     public function getMftfGroups(): array
     {
         $cachePath = $this->getCachePath();
-        if ($cachePath === null) {
+        if (null === $cachePath) {
             return [];
         }
 
         $testDir = $this->findTestDirectory($cachePath);
-        if ($testDir === null) {
+        if (null === $testDir) {
             return [];
         }
 
@@ -226,7 +226,7 @@ class TestDiscoveryService
     /**
      * Resolve MFTF group name to list of test names.
      *
-     * @param string $groupName The group name to resolve
+     * @param string      $groupName  The group name to resolve
      * @param string|null $modulePath Path to module directory (uses cache if null)
      *
      * @return array<string> Test names belonging to this group
@@ -235,7 +235,7 @@ class TestDiscoveryService
     {
         // CRITICAL: Use provided module path (cloned for this run) not cache
         $basePath = $modulePath ?? $this->getCachePath();
-        if ($basePath === null) {
+        if (null === $basePath) {
             $this->logger->warning('No module path available for group resolution', [
                 'groupName' => $groupName,
             ]);
@@ -244,7 +244,7 @@ class TestDiscoveryService
         }
 
         $testDir = $this->findTestDirectory($basePath);
-        if ($testDir === null) {
+        if (null === $testDir) {
             $this->logger->warning('Test directory not found', [
                 'basePath' => $basePath,
                 'groupName' => $groupName,
@@ -260,7 +260,7 @@ class TestDiscoveryService
         foreach ($finder as $file) {
             $content = $file->getContents();
             // Check if file has this group annotation
-            $pattern = '/<group\s+value="' . preg_quote($groupName, '/') . '"/';
+            $pattern = '/<group\s+value="'.preg_quote($groupName, '/').'"/';
             if (preg_match($pattern, $content)) {
                 // Extract test name from same file
                 if (preg_match('/<test\s+name="([^"]+)"/', $content, $matches)) {
@@ -286,7 +286,7 @@ class TestDiscoveryService
     public function getLastUpdated(): ?\DateTimeInterface
     {
         $cachePath = $this->getCachePath();
-        if ($cachePath === null) {
+        if (null === $cachePath) {
             return null;
         }
 
@@ -365,7 +365,7 @@ class TestDiscoveryService
         ];
 
         foreach ($patterns as $pattern) {
-            $testDir = rtrim($modulePath, '/') . $pattern;
+            $testDir = rtrim($modulePath, '/').$pattern;
             if (is_dir($testDir)) {
                 return $testDir;
             }
@@ -387,7 +387,7 @@ class TestDiscoveryService
             return $this->devModulePath;
         }
 
-        return $this->projectDir . '/' . $this->devModulePath;
+        return $this->projectDir.'/'.$this->devModulePath;
     }
 
     /**
@@ -406,10 +406,10 @@ class TestDiscoveryService
             return $this->moduleRepo;
         }
 
-        $credentials = urlencode($this->repoUsername) . ':' . urlencode($this->repoPassword);
+        $credentials = urlencode($this->repoUsername).':'.urlencode($this->repoPassword);
         $scheme = $parsed['scheme'] ?? 'https';
         $host = $parsed['host'];
-        $port = isset($parsed['port']) ? ':' . $parsed['port'] : '';
+        $port = isset($parsed['port']) ? ':'.$parsed['port'] : '';
         $path = $parsed['path'] ?? '';
 
         return sprintf('%s://%s@%s%s%s', $scheme, $credentials, $host, $port, $path);
@@ -422,7 +422,7 @@ class TestDiscoveryService
     {
         if (!empty($this->repoUsername) && !empty($this->repoPassword)) {
             $output = str_replace(
-                urlencode($this->repoUsername) . ':' . urlencode($this->repoPassword) . '@',
+                urlencode($this->repoUsername).':'.urlencode($this->repoPassword).'@',
                 '***:***@',
                 $output,
             );

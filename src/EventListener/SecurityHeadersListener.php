@@ -32,7 +32,7 @@ class SecurityHeadersListener
         }
 
         // Skip security headers in dev to allow Symfony toolbar
-        if ($this->environment === 'dev') {
+        if ('dev' === $this->environment) {
             return;
         }
 

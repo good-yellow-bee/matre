@@ -29,7 +29,7 @@ class UserVoter extends Voter
         }
 
         // For CREATE, we don't need a subject
-        if ($attribute === self::CREATE) {
+        if (self::CREATE === $attribute) {
             return true;
         }
 
@@ -66,14 +66,14 @@ class UserVoter extends Voter
         }
 
         // Users can view their own profile
-        return (bool) ($targetUser !== null && $currentUser->getUserIdentifier() === $targetUser->getUserIdentifier())
+        return (bool) (null !== $targetUser && $currentUser->getUserIdentifier() === $targetUser->getUserIdentifier())
 
         ;
     }
 
     private function canEdit(UserInterface $currentUser, ?User $targetUser): bool
     {
-        if ($targetUser === null) {
+        if (null === $targetUser) {
             return false;
         }
 
@@ -90,7 +90,7 @@ class UserVoter extends Voter
 
     private function canDelete(UserInterface $currentUser, ?User $targetUser): bool
     {
-        if ($targetUser === null) {
+        if (null === $targetUser) {
             return false;
         }
 

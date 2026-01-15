@@ -20,7 +20,7 @@ class ApplicationAvailabilityTest extends WebTestCase
         $client = self::createClient();
 
         // If we expect 200, don't catch exceptions to see actual errors
-        if ($expectedCode === 200) {
+        if (200 === $expectedCode) {
             $client->catchExceptions(false);
         }
 

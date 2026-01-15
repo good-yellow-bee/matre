@@ -87,7 +87,7 @@ class TestSuiteController extends AbstractController
     #[Route('/{id}/delete', name: 'admin_test_suite_delete', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function delete(Request $request, TestSuite $suite): Response
     {
-        if ($this->isCsrfTokenValid('delete' . $suite->getId(), $request->request->get('_token'))) {
+        if ($this->isCsrfTokenValid('delete'.$suite->getId(), $request->request->get('_token'))) {
             $name = $suite->getName();
             $this->entityManager->remove($suite);
             $this->entityManager->flush();
@@ -103,7 +103,7 @@ class TestSuiteController extends AbstractController
     #[Route('/{id}/toggle-active', name: 'admin_test_suite_toggle_active', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function toggleActive(Request $request, TestSuite $suite): Response
     {
-        if ($this->isCsrfTokenValid('toggle' . $suite->getId(), $request->request->get('_token'))) {
+        if ($this->isCsrfTokenValid('toggle'.$suite->getId(), $request->request->get('_token'))) {
             $suite->setIsActive(!$suite->isActive());
             $this->entityManager->flush();
 
@@ -119,7 +119,7 @@ class TestSuiteController extends AbstractController
     #[Route('/{id}/duplicate', name: 'admin_test_suite_duplicate', methods: ['POST'])]
     public function duplicate(TestSuite $suite, Request $request): Response
     {
-        if (!$this->isCsrfTokenValid('duplicate' . $suite->getId(), $request->request->get('_token'))) {
+        if (!$this->isCsrfTokenValid('duplicate'.$suite->getId(), $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token');
         }
 

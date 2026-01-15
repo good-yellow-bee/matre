@@ -42,7 +42,7 @@ class ApiRateLimitListener
         $clientIp = $request->getClientIp() ?? 'unknown';
 
         // Stricter rate limiting for user creation endpoint
-        if ($path === '/api/users' && $request->getMethod() === 'POST') {
+        if ('/api/users' === $path && 'POST' === $request->getMethod()) {
             $limiter = $this->userCreationLimiter->create($clientIp);
             $limit = $limiter->consume();
 

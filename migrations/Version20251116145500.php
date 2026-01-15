@@ -9,7 +9,7 @@ use Doctrine\Migrations\AbstractMigration;
 
 /**
  * Settings entity migration
- * Creates resymf_settings table for site-wide configuration
+ * Creates resymf_settings table for site-wide configuration.
  */
 final class Version20251116145500 extends AbstractMigration
 {

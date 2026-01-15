@@ -28,7 +28,7 @@ class UserFixtures extends Fixture
     public function load(ObjectManager $manager): void
     {
         $env = $_ENV['APP_ENV'] ?? $_SERVER['APP_ENV'] ?? null;
-        if ($env !== 'dev' && $env !== 'test') {
+        if ('dev' !== $env && 'test' !== $env) {
             echo "Skipping UserFixtures outside dev/test environments.\n";
 
             return;

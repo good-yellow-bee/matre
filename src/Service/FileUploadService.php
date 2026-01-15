@@ -58,9 +58,9 @@ class FileUploadService
     /**
      * Upload a file to the public uploads directory.
      *
-     * @param UploadedFile $file The uploaded file
-     * @param string|null $subdirectory Optional subdirectory within uploads (e.g., 'images', 'avatars')
-     * @param bool $preserveOriginalName Whether to preserve the original filename
+     * @param UploadedFile $file                 The uploaded file
+     * @param string|null  $subdirectory         Optional subdirectory within uploads (e.g., 'images', 'avatars')
+     * @param bool         $preserveOriginalName Whether to preserve the original filename
      *
      * @return string The path to the uploaded file (relative to storage root)
      *
@@ -75,14 +75,14 @@ class FileUploadService
 
         $fileName = $this->generateSafeFilename($file, $preserveOriginalName);
 
-        if ($subdirectory !== null) {
+        if (null !== $subdirectory) {
             $subdirectory = trim($subdirectory, '/');
-            $fileName = $subdirectory . '/' . $fileName;
+            $fileName = $subdirectory.'/'.$fileName;
         }
 
         try {
             $stream = fopen($file->getPathname(), 'r');
-            if ($stream === false) {
+            if (false === $stream) {
                 throw new FileException('Could not read uploaded file');
             }
 
@@ -94,16 +94,16 @@ class FileUploadService
 
             return $fileName;
         } catch (\Exception $e) {
-            throw new FileException('Could not upload file: ' . $e->getMessage());
+            throw new FileException('Could not upload file: '.$e->getMessage());
         }
     }
 
     /**
      * Upload a file to the private documents directory.
      *
-     * @param UploadedFile $file The uploaded file
-     * @param string|null $subdirectory Optional subdirectory
-     * @param bool $preserveOriginalName Whether to preserve the original filename
+     * @param UploadedFile $file                 The uploaded file
+     * @param string|null  $subdirectory         Optional subdirectory
+     * @param bool         $preserveOriginalName Whether to preserve the original filename
      *
      * @return string The path to the uploaded file
      *
@@ -118,14 +118,14 @@ class FileUploadService
 
         $fileName = $this->generateSafeFilename($file, $preserveOriginalName);
 
-        if ($subdirectory !== null) {
+        if (null !== $subdirectory) {
             $subdirectory = trim($subdirectory, '/');
-            $fileName = $subdirectory . '/' . $fileName;
+            $fileName = $subdirectory.'/'.$fileName;
         }
 
         try {
             $stream = fopen($file->getPathname(), 'r');
-            if ($stream === false) {
+            if (false === $stream) {
                 throw new FileException('Could not read uploaded file');
             }
 
@@ -137,7 +137,7 @@ class FileUploadService
 
             return $fileName;
         } catch (\Exception $e) {
-            throw new FileException('Could not upload file: ' . $e->getMessage());
+            throw new FileException('Could not upload file: '.$e->getMessage());
         }
     }
 
@@ -194,7 +194,7 @@ class FileUploadService
      */
     public function getPublicUrl(string $path): string
     {
-        return '/uploads/' . ltrim($path, '/');
+        return '/uploads/'.ltrim($path, '/');
     }
 
     /**
@@ -279,14 +279,14 @@ class FileUploadService
 
         // Check client-reported MIME type
         $clientMimeType = $file->getMimeType();
-        if ($clientMimeType === null || !in_array($clientMimeType, $allowedTypes, true)) {
+        if (null === $clientMimeType || !in_array($clientMimeType, $allowedTypes, true)) {
             throw new FileException(sprintf('File type "%s" is not allowed. Allowed types: %s', $clientMimeType ?? 'unknown', implode(', ', $allowedTypes)));
         }
 
         // SECURITY: Verify actual file content matches claimed MIME type
         // This prevents MIME type spoofing attacks
         $actualMimeType = $this->detectActualMimeType($file->getPathname());
-        if ($actualMimeType !== null && !in_array($actualMimeType, $allowedTypes, true)) {
+        if (null !== $actualMimeType && !in_array($actualMimeType, $allowedTypes, true)) {
             throw new FileException(sprintf('File content does not match allowed types. Detected: %s', $actualMimeType));
         }
 
@@ -301,8 +301,8 @@ class FileUploadService
     /**
      * Generate a safe filename for storage.
      *
-     * @param UploadedFile $file The uploaded file
-     * @param bool $preserveOriginalName Whether to preserve the original filename
+     * @param UploadedFile $file                 The uploaded file
+     * @param bool         $preserveOriginalName Whether to preserve the original filename
      *
      * @return string The safe filename
      */
@@ -315,10 +315,10 @@ class FileUploadService
 
         if (!$preserveOriginalName) {
             // Generate unique filename with timestamp
-            $safeFilename .= '-' . uniqid('', true);
+            $safeFilename .= '-'.uniqid('', true);
         }
 
-        return $safeFilename . '.' . $extension;
+        return $safeFilename.'.'.$extension;
     }
 
     /**
@@ -338,7 +338,7 @@ class FileUploadService
         $finfo = new \finfo(FILEINFO_MIME_TYPE);
         $mimeType = $finfo->file($filePath);
 
-        return $mimeType !== false ? $mimeType : null;
+        return false !== $mimeType ? $mimeType : null;
     }
 
     /**
@@ -358,7 +358,7 @@ class FileUploadService
         // getimagesize returns false for non-image files
         $imageInfo = @getimagesize($filePath);
 
-        if ($imageInfo === false) {
+        if (false === $imageInfo) {
             return false;
         }
 
@@ -388,6 +388,6 @@ class FileUploadService
         $pow = min($pow, count($units) - 1);
         $bytes /= (1024 ** $pow);
 
-        return round($bytes, 2) . ' ' . $units[$pow];
+        return round($bytes, 2).' '.$units[$pow];
     }
 }

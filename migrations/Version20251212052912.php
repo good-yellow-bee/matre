@@ -49,7 +49,7 @@ final class Version20251212052912 extends AbstractMigration
         string $column,
         string $refTable,
         string $refColumn,
-        string $onDelete
+        string $onDelete,
     ): void {
         if (!$schemaManager->tablesExist([$table])) {
             return;
@@ -64,7 +64,7 @@ final class Version20251212052912 extends AbstractMigration
             }
         }
 
-        $fkName = 'FK_' . strtoupper(substr(md5($table . $column), 0, 12));
+        $fkName = 'FK_'.strtoupper(substr(md5($table.$column), 0, 12));
         $this->addSql("ALTER TABLE {$table} ADD CONSTRAINT {$fkName} FOREIGN KEY ({$column}) REFERENCES {$refTable} ({$refColumn}) {$onDelete}");
     }
 

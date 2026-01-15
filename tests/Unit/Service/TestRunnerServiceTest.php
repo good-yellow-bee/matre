@@ -165,8 +165,8 @@ class TestRunnerServiceTest extends TestCase
         $this->logger->expects($this->once())
             ->method('info')
             ->with('Test run created', $this->callback(function ($context) {
-                return isset($context['type']) && $context['type'] === TestRun::TYPE_MFTF
-                    && isset($context['environment']) && $context['environment'] === 'test-env';
+                return isset($context['type']) && TestRun::TYPE_MFTF === $context['type']
+                    && isset($context['environment']) && 'test-env' === $context['environment'];
             }));
 
         $this->service->createRun($env, TestRun::TYPE_MFTF);
@@ -918,9 +918,9 @@ class TestRunnerServiceTest extends TestCase
         $this->entityManager->expects($this->once())
             ->method('persist')
             ->with($this->callback(function (TestReport $report) {
-                return $report->getFilePath() === ''
-                    && $report->getPublicUrl() === ''
-                    && $report->getReportType() === TestReport::TYPE_ALLURE;
+                return '' === $report->getFilePath()
+                    && '' === $report->getPublicUrl()
+                    && TestReport::TYPE_ALLURE === $report->getReportType();
             }));
 
         $this->logger->expects($this->once())

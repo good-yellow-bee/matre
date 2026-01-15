@@ -38,7 +38,7 @@ trait ApiTestTrait
         $hasher = static::getContainer()->get(UserPasswordHasherInterface::class);
 
         $suffix = bin2hex(random_bytes(4));
-        $username ??= 'testuser_' . $suffix;
+        $username ??= 'testuser_'.$suffix;
         $email ??= "test_{$suffix}@example.com";
 
         $user = new User();
@@ -60,7 +60,7 @@ trait ApiTestTrait
         string $password = 'AdminPass123!',
     ): User {
         $suffix = bin2hex(random_bytes(4));
-        $username ??= 'admin_' . $suffix;
+        $username ??= 'admin_'.$suffix;
         $email ??= "admin_{$suffix}@example.com";
 
         return $this->createUser($username, $email, $password, ['ROLE_ADMIN']);

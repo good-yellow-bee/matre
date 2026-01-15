@@ -306,8 +306,8 @@ class TestRun
     public function setOutput(?string $output): static
     {
         // Truncate to 100KB
-        if ($output !== null && mb_strlen($output) > 102400) {
-            $output = mb_substr($output, 0, 102400) . "\n... [truncated]";
+        if (null !== $output && mb_strlen($output) > 102400) {
+            $output = mb_substr($output, 0, 102400)."\n... [truncated]";
         }
         $this->output = $output;
 
@@ -343,13 +343,13 @@ class TestRun
      */
     public function hasActiveProcess(): bool
     {
-        return $this->processPid !== null && $this->isRunning();
+        return null !== $this->processPid && $this->isRunning();
     }
 
     public function appendOutput(string $text): static
     {
         $current = $this->output ?? '';
-        $this->setOutput($current . $text);
+        $this->setOutput($current.$text);
 
         return $this;
     }
@@ -465,7 +465,7 @@ class TestRun
      */
     public function getDuration(): ?int
     {
-        if ($this->startedAt === null) {
+        if (null === $this->startedAt) {
             return null;
         }
 
@@ -480,7 +480,7 @@ class TestRun
     public function getDurationFormatted(): ?string
     {
         $duration = $this->getDuration();
-        if ($duration === null) {
+        if (null === $duration) {
             return null;
         }
 
