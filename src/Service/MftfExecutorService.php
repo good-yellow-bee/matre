@@ -350,21 +350,9 @@ class MftfExecutorService
                 // Don't use raw filter as testId - it could be a group name like "us"
             }
 
-            // Check for explicit success indicators first
-            $hasExplicitSuccess = preg_match('/OK\s*\(\d+\s*test/', $cleanOutput)
-                               || preg_match('/^\s*PASSED\s*$/m', $cleanOutput);
-
-            if ($hasExplicitSuccess) {
-                // Test passed but parsing failed - create synthetic PASSED result
-                $result = new TestResult();
-                $result->setTestRun($run);
-                $result->setTestName($testId ?? 'Unknown');
-                if ($testId) {
-                    $result->setTestId($testId);
-                }
-                $result->setStatus(TestResult::STATUS_PASSED);
-                $results[] = $result;
-            } elseif ($this->hasErrorIndicators($cleanOutput)) {
+            // Check for errors FIRST - errors take priority over individual "PASSED" lines
+            // because "PASSED" can appear for steps even when overall test fails
+            if ($this->hasErrorIndicators($cleanOutput)) {
                 // Create synthetic broken result for real failures
                 $result = new TestResult();
                 $result->setTestRun($run);
@@ -373,6 +361,16 @@ class MftfExecutorService
                     $result->setTestId($testId);
                 }
                 $result->setStatus(TestResult::STATUS_BROKEN);
+                $results[] = $result;
+            } elseif (preg_match('/OK\s*\(\d+\s*test/', $cleanOutput)) {
+                // Definitive success: "OK (X tests..." - test passed
+                $result = new TestResult();
+                $result->setTestRun($run);
+                $result->setTestName($testId ?? 'Unknown');
+                if ($testId) {
+                    $result->setTestId($testId);
+                }
+                $result->setStatus(TestResult::STATUS_PASSED);
                 $results[] = $result;
             }
         }
@@ -407,22 +405,32 @@ class MftfExecutorService
     /**
      * Check if output contains error indicators that suggest test failure.
      *
-     * Returns false if explicit success indicators are found (tests passed),
-     * even if cleanup/infrastructure exceptions occurred.
+     * Codeception summary format:
+     * - Success: "OK (1 test, 10 assertions)"
+     * - Failure: "ERRORS!" or "Tests: X, Assertions: Y, Errors: Z" (where Z > 0)
+     *
+     * IMPORTANT: Check for errors FIRST because "PASSED" can appear for individual
+     * steps even when the overall test fails (e.g., cleanup errors in _after hook).
      */
     private function hasErrorIndicators(string $output): bool
     {
-        // First check for explicit success indicators - if tests passed,
-        // don't treat cleanup/infra exceptions as test failures
-        $successPatterns = [
-            '/OK\s*\(\d+\s*test/',                       // Codeception OK summary: "OK (1 test, 10 assertions)"
-            '/^\s*PASSED\s*$/m',                         // Standalone PASSED line
+        // FIRST: Check for definitive error summary from Codeception
+        // This takes priority over individual "PASSED" lines
+        $definitiveErrorPatterns = [
+            '/ERRORS!\s*$/m',                            // Codeception error marker
+            '/Errors:\s*([1-9]\d*)/i',                   // "Errors: N" where N > 0
+            '/Failures:\s*([1-9]\d*)/i',                 // "Failures: N" where N > 0
         ];
 
-        foreach ($successPatterns as $pattern) {
+        foreach ($definitiveErrorPatterns as $pattern) {
             if (preg_match($pattern, $output)) {
-                return false; // Tests passed, ignore cleanup exceptions
+                return true; // Definitive failure, regardless of "PASSED" lines
             }
+        }
+
+        // Check for definitive success - "OK (X tests..." means all tests passed
+        if (preg_match('/OK\s*\(\d+\s*test/', $output)) {
+            return false; // Definitive success
         }
 
         // Exclude known infrastructure/cleanup exceptions that don't indicate test failure
@@ -438,9 +446,9 @@ class MftfExecutorService
             }
         }
 
+        // Check for other error patterns
         $errorPatterns = [
             '/\[.*Exception\]/',                        // Any exception (FastFailException, etc)
-            '/ERRORS!\s*Tests:/',                       // Codeception error summary
             '/Fatal error:/i',                          // PHP fatal error
             '/Uncaught exception/i',                    // Uncaught exception
             '/failed to generate/i',                    // MFTF generation failure
