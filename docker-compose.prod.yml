@@ -44,6 +44,8 @@ services:
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
 
   # noVNC with password + Traefik routing
+  # Note: noVNC uses absolute paths (/app/*, /core/*, /vendor/*) for assets,
+  # so we need additional routers to catch these requests
   chrome-node:
     environment:
       SE_VNC_NO_PASSWORD: "false"
@@ -52,12 +54,31 @@ services:
       - traefik
     labels:
       - "traefik.enable=true"
+      # Main noVNC router
       - "traefik.http.routers.novnc.rule=Host(`${APP_DOMAIN}`) && PathPrefix(`/novnc`)"
       - "traefik.http.routers.novnc.entrypoints=websecure"
       - "traefik.http.routers.novnc.tls=true"
       - "traefik.http.routers.novnc.middlewares=novnc-stripprefix"
       - "traefik.http.middlewares.novnc-stripprefix.stripprefix.prefixes=/novnc"
       - "traefik.http.services.novnc.loadbalancer.server.port=7900"
+      # Router for /app/* assets (noVNC JS, images)
+      - "traefik.http.routers.novnc-app.rule=Host(`${APP_DOMAIN}`) && PathPrefix(`/app`)"
+      - "traefik.http.routers.novnc-app.entrypoints=websecure"
+      - "traefik.http.routers.novnc-app.tls=true"
+      - "traefik.http.routers.novnc-app.service=novnc"
+      - "traefik.http.routers.novnc-app.priority=100"
+      # Router for /core/* assets (noVNC core modules)
+      - "traefik.http.routers.novnc-core.rule=Host(`${APP_DOMAIN}`) && PathPrefix(`/core`)"
+      - "traefik.http.routers.novnc-core.entrypoints=websecure"
+      - "traefik.http.routers.novnc-core.tls=true"
+      - "traefik.http.routers.novnc-core.service=novnc"
+      - "traefik.http.routers.novnc-core.priority=100"
+      # Router for /vendor/* assets (noVNC vendor libs)
+      - "traefik.http.routers.novnc-vendor.rule=Host(`${APP_DOMAIN}`) && PathPrefix(`/vendor`)"
+      - "traefik.http.routers.novnc-vendor.entrypoints=websecure"
+      - "traefik.http.routers.novnc-vendor.tls=true"
+      - "traefik.http.routers.novnc-vendor.service=novnc"
+      - "traefik.http.routers.novnc-vendor.priority=100"
 
   # Allure reports with Traefik routing
   allure:
