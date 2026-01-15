@@ -7,7 +7,6 @@ namespace App\Command;
 use App\Repository\TestReportRepository;
 use App\Repository\TestRunRepository;
 use App\Service\AllureReportService;
-use App\Service\ModuleCloneService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -27,7 +26,6 @@ class CleanupTestsCommand extends Command
         private readonly TestRunRepository $testRunRepository,
         private readonly TestReportRepository $testReportRepository,
         private readonly AllureReportService $allureReportService,
-        private readonly ModuleCloneService $moduleCloneService,
         private readonly string $projectDir,
     ) {
         parent::__construct();
@@ -112,14 +110,7 @@ class CleanupTestsCommand extends Command
                 $run->getCreatedAt()->format('Y-m-d'),
             ));
 
-            // Clean up module directory
-            $modulePath = $this->moduleCloneService->getRunTargetPath($run->getId());
-            if (is_dir($modulePath)) {
-                if (!$dryRun) {
-                    $this->moduleCloneService->cleanup($modulePath);
-                }
-                ++$stats['files_cleaned'];
-            }
+            // Module is shared, no per-run cleanup needed
 
             if (!$dryRun) {
                 $this->entityManager->remove($run);
@@ -131,27 +122,8 @@ class CleanupTestsCommand extends Command
         $allureCleaned = $this->allureReportService->cleanupExpired();
         $stats['files_cleaned'] += $allureCleaned;
 
-        // 4. Clean up orphaned module directories
-        $io->section('Cleaning up orphaned module directories');
-        $modulesPath = $this->projectDir . '/var/test-modules';
-        if (is_dir($modulesPath)) {
-            $dirs = glob($modulesPath . '/run-*');
-            foreach ($dirs as $dir) {
-                // Extract run ID from directory name
-                if (preg_match('/run-(\d+)$/', $dir, $matches)) {
-                    $runId = (int) $matches[1];
-                    $run = $this->testRunRepository->find($runId);
-
-                    if (!$run) {
-                        $io->text(sprintf('  - Orphaned directory: %s', basename($dir)));
-                        if (!$dryRun) {
-                            $this->moduleCloneService->cleanup($dir);
-                        }
-                        ++$stats['files_cleaned'];
-                    }
-                }
-            }
-        }
+        // 4. Module is shared at var/test-modules/current, no orphaned run-* cleanup needed
+        $io->section('Module directory (shared, not cleaned)');
 
         if (!$dryRun) {
             $this->entityManager->flush();

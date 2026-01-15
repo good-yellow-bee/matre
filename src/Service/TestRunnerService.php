@@ -75,12 +75,11 @@ class TestRunnerService
         $this->entityManager->flush();
 
         try {
-            // Clone module to run-specific directory
+            // Prepare shared module (with locking for concurrent access)
             $run->setStatus(TestRun::STATUS_CLONING);
             $this->entityManager->flush();
 
-            $targetPath = $this->moduleCloneService->getRunTargetPath($run->getId());
-            $this->moduleCloneService->cloneModule($targetPath);
+            $this->moduleCloneService->prepareModule();
 
             $this->logger->info('Test run prepared', ['id' => $run->getId()]);
         } catch (\Throwable $e) {
@@ -345,9 +344,7 @@ class TestRunnerService
         $run->setStatus(TestRun::STATUS_CANCELLED);
         $this->entityManager->flush();
 
-        // Clean up module directory
-        $targetPath = $this->moduleCloneService->getRunTargetPath($run->getId());
-        $this->moduleCloneService->cleanup($targetPath);
+        // Note: Module is shared, no per-run cleanup needed
     }
 
     /**
@@ -369,10 +366,9 @@ class TestRunnerService
      */
     public function cleanupRun(TestRun $run): void
     {
-        $targetPath = $this->moduleCloneService->getRunTargetPath($run->getId());
-        $this->moduleCloneService->cleanup($targetPath);
-
-        $this->logger->info('Test run cleaned up', ['id' => $run->getId()]);
+        // Module is shared across runs, no per-run cleanup needed
+        // Per-run artifacts (mftf-results/run-{id}, allure-results/run-{id}) are cleaned by CleanupTestsCommand
+        $this->logger->info('Test run cleanup completed', ['id' => $run->getId()]);
     }
 
     /**
@@ -395,8 +391,8 @@ class TestRunnerService
             'groupName' => $groupName,
         ]);
 
-        // Get cloned module path (CRITICAL: use fresh clone, not cache!)
-        $modulePath = $this->moduleCloneService->getRunTargetPath($run->getId());
+        // Get shared module path (prepared during cloning phase)
+        $modulePath = $this->moduleCloneService->getDefaultTargetPath();
 
         // Resolve group to individual tests from cloned module
         $testNames = $this->testDiscovery->resolveGroupToTests($groupName, $modulePath);

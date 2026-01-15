@@ -39,6 +39,7 @@ services:
     # Test Automation Services
     App\Service\ModuleCloneService:
         arguments:
+            $lockFactory: '@lock.factory'
             $moduleRepo: '%env(TEST_MODULE_REPO)%'
             $moduleBranch: '%env(TEST_MODULE_BRANCH)%'
             $projectDir: '%kernel.project_dir%'

@@ -6,6 +6,7 @@ namespace App\Service;
 
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
 
@@ -18,6 +19,7 @@ class ModuleCloneService
 
     public function __construct(
         private readonly LoggerInterface $logger,
+        private readonly LockFactory $lockFactory,
         private readonly string $moduleRepo,
         private readonly string $moduleBranch,
         private readonly string $projectDir,
@@ -173,11 +175,37 @@ class ModuleCloneService
     }
 
     /**
-     * Get path for a specific test run.
+     * Prepare module for test execution (with locking for concurrent access).
+     *
+     * Uses lock to prevent race conditions when multiple workers start simultaneously.
+     * First run clones the module, subsequent runs do git pull to update.
      */
-    public function getRunTargetPath(int $runId): string
+    public function prepareModule(): string
     {
-        return $this->projectDir . '/var/test-modules/run-' . $runId;
+        $targetPath = $this->getDefaultTargetPath();
+
+        // Lock to prevent race conditions when multiple workers try to clone/pull simultaneously
+        $lock = $this->lockFactory->createLock('module_clone', 300);
+        $lock->acquire(true);
+
+        try {
+            if ($this->isDevModeEnabled()) {
+                // Dev mode: symlink to local module
+                if (!$this->filesystem->exists($targetPath) || !is_link($targetPath)) {
+                    $this->useLocalModule($targetPath);
+                }
+            } elseif ($this->filesystem->exists($targetPath . '/.git')) {
+                // Existing clone: pull latest changes
+                $this->pullLatest($targetPath);
+            } else {
+                // Fresh clone
+                $this->cloneModule($targetPath);
+            }
+        } finally {
+            $lock->release();
+        }
+
+        return $targetPath;
     }
 
     /**

@@ -181,15 +181,16 @@ class MftfExecutorService
         $runId = $run->getId();
         $parts = [];
 
-        // Create symlink from run directory to correct module path
-        // /var/www/html/app/code/Test/run-X -> /var/www/html/app/code/SiiPoland/Catalog
+        // Create symlink from mounted TestModule to expected Magento path
+        // Docker mounts var/test-modules/current -> /var/www/html/app/code/TestModule
+        // We symlink TestModule -> app/code/SiiPoland/Catalog (as defined by TEST_MODULE_PATH)
         $modulePath = $this->magentoRoot . '/' . $this->testModulePath;
-        $runPath = $this->magentoRoot . '/app/code/Test/run-' . $runId;
+        $mountedModulePath = $this->magentoRoot . '/app/code/TestModule';
 
         // Create parent directory and symlink
         $parts[] = sprintf('mkdir -p %s', escapeshellarg(dirname($modulePath)));
         $parts[] = sprintf('rm -rf %s', escapeshellarg($modulePath)); // Remove existing
-        $parts[] = sprintf('ln -sf %s %s', escapeshellarg($runPath), escapeshellarg($modulePath));
+        $parts[] = sprintf('ln -sf %s %s', escapeshellarg($mountedModulePath), escapeshellarg($modulePath));
 
         // Change to acceptance test directory
         $acceptanceDir = $this->magentoRoot . '/dev/tests/acceptance';
@@ -210,7 +211,7 @@ class MftfExecutorService
         // 4. Infrastructure overrides (Selenium)
         $env = $run->getEnvironment();
         $envFileName = '.env.' . $env->getName(); // e.g., .env.stage-us
-        $moduleEnvFile = $runPath . '/Cron/data/' . $envFileName;
+        $moduleEnvFile = $mountedModulePath . '/Cron/data/' . $envFileName;
         $mftfEnvFile = $acceptanceDir . '/.env';
 
         // Layer 1: Start with global + environment-specific variables from database

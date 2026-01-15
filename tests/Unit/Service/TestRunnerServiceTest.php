@@ -176,18 +176,13 @@ class TestRunnerServiceTest extends TestCase
     // prepareRun() Tests
     // =====================
 
-    public function testPrepareRunClonesModule(): void
+    public function testPrepareRunPreparesModule(): void
     {
         $run = $this->createTestRun();
 
         $this->moduleCloneService->expects($this->once())
-            ->method('getRunTargetPath')
-            ->with(1)
-            ->willReturn('/var/test-modules/run-1');
-
-        $this->moduleCloneService->expects($this->once())
-            ->method('cloneModule')
-            ->with('/var/test-modules/run-1');
+            ->method('prepareModule')
+            ->willReturn('/var/test-modules/current');
 
         $this->entityManager->expects($this->atLeastOnce())->method('flush');
 
@@ -208,11 +203,8 @@ class TestRunnerServiceTest extends TestCase
             });
 
         $this->moduleCloneService->expects($this->once())
-            ->method('getRunTargetPath')
-            ->with(1)
-            ->willReturn('/var/test-modules/run-1');
-        $this->moduleCloneService->expects($this->once())
-            ->method('cloneModule');
+            ->method('prepareModule')
+            ->willReturn('/var/test-modules/current');
 
         $this->service->prepareRun($run);
 
@@ -225,12 +217,7 @@ class TestRunnerServiceTest extends TestCase
         $run = $this->createTestRun();
 
         $this->moduleCloneService->expects($this->once())
-            ->method('getRunTargetPath')
-            ->with(1)
-            ->willReturn('/var/test-modules/run-1');
-
-        $this->moduleCloneService->expects($this->once())
-            ->method('cloneModule')
+            ->method('prepareModule')
             ->willThrowException(new \RuntimeException('Git clone failed'));
 
         $this->entityManager->expects($this->atLeastOnce())->method('flush');
@@ -253,12 +240,7 @@ class TestRunnerServiceTest extends TestCase
         $run = $this->createTestRun();
 
         $this->moduleCloneService->expects($this->once())
-            ->method('getRunTargetPath')
-            ->with(1)
-            ->willReturn('/var/test-modules/run-1');
-
-        $this->moduleCloneService->expects($this->once())
-            ->method('cloneModule')
+            ->method('prepareModule')
             ->willThrowException(new \RuntimeException('Clone failed'));
 
         $this->logger->expects($this->atLeastOnce())
@@ -1003,13 +985,7 @@ class TestRunnerServiceTest extends TestCase
         $reflection = new \ReflectionClass($run);
         $method = $reflection->getMethod('canBeCancelled');
 
-        $this->moduleCloneService->expects($this->once())
-            ->method('getRunTargetPath')
-            ->willReturn('/var/test-modules/run-1');
-
-        $this->moduleCloneService->expects($this->once())
-            ->method('cleanup')
-            ->with('/var/test-modules/run-1');
+        // Module is shared, no per-run cleanup expectations
 
         $this->entityManager->expects($this->once())->method('flush');
 
@@ -1064,21 +1040,14 @@ class TestRunnerServiceTest extends TestCase
     // cleanupRun() Tests
     // =====================
 
-    public function testCleanupRunRemovesDirectory(): void
+    public function testCleanupRunLogsCompletion(): void
     {
         $run = $this->createTestRun();
 
-        $this->moduleCloneService->expects($this->once())
-            ->method('getRunTargetPath')
-            ->willReturn('/var/test-modules/run-1');
-
-        $this->moduleCloneService->expects($this->once())
-            ->method('cleanup')
-            ->with('/var/test-modules/run-1');
-
+        // Module is shared, no per-run cleanup - just logging
         $this->logger->expects($this->once())
             ->method('info')
-            ->with('Test run cleaned up', $this->anything());
+            ->with('Test run cleanup completed', $this->anything());
 
         $this->service->cleanupRun($run);
     }
