@@ -105,7 +105,7 @@ services:
       context: .
       target: app_dev
     container_name: matre_scheduler
-    command: php bin/console messenger:consume scheduler_cron --time-limit=60 -vv
+    command: php bin/console messenger:consume scheduler_test_runner --time-limit=60 -vv
     restart: unless-stopped
     volumes:
       - .:/app
