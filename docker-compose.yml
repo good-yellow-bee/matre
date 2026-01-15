@@ -24,7 +24,7 @@ services:
       DB_PASS: matre
       MAILER_DSN: "smtp://mailpit:1025"
       ALLURE_URL: http://allure:5050
-      ALLURE_PUBLIC_URL: http://matre.local:5050
+      ALLURE_PUBLIC_URL: ${ALLURE_PUBLIC_URL:-http://matre.local:5050}
       GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /home/www-data/.ssh/id_ed25519"
     depends_on:
       - frontend-build
@@ -340,7 +340,7 @@ services:
       SELENIUM_HOST: selenium-hub
       SELENIUM_PORT: 4444
       ALLURE_URL: http://allure:5050
-      ALLURE_PUBLIC_URL: http://matre.local:5050
+      ALLURE_PUBLIC_URL: ${ALLURE_PUBLIC_URL:-http://matre.local:5050}
       GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /home/www-data/.ssh/id_ed25519"
     depends_on:
       db:
