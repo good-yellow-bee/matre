@@ -60,6 +60,7 @@ services:
     App\Service\MagentoContainerPoolService:
         arguments:
             $projectDir: '%kernel.project_dir%'
+            $hostProjectDir: '%env(HOST_PROJECT_DIR)%'
             $magentoImage: '%env(MAGENTO_IMAGE)%'
             $networkName: '%env(DOCKER_NETWORK)%'
             $codeVolume: '%env(MAGENTO_CODE_VOLUME)%'

@@ -20,6 +20,7 @@ class MagentoContainerPoolService
         private readonly LoggerInterface $logger,
         private readonly LockFactory $lockFactory,
         private readonly string $projectDir,
+        private readonly string $hostProjectDir,
         private readonly string $magentoImage,
         private readonly string $networkName,
         private readonly string $codeVolume,
@@ -87,9 +88,10 @@ class MagentoContainerPoolService
     {
         $this->logger->info('Creating per-environment Magento container', ['container' => $name]);
 
-        $testModulePath = $this->projectDir.'/var/test-modules/current';
-        $mftfResultsPath = $this->projectDir.'/var/mftf-results';
-        $abbModulePath = $this->projectDir.'/abb-custom-mftf';
+        // Use host paths for docker bind mounts (not container /app path)
+        $testModulePath = $this->hostProjectDir.'/var/test-modules/current';
+        $mftfResultsPath = $this->hostProjectDir.'/var/mftf-results';
+        $abbModulePath = $this->hostProjectDir.'/abb-custom-mftf';
 
         $process = new Process([
             'docker', 'run', '-d',
