@@ -107,6 +107,8 @@ class MagentoContainerPoolService
             '-v', $mftfResultsPath.'/allure-results:/var/www/html/dev/tests/acceptance/allure-results',
             // Dev mode module mount
             '-v', $abbModulePath.':/app/abb-custom-mftf:ro',
+            // Per-environment tmpfs for .env isolation (prevents shared volume race condition)
+            '--mount', 'type=tmpfs,destination=/var/www/html/dev/tests/acceptance/env-config',
             // Environment
             '-e', 'MAGENTO_RUN_MODE=developer',
             $this->magentoImage,

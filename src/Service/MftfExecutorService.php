@@ -216,7 +216,14 @@ class MftfExecutorService
         $env = $run->getEnvironment();
         $envFileName = '.env.'.$env->getName(); // e.g., .env.stage-us
         $moduleEnvFile = $mountedModulePath.'/Cron/data/'.$envFileName;
-        $mftfEnvFile = $acceptanceDir.'/.env';
+
+        // Per-environment config directory (tmpfs mount - isolated per container)
+        $envConfigDir = $acceptanceDir.'/env-config';
+        $mftfEnvFile = $envConfigDir.'/.env';
+
+        // Create env-config dir and symlink to expected .env location
+        $parts[] = sprintf('mkdir -p %s', escapeshellarg($envConfigDir));
+        $parts[] = sprintf('ln -sf %s %s', escapeshellarg($mftfEnvFile), escapeshellarg($acceptanceDir.'/.env'));
 
         // Layer 1: Start with global + environment-specific variables from database
         // SECURITY: Validate and escape all variables to prevent command injection
@@ -249,8 +256,10 @@ class MftfExecutorService
         $parts[] = sprintf('echo %s >> %s', escapeshellarg($seleniumPortLine), escapeshellarg($mftfEnvFile));
 
         // Generate credentials file from env variables (MFTF requires this for _CREDS references)
-        $credentialsFile = $acceptanceDir.'/.credentials';
+        $credentialsFile = $envConfigDir.'/.credentials';
         $parts[] = $this->buildCredentialsCommand($mftfEnvFile, $credentialsFile);
+        // Symlink credentials to expected location
+        $parts[] = sprintf('ln -sf %s %s', escapeshellarg($credentialsFile), escapeshellarg($acceptanceDir.'/.credentials'));
 
         // MFTF binary path
         $mftfBin = $this->magentoRoot.'/vendor/bin/mftf';
