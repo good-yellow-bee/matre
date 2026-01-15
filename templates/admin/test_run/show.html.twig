@@ -27,7 +27,7 @@
                     'failed': 'danger',
                     'cancelled': 'secondary'
                 } %}
-                <span class="badge bg-{{ statusColors[run.status]|default('secondary') }} fs-6">
+                <span id="run-status-badge" class="badge bg-{{ statusColors[run.status]|default('secondary') }} fs-6">
                     {{ run.status|upper }}
                 </span>
                 {% if run.totalTests is not null %}
@@ -314,8 +314,10 @@
                 <h5 class="mb-0">Actions</h5>
             </div>
             <div class="card-body d-grid gap-2">
-                {% if run.status in ['preparing', 'cloning', 'running'] and vnc_url %}
-                <a href="{{ vnc_url }}" target="_blank" rel="noopener" class="btn btn-info w-100">
+                {% if vnc_url %}
+                <a id="watch-live-btn" href="{{ vnc_url }}" target="_blank" rel="noopener"
+                   class="btn btn-info w-100"
+                   style="{{ run.status not in ['preparing', 'cloning', 'running'] ? 'display: none;' : '' }}">
                     <i class="bi bi-display"></i> Watch Live
                 </a>
                 {% endif %}
@@ -628,6 +630,30 @@
                             renderedResultIds.add(result.id);
                         }
                     }
+                }
+
+                // Update status badge
+                const statusBadge = document.getElementById('run-status-badge');
+                if (statusBadge && data.status) {
+                    const statusColors = {
+                        'pending': 'secondary',
+                        'preparing': 'info',
+                        'cloning': 'info',
+                        'running': 'warning',
+                        'reporting': 'info',
+                        'completed': 'success',
+                        'failed': 'danger',
+                        'cancelled': 'secondary'
+                    };
+                    statusBadge.textContent = data.status.toUpperCase();
+                    statusBadge.className = 'badge bg-' + (statusColors[data.status] || 'secondary') + ' fs-6';
+                }
+
+                // Update Watch Live button visibility
+                const watchLiveBtn = document.getElementById('watch-live-btn');
+                if (watchLiveBtn) {
+                    const isWatchable = ['preparing', 'cloning', 'running'].includes(data.status);
+                    watchLiveBtn.style.display = isWatchable ? '' : 'none';
                 }
 
                 // Update live badge visibility
