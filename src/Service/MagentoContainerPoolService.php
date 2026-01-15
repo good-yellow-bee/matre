@@ -94,8 +94,8 @@ class MagentoContainerPoolService
             'docker', 'run', '-d',
             '--name', $name,
             '--network', $this->networkName,
-            // Shared code volume (read-only)
-            '-v', 'matre_magento_code:/var/www/html:ro',
+            // Shared code volume (writable - needed for nested mounts)
+            '-v', 'matre_magento_code:/var/www/html',
             // Test module (read-only)
             '-v', $testModulePath.':/var/www/html/app/code/TestModule:ro',
             // MFTF results (writable - for screenshots, output)
