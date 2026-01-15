@@ -17,6 +17,7 @@
                     <th>Type</th>
                     <th>Test Pattern</th>
                     <th>Schedule</th>
+                    <th>Environments</th>
                     <th>Status</th>
                     <th>Actions</th>
                 </tr>
@@ -40,6 +41,17 @@
                             <code>{{ suite.cronExpression }}</code>
                         {% else %}
                             <span class="text-muted">Manual only</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if suite.environments|length > 0 %}
+                            <div class="d-flex flex-wrap gap-1">
+                                {% for env in suite.environments %}
+                                    <span class="badge bg-slate-100 text-slate-700 fw-normal">{{ env.name }}</span>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <span class="text-muted">None</span>
                         {% endif %}
                     </td>
                     <td>
@@ -75,7 +87,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="6" class="text-center text-muted py-4">No test suites configured. <a href="{{ path('admin_test_suite_new') }}">Add one</a></td>
+                    <td colspan="7" class="text-center text-muted py-4">No test suites configured. <a href="{{ path('admin_test_suite_new') }}">Add one</a></td>
                 </tr>
                 {% endfor %}
             </tbody>
