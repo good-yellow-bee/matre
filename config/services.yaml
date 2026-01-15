@@ -61,7 +61,7 @@ services:
         arguments:
             $projectDir: '%kernel.project_dir%'
             $magentoImage: '%env(MAGENTO_IMAGE)%'
-            $networkName: 'matre_network'
+            $networkName: '%env(DOCKER_NETWORK)%'
 
     App\Service\MftfExecutorService:
         arguments:
