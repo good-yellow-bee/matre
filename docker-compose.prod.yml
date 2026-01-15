@@ -79,6 +79,12 @@ services:
       - "traefik.http.routers.novnc-vendor.tls=true"
       - "traefik.http.routers.novnc-vendor.service=novnc"
       - "traefik.http.routers.novnc-vendor.priority=100"
+      # Router for /websockify WebSocket connection
+      - "traefik.http.routers.novnc-websockify.rule=Host(`${APP_DOMAIN}`) && PathPrefix(`/websockify`)"
+      - "traefik.http.routers.novnc-websockify.entrypoints=websecure"
+      - "traefik.http.routers.novnc-websockify.tls=true"
+      - "traefik.http.routers.novnc-websockify.service=novnc"
+      - "traefik.http.routers.novnc-websockify.priority=100"
 
   # Allure reports with Traefik routing
   allure:
