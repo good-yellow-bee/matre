@@ -202,13 +202,11 @@ class MftfExecutorService
         $acceptanceDir = $this->magentoRoot.'/dev/tests/acceptance';
         $parts[] = 'cd '.escapeshellarg($acceptanceDir);
 
-        // MFTF bug workaround: Reorder Codeception extensions so AllureCodeception
-        // writes result.json BEFORE TestContextExtension throws exception on test failure.
-        // Without this, Allure reports are empty because exception breaks lifecycle.
-        // See: MFTF AllureHelper.php:29 throws when serializing Exception objects.
-        $parts[] = "sed -i 's/- Magento.*TestContextExtension/- PLACEHOLDER_TESTCONTEXT/' codeception.yml";
-        $parts[] = "sed -i 's/- Qameta.*AllureCodeception/- Magento\\\\FunctionalTestingFramework\\\\Extension\\\\TestContextExtension/' codeception.yml";
-        $parts[] = "sed -i 's/- PLACEHOLDER_TESTCONTEXT/- Qameta\\\\Allure\\\\Codeception\\\\AllureCodeception/' codeception.yml";
+        // MFTF fix: Ensure AllureCodeception is in the enabled extensions list.
+        // Some Magento installations have it only in config section but not enabled.
+        // Without this, Allure output directory is never set and screenshots fail.
+        // Check for "- Qameta" with 8-space indent (enabled list format), add if missing.
+        $parts[] = "grep -q '^        - Qameta' codeception.yml || sed -i '/Subscriber.Console/a\\        - Qameta\\\\Allure\\\\Codeception\\\\AllureCodeception' codeception.yml";
 
         // Build .env file with layered configuration:
         // 1. Global variables (shared across all environments)
