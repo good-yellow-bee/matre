@@ -84,6 +84,8 @@ services:
       - "traefik.http.routers.novnc-websockify.entrypoints=websecure"
       - "traefik.http.routers.novnc-websockify.tls=true"
       - "traefik.http.routers.novnc-websockify.service=novnc"
+      - "traefik.http.routers.novnc-websockify.middlewares=websockify-stripprefix"
+      - "traefik.http.middlewares.websockify-stripprefix.stripprefix.prefixes=/websockify"
       - "traefik.http.routers.novnc-websockify.priority=100"
 
   # Allure reports with Traefik routing
