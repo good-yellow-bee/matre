@@ -468,8 +468,10 @@ class MftfExecutorServiceTest extends TestCase
         $this->assertEquals(TestResult::STATUS_BROKEN, $results[0]->getStatus());
     }
 
-    public function testParseResultsUsesFilterAsTestIdFallback(): void
+    public function testParseResultsDoesNotUseNonMatchingFilterAsTestId(): void
     {
+        // Filter "CustomTestName" doesn't match pattern [A-Z]+\d+ so should NOT be used as testId
+        // This prevents group names like "us" from appearing as test names
         $run = $this->createTestRun('CustomTestName');
 
         $output = "[Exception]\nUnknown error occurred\n";
@@ -477,7 +479,7 @@ class MftfExecutorServiceTest extends TestCase
         $results = $this->service->parseResults($run, $output);
 
         $this->assertCount(1, $results);
-        $this->assertEquals('CustomTestName', $results[0]->getTestName());
+        $this->assertEquals('Unknown', $results[0]->getTestName());
     }
 
     private function createTestEnvironment(string $name = 'stage-us'): TestEnvironment

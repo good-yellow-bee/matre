@@ -332,9 +332,8 @@ class MftfExecutorService
             } elseif ($filter = $run->getTestFilter()) {
                 if (preg_match('/^([A-Z]+\d+)/', $filter, $idMatch)) {
                     $testId = $idMatch[1];
-                } else {
-                    $testId = $filter;
                 }
+                // Don't use raw filter as testId - it could be a group name like "us"
             }
 
             // Check for explicit success indicators first
