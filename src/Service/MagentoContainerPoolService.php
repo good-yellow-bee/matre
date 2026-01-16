@@ -109,6 +109,8 @@ class MagentoContainerPoolService
             '-v', $abbModulePath . ':/app/abb-custom-mftf:ro',
             // Per-environment tmpfs for .env isolation (prevents shared volume race condition)
             '--mount', 'type=tmpfs,destination=/var/www/html/dev/tests/acceptance/env-config',
+            // Per-environment tmpfs for generated tests (prevents concurrent run race condition)
+            '--mount', 'type=tmpfs,destination=/var/www/html/dev/tests/acceptance/tests/functional/Magento/_generated',
             // Environment
             '-e', 'MAGENTO_RUN_MODE=developer',
             $this->magentoImage,
