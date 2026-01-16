@@ -164,7 +164,7 @@ class TestRunnerService
                         $allResults[] = $result;
                     }
 
-                    $allurePaths[] = $this->mftfExecutor->getAllureResultsPath();
+                    $allurePaths[] = $this->mftfExecutor->getAllureResultsPath($run->getId());
 
                     // Track failure but don't exit early - continue to collect artifacts
                     if (0 !== $mftfResult['exitCode']) {
@@ -270,7 +270,7 @@ class TestRunnerService
             $type = $run->getType();
 
             if (TestRun::TYPE_MFTF === $type || TestRun::TYPE_BOTH === $type) {
-                $allurePaths[] = $this->mftfExecutor->getAllureResultsPath();
+                $allurePaths[] = $this->mftfExecutor->getAllureResultsPath($run->getId());
             }
 
             if (TestRun::TYPE_PLAYWRIGHT === $type || TestRun::TYPE_BOTH === $type) {

@@ -84,11 +84,11 @@ class MftfExecutorServiceTest extends TestCase
     // getAllureResultsPath() Tests
     // =====================
 
-    public function testGetAllureResultsPathReturnsCorrectPath(): void
+    public function testGetAllureResultsPathReturnsCorrectPathWithRunId(): void
     {
-        $result = $this->service->getAllureResultsPath();
+        $result = $this->service->getAllureResultsPath(42);
 
-        $this->assertEquals('/app/var/mftf-results/allure-results', $result);
+        $this->assertEquals('/app/var/mftf-results/allure-results/run-42', $result);
     }
 
     // =====================
@@ -141,7 +141,8 @@ class MftfExecutorServiceTest extends TestCase
             ->method('getAllAsKeyValue')
             ->willReturn([]);
 
-        $this->shellEscapeService->expects($this->exactly(2))
+        // Now 3 calls: SELENIUM_HOST, SELENIUM_PORT, and ALLURE_OUTPUT_PATH
+        $this->shellEscapeService->expects($this->exactly(3))
             ->method('buildEnvFileLine')
             ->willReturnCallback(function ($key, $value) {
                 return "{$key}={$value}";
@@ -151,6 +152,7 @@ class MftfExecutorServiceTest extends TestCase
 
         $this->assertStringContainsString('SELENIUM_HOST', $command);
         $this->assertStringContainsString('SELENIUM_PORT', $command);
+        $this->assertStringContainsString('ALLURE_OUTPUT_PATH', $command);
     }
 
     public function testBuildCommandWithGlobalEnvVariables(): void
@@ -222,7 +224,7 @@ class MftfExecutorServiceTest extends TestCase
         $this->assertStringContainsString('-name "*.png"', $command);
     }
 
-    public function testBuildCommandIncludesMftfBugWorkaround(): void
+    public function testBuildCommandIncludesAllureExtensionFix(): void
     {
         $run = $this->createTestRun('MOEC5157Cest', 1);
 
@@ -232,10 +234,10 @@ class MftfExecutorServiceTest extends TestCase
 
         $command = $this->service->buildCommand($run);
 
-        // Should include sed commands to reorder Codeception extensions
+        // Should include command to ensure AllureCodeception is enabled
+        $this->assertStringContainsString('grep -q', $command);
         $this->assertStringContainsString('sed -i', $command);
         $this->assertStringContainsString('AllureCodeception', $command);
-        $this->assertStringContainsString('TestContextExtension', $command);
     }
 
     // =====================

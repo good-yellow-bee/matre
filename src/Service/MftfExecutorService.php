@@ -255,6 +255,15 @@ class MftfExecutorService
         $parts[] = sprintf('echo %s >> %s', escapeshellarg($seleniumHostLine), escapeshellarg($mftfEnvFile));
         $parts[] = sprintf('echo %s >> %s', escapeshellarg($seleniumPortLine), escapeshellarg($mftfEnvFile));
 
+        // Layer 3: Set per-run Allure output path for result isolation
+        // This prevents concurrent runs from polluting each other's results
+        $allureOutputPath = $this->magentoRoot . '/dev/tests/acceptance/allure-results/run-' . $runId;
+        $allureOutputLine = $this->shellEscapeService->buildEnvFileLine('ALLURE_OUTPUT_PATH', $allureOutputPath);
+        $parts[] = sprintf('echo %s >> %s', escapeshellarg($allureOutputLine), escapeshellarg($mftfEnvFile));
+
+        // Create per-run Allure output directory before MFTF runs
+        $parts[] = sprintf('mkdir -p %s', escapeshellarg($allureOutputPath));
+
         // Generate credentials file from env variables (MFTF requires this for _CREDS references)
         $credentialsFile = $envConfigDir . '/.credentials';
         $parts[] = $this->buildCredentialsCommand($mftfEnvFile, $credentialsFile);
@@ -392,14 +401,14 @@ class MftfExecutorService
     }
 
     /**
-     * Get path to Allure results from MFTF (shared location).
+     * Get path to Allure results from MFTF for a specific run.
      *
-     * Allure results are in a separate Docker mount, so we don't move them
-     * to per-run directory. AllureReportService handles copying them.
+     * Each run writes to isolated per-run directory via ALLURE_OUTPUT_PATH env var.
+     * Volume mount syncs container path to host path automatically.
      */
-    public function getAllureResultsPath(): string
+    public function getAllureResultsPath(int $runId): string
     {
-        return $this->projectDir . '/var/mftf-results/allure-results';
+        return $this->projectDir . '/var/mftf-results/allure-results/run-' . $runId;
     }
 
     /**
