@@ -113,102 +113,42 @@ class AllureReportService
 
     /**
      * Get path to Allure results for a run.
+     *
+     * Uses same path as MFTF writes to (via ALLURE_OUTPUT_PATH env var).
+     * Volume mount syncs container path to host path automatically.
      */
     public function getAllureResultsPath(int $runId): string
     {
-        return $this->projectDir . '/var/allure-results/run-' . $runId;
+        return $this->projectDir . '/var/mftf-results/allure-results/run-' . $runId;
     }
 
     /**
-     * Copy Allure results for a specific test from shared directory to per-run directory.
-     * Used for incremental copying during sequential group execution.
-     * Only copies the most recent matching file to avoid stale data.
+     * Verify Allure results exist for a specific test in the per-run directory.
+     *
+     * With per-run isolation via ALLURE_OUTPUT_PATH, results are written directly
+     * to the per-run directory. This method just verifies files exist for logging.
      */
     public function copyTestAllureResults(int $runId, string $testName): void
     {
-        $sharedDir = $this->projectDir . '/var/mftf-results/allure-results';
+        // Results are already in per-run directory from MFTF (via ALLURE_OUTPUT_PATH)
+        // This method now just verifies the directory exists for incremental reports
         $runDir = $this->getAllureResultsPath($runId);
 
-        if (!$this->filesystem->exists($sharedDir)) {
-            $this->logger->debug('Shared Allure directory not found', ['path' => $sharedDir]);
-
-            return;
-        }
-
-        $this->filesystem->mkdir($runDir);
-
-        // Find result files that match this test
-        $finder = new \Symfony\Component\Finder\Finder();
-        $finder->files()->in($sharedDir)->name('*-result.json');
-
-        $matchingFiles = [];
-
-        foreach ($finder as $file) {
-            $content = file_get_contents($file->getRealPath());
-            if (false === $content) {
-                $this->logger->warning('Failed to read Allure result file', [
-                    'file' => $file->getRealPath(),
-                ]);
-
-                continue;
-            }
-
-            $data = json_decode($content, true);
-            if (JSON_ERROR_NONE !== json_last_error()) {
-                $this->logger->warning('Failed to parse Allure JSON', [
-                    'file' => $file->getRealPath(),
-                    'error' => json_last_error_msg(),
-                ]);
-
-                continue;
-            }
-
-            // Check if this file belongs to the test
-            // Normalize by removing hyphens - Allure uses "MOEC-2004" but test filter is "MOEC2004"
-            $allureName = $data['name'] ?? '';
-            $allureFullName = $data['fullName'] ?? '';
-            $normalizedAllureName = str_replace('-', '', $allureName);
-            $normalizedAllureFullName = str_replace('-', '', $allureFullName);
-            $normalizedTestName = str_replace('-', '', $testName);
-
-            if (false !== stripos($normalizedAllureName, $normalizedTestName) || false !== stripos($normalizedAllureFullName, $normalizedTestName)) {
-                $matchingFiles[] = [
-                    'file' => $file,
-                    'data' => $data,
-                    'mtime' => $file->getMTime(),
-                ];
-            }
-        }
-
-        if (empty($matchingFiles)) {
-            $this->logger->debug('No matching Allure results found', [
-                'testName' => $testName,
+        if (!$this->filesystem->exists($runDir)) {
+            $this->logger->debug('Per-run Allure directory not found yet', [
                 'runId' => $runId,
+                'path' => $runDir,
             ]);
 
             return;
         }
 
-        // Sort by mtime descending - only copy the newest matching file
-        usort($matchingFiles, fn ($a, $b) => $b['mtime'] <=> $a['mtime']);
-        $newest = $matchingFiles[0];
-        $file = $newest['file'];
-        $data = $newest['data'];
-
-        $targetFile = $runDir . '/' . $file->getFilename();
-        $sourceFile = $file->getRealPath();
-        $this->filesystem->copy($sourceFile, $targetFile, true);
-
-        // Also copy any attachments referenced in this result
-        $this->copyAttachments($data, $sharedDir, $runDir);
-
-        // NOTE: Source files are NOT deleted here to avoid race conditions with concurrent tests.
-        // Cleanup happens via clearOldRunDirectories() scheduled task.
-
-        $this->logger->debug('Copied Allure result for test', [
+        // Log for debugging
+        $resultFiles = glob($runDir . '/*-result.json') ?: [];
+        $this->logger->debug('Allure results available for incremental report', [
+            'runId' => $runId,
             'testName' => $testName,
-            'source' => $sourceFile,
-            'target' => $targetFile,
+            'fileCount' => count($resultFiles),
         ]);
     }
 
@@ -373,6 +313,19 @@ class AllureReportService
         } catch (\Throwable $e) {
             // Project might already exist, that's ok
             $this->logger->debug('Project creation response', ['error' => $e->getMessage()]);
+        }
+
+        // Clean previous results for this project so "latest" shows only current run
+        try {
+            $this->httpClient->request(
+                'GET',
+                $this->allureUrl . '/allure-docker-service/clean-results',
+                ['query' => ['project_id' => $projectId]],
+            );
+            $this->logger->debug('Cleaned previous Allure results', ['projectId' => $projectId]);
+        } catch (\Throwable $e) {
+            // Project may not exist yet or cleaning failed, that's ok
+            $this->logger->debug('Could not clean Allure results', ['error' => $e->getMessage()]);
         }
 
         // Send results to Allure service
