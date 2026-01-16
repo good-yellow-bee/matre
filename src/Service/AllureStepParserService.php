@@ -92,10 +92,19 @@ class AllureStepParserService
             'runDir' => $runDir,
         ]);
 
+        // Fallback to root allure-results directory for older runs (before per-run isolation)
         if (!is_dir($runDir)) {
-            $this->logger->debug('Allure run directory not found: {dir}', ['dir' => $runDir]);
+            $runDir = sprintf('%s/var/mftf-results/allure-results', $this->projectDir);
+            $this->logger->debug('Per-run directory not found, falling back to root', [
+                'runId' => $testRun->getId(),
+                'fallbackDir' => $runDir,
+            ]);
 
-            return null;
+            if (!is_dir($runDir)) {
+                $this->logger->debug('Allure root directory not found: {dir}', ['dir' => $runDir]);
+
+                return null;
+            }
         }
 
         $testName = $result->getTestName();
