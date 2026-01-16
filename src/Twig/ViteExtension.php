@@ -43,18 +43,18 @@ class ViteExtension extends AbstractExtension
 
             foreach ($entry['imports'] ?? [] as $import) {
                 if ($dependency = $this->manifest[$import] ?? null) {
-                    $tags[] = sprintf('<link rel="modulepreload" href="%s">', $this->assetUrl('build/'.$dependency['file']));
+                    $tags[] = sprintf('<link rel="modulepreload" href="%s">', $this->assetUrl('build/' . $dependency['file']));
                 }
             }
 
-            $tags[] = sprintf('<script type="module" src="%s"></script>', $this->assetUrl('build/'.$entry['file']));
+            $tags[] = sprintf('<script type="module" src="%s"></script>', $this->assetUrl('build/' . $entry['file']));
 
             return implode("\n", $tags);
         }
 
         // Admin/CMS were loaded via asset() previously; mirror that.
         if (\in_array($entryName, ['admin', 'cms'], true)) {
-            return sprintf('<script type="module" src="%s"></script>', $this->assetUrl($entryName.'.js'));
+            return sprintf('<script type="module" src="%s"></script>', $this->assetUrl($entryName . '.js'));
         }
 
         // Unknown entry and no manifest: render nothing to avoid 404s.
@@ -66,7 +66,7 @@ class ViteExtension extends AbstractExtension
         if ($entry = $this->findManifestEntry($entryName)) {
             $links = [];
             foreach ($entry['css'] ?? [] as $cssFile) {
-                $links[] = sprintf('<link rel="stylesheet" href="%s">', $this->assetUrl('build/'.$cssFile));
+                $links[] = sprintf('<link rel="stylesheet" href="%s">', $this->assetUrl('build/' . $cssFile));
             }
 
             // If the Vite entry has no CSS artifacts, fall back to the raw stylesheet.
@@ -90,7 +90,7 @@ class ViteExtension extends AbstractExtension
     private function cssFallback(string $entryName): ?string
     {
         $cssPath = sprintf('styles/%s.css', $entryName);
-        if (is_file($this->projectDir.'/assets/'.$cssPath)) {
+        if (is_file($this->projectDir . '/assets/' . $cssPath)) {
             return sprintf('<link rel="stylesheet" href="%s">', $this->assetUrl($cssPath));
         }
 
@@ -111,8 +111,8 @@ class ViteExtension extends AbstractExtension
 
         $candidates = [
             $entryName,
-            $entryName.'.js',
-            'assets/'.$entryName.'.js',
+            $entryName . '.js',
+            'assets/' . $entryName . '.js',
         ];
 
         foreach ($manifest as $key => $entry) {
@@ -131,8 +131,8 @@ class ViteExtension extends AbstractExtension
         }
 
         $candidates = [
-            $this->projectDir.'/public/build/manifest.json',
-            $this->projectDir.'/public/build/.vite/manifest.json',
+            $this->projectDir . '/public/build/manifest.json',
+            $this->projectDir . '/public/build/.vite/manifest.json',
         ];
 
         foreach ($candidates as $manifestPath) {

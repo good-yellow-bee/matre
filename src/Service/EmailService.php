@@ -37,7 +37,7 @@ class EmailService
         $email = (new TemplatedEmail())
             ->from(new Address($this->fromEmail, $this->fromName))
             ->to($toEmail)
-            ->subject('Welcome to '.$this->fromName)
+            ->subject('Welcome to ' . $this->fromName)
             ->htmlTemplate('emails/welcome.html.twig')
             ->context([
                 'userName' => $userName,
@@ -145,7 +145,7 @@ class EmailService
             ->from(new Address($this->fromEmail, $this->fromName))
             ->replyTo($senderEmail)
             ->to($adminEmail)
-            ->subject('New Contact Form Submission from '.$senderName)
+            ->subject('New Contact Form Submission from ' . $senderName)
             ->htmlTemplate('emails/contact_form.html.twig')
             ->context([
                 'senderName' => $senderName,
@@ -168,7 +168,7 @@ class EmailService
         $email = (new TemplatedEmail())
             ->from(new Address($this->fromEmail, $this->fromName))
             ->to($toEmail)
-            ->subject('Test Email from '.$this->fromName)
+            ->subject('Test Email from ' . $this->fromName)
             ->htmlTemplate('emails/test.html.twig')
             ->context([
                 'timestamp' => new \DateTimeImmutable(),

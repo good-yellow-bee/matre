@@ -61,7 +61,7 @@ class CredentialEncryptionService
         }
 
         // Combine IV + tag + ciphertext and base64 encode
-        return base64_encode($iv.$tag.$ciphertext);
+        return base64_encode($iv . $tag . $ciphertext);
     }
 
     /**

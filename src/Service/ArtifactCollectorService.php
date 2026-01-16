@@ -44,7 +44,7 @@ class ArtifactCollectorService
         $lock->acquire(true);
 
         try {
-            $sourcePath = $this->projectDir.'/'.$this->mftfResultsDir.'/run-'.$run->getId();
+            $sourcePath = $this->projectDir . '/' . $this->mftfResultsDir . '/run-' . $run->getId();
             $targetPath = $this->getRunArtifactsPath($run);
 
             if (!is_dir($sourcePath)) {
@@ -121,7 +121,7 @@ class ArtifactCollectorService
      */
     public function collectTestScreenshot(TestRun $run, TestResult $result): void
     {
-        $sourcePath = $this->projectDir.'/'.$this->mftfResultsDir.'/run-'.$run->getId();
+        $sourcePath = $this->projectDir . '/' . $this->mftfResultsDir . '/run-' . $run->getId();
         $targetPath = $this->getRunArtifactsPath($run);
 
         if (!is_dir($sourcePath)) {
@@ -150,7 +150,7 @@ class ArtifactCollectorService
         $finder->files()->in($sourcePath)->depth(0);
 
         // Build pattern for all extensions
-        $patterns = array_map(fn ($ext) => '*.'.$ext, $allExtensions);
+        $patterns = array_map(fn ($ext) => '*.' . $ext, $allExtensions);
         $finder->name($patterns);
 
         foreach ($finder as $file) {
@@ -165,7 +165,7 @@ class ArtifactCollectorService
                     continue;
                 }
 
-                $targetFile = $targetPath.'/'.$filename;
+                $targetFile = $targetPath . '/' . $filename;
                 $filesystem->copy($file->getRealPath(), $targetFile, true);
 
                 // Set screenshot path for first matching screenshot
@@ -200,7 +200,7 @@ class ArtifactCollectorService
     public function clearOldRunDirectories(int $keepDays = 7): void
     {
         $filesystem = new Filesystem();
-        $baseDir = $this->projectDir.'/'.$this->mftfResultsDir;
+        $baseDir = $this->projectDir . '/' . $this->mftfResultsDir;
 
         if (!$filesystem->exists($baseDir) || !is_dir($baseDir)) {
             return;
@@ -250,7 +250,7 @@ class ArtifactCollectorService
         $sanitizedFilename = $this->sanitizeFilename($filename);
 
         $basePath = $this->getRunArtifactsPath($run);
-        $fullPath = $basePath.'/'.$sanitizedFilename;
+        $fullPath = $basePath . '/' . $sanitizedFilename;
 
         // SECURITY: Resolve real path and verify it's within the allowed directory
         // If file exists, use realpath; otherwise verify parent directory
@@ -263,7 +263,7 @@ class ArtifactCollectorService
             }
 
             // Ensure the resolved path is within the artifacts directory
-            if (!str_starts_with($realPath, $realBase.'/')) {
+            if (!str_starts_with($realPath, $realBase . '/')) {
                 throw new \InvalidArgumentException('Path traversal attempt detected');
             }
 
@@ -328,7 +328,7 @@ class ArtifactCollectorService
      */
     public function cleanupOldArtifacts(int $daysOld = 30): int
     {
-        $baseDir = $this->projectDir.'/'.$this->artifactsDir;
+        $baseDir = $this->projectDir . '/' . $this->artifactsDir;
 
         if (!is_dir($baseDir)) {
             return 0;
@@ -400,7 +400,7 @@ class ArtifactCollectorService
         $finder->files()->in($sourcePath)->depth(0);
 
         foreach ($extensions as $ext) {
-            $finder->name('*.'.$ext);
+            $finder->name('*.' . $ext);
         }
 
         foreach ($finder as $file) {
@@ -413,7 +413,7 @@ class ArtifactCollectorService
                 continue;
             }
 
-            $targetFile = $targetPath.'/'.$file->getFilename();
+            $targetFile = $targetPath . '/' . $file->getFilename();
             $filesystem->copy($file->getRealPath(), $targetFile, true);
             $collected[] = $file->getFilename();
         }

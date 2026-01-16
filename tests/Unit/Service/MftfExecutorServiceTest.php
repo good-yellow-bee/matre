@@ -319,9 +319,9 @@ class MftfExecutorServiceTest extends TestCase
     {
         $run = $this->createTestRun();
 
-        $output = "\033[32mMOEC5157Cest:\033[0m Moec5157\n".
-                  "I am on page \"/admin\"\n".
-                  "\033[32mPASSED\033[0m\n\n".
+        $output = "\033[32mMOEC5157Cest:\033[0m Moec5157\n" .
+                  "I am on page \"/admin\"\n" .
+                  "\033[32mPASSED\033[0m\n\n" .
                   'Time: 01:00.000';
 
         $results = $this->service->parseResults($run, $output);

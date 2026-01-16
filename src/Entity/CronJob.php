@@ -198,7 +198,7 @@ class CronJob
     {
         // Truncate to 10KB to prevent excessive storage
         if (null !== $lastOutput && mb_strlen($lastOutput) > 10240) {
-            $lastOutput = mb_substr($lastOutput, 0, 10240)."\n... [truncated]";
+            $lastOutput = mb_substr($lastOutput, 0, 10240) . "\n... [truncated]";
         }
         $this->lastOutput = $lastOutput;
 

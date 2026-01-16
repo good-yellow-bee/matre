@@ -49,7 +49,7 @@ class ModuleCloneService
 
         // Handle relative paths
         if (!str_starts_with($this->devModulePath, '/')) {
-            return $this->projectDir.'/'.$this->devModulePath;
+            return $this->projectDir . '/' . $this->devModulePath;
         }
 
         return $this->devModulePath;
@@ -145,7 +145,7 @@ class ModuleCloneService
      */
     public function pullLatest(string $targetPath): void
     {
-        if (!$this->filesystem->exists($targetPath.'/.git')) {
+        if (!$this->filesystem->exists($targetPath . '/.git')) {
             throw new \RuntimeException('Target path is not a git repository');
         }
 
@@ -171,7 +171,7 @@ class ModuleCloneService
      */
     public function getDefaultTargetPath(): string
     {
-        return $this->projectDir.'/var/test-modules/current';
+        return $this->projectDir . '/var/test-modules/current';
     }
 
     /**
@@ -194,7 +194,7 @@ class ModuleCloneService
                 if (!$this->filesystem->exists($targetPath) || !is_link($targetPath)) {
                     $this->useLocalModule($targetPath);
                 }
-            } elseif ($this->filesystem->exists($targetPath.'/.git')) {
+            } elseif ($this->filesystem->exists($targetPath . '/.git')) {
                 // Existing clone: pull latest changes
                 $this->pullLatest($targetPath);
             } else {
@@ -224,7 +224,7 @@ class ModuleCloneService
      */
     public function getCommitHash(string $targetPath): ?string
     {
-        if (!$this->filesystem->exists($targetPath.'/.git')) {
+        if (!$this->filesystem->exists($targetPath . '/.git')) {
             return null;
         }
 
@@ -261,10 +261,10 @@ class ModuleCloneService
             return $this->moduleRepo;
         }
 
-        $credentials = urlencode($this->repoUsername).':'.urlencode($this->repoPassword);
+        $credentials = urlencode($this->repoUsername) . ':' . urlencode($this->repoPassword);
         $scheme = $parsed['scheme'] ?? 'https';
         $host = $parsed['host'];
-        $port = isset($parsed['port']) ? ':'.$parsed['port'] : '';
+        $port = isset($parsed['port']) ? ':' . $parsed['port'] : '';
         $path = $parsed['path'] ?? '';
 
         return sprintf('%s://%s@%s%s%s', $scheme, $credentials, $host, $port, $path);
@@ -278,7 +278,7 @@ class ModuleCloneService
         if (!empty($this->repoUsername) && !empty($this->repoPassword)) {
             // Remove credentials from output
             $output = str_replace(
-                urlencode($this->repoUsername).':'.urlencode($this->repoPassword).'@',
+                urlencode($this->repoUsername) . ':' . urlencode($this->repoPassword) . '@',
                 '***:***@',
                 $output,
             );

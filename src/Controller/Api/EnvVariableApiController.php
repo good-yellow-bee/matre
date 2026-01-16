@@ -55,7 +55,7 @@ class EnvVariableApiController extends AbstractController
 
             if ('' !== $search) {
                 $sql .= ' AND (LOWER(v.name) LIKE :search OR LOWER(v.description) LIKE :search OR LOWER(v.used_in_tests) LIKE :search)';
-                $params['search'] = '%'.mb_strtolower($search).'%';
+                $params['search'] = '%' . mb_strtolower($search) . '%';
             }
 
             $sql .= " ORDER BY v.{$sort} {$order}";
@@ -73,12 +73,12 @@ class EnvVariableApiController extends AbstractController
             ], $rawResults);
         } else {
             $qb = $this->repository->createQueryBuilder('v')
-                ->orderBy('v.'.$sort, $order);
+                ->orderBy('v.' . $sort, $order);
 
             if ('' !== $search) {
                 $qb
                     ->andWhere('LOWER(v.name) LIKE :search OR LOWER(v.description) LIKE :search OR LOWER(v.usedInTests) LIKE :search')
-                    ->setParameter('search', '%'.mb_strtolower($search).'%');
+                    ->setParameter('search', '%' . mb_strtolower($search) . '%');
             }
 
             // Filter global only (environments IS NULL)

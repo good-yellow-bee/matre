@@ -206,7 +206,7 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
     {
         return $this->createQueryBuilder('u')
             ->andWhere('u.username LIKE :query OR u.email LIKE :query')
-            ->setParameter('query', '%'.$query.'%')
+            ->setParameter('query', '%' . $query . '%')
             ->orderBy('u.username', 'ASC')
             ->setMaxResults(50)
             ->getQuery()
@@ -274,7 +274,7 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
             ->join('u.notificationEnvironments', 'env')
             ->where('u.notificationsEnabled = true')
             ->andWhere('u.isActive = true')
-            ->andWhere('u.'.$channelField.' = true')
+            ->andWhere('u.' . $channelField . ' = true')
             ->andWhere('env = :environment')
             ->setParameter('environment', $run->getEnvironment());
 

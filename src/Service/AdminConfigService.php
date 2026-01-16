@@ -186,7 +186,7 @@ class AdminConfigService
     public function getSiteSetting(string $key): mixed
     {
         $settings = $this->getSiteSettings();
-        $getter = 'get'.ucfirst($key);
+        $getter = 'get' . ucfirst($key);
 
         if (method_exists($settings, $getter)) {
             return $settings->$getter();

@@ -164,7 +164,7 @@ class EnvVariableAnalyzerService
      */
     public function getDefaultModulePath(): string
     {
-        return $this->projectDir.'/var/test-modules/current';
+        return $this->projectDir . '/var/test-modules/current';
     }
 
     /**
@@ -180,7 +180,7 @@ class EnvVariableAnalyzerService
         ];
 
         foreach ($patterns as $pattern) {
-            $testDir = rtrim($modulePath, '/').$pattern;
+            $testDir = rtrim($modulePath, '/') . $pattern;
             if (is_dir($testDir)) {
                 return $testDir;
             }
@@ -201,7 +201,7 @@ class EnvVariableAnalyzerService
         ];
 
         foreach ($patterns as $pattern) {
-            $dir = rtrim($modulePath, '/').$pattern;
+            $dir = rtrim($modulePath, '/') . $pattern;
             if (is_dir($dir)) {
                 return $dir;
             }

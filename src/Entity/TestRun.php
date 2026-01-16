@@ -307,7 +307,7 @@ class TestRun
     {
         // Truncate to 100KB
         if (null !== $output && mb_strlen($output) > 102400) {
-            $output = mb_substr($output, 0, 102400)."\n... [truncated]";
+            $output = mb_substr($output, 0, 102400) . "\n... [truncated]";
         }
         $this->output = $output;
 
@@ -349,7 +349,7 @@ class TestRun
     public function appendOutput(string $text): static
     {
         $current = $this->output ?? '';
-        $this->setOutput($current.$text);
+        $this->setOutput($current . $text);
 
         return $this;
     }

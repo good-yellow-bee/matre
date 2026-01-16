@@ -51,12 +51,12 @@ class GlobalEnvVariableRepository extends ServiceEntityRepository
     public function invalidateCache(): void
     {
         // Clear global cache
-        $this->cache->delete(self::CACHE_KEY.'_global');
+        $this->cache->delete(self::CACHE_KEY . '_global');
 
         // Clear all known environment caches
         try {
             foreach ($this->getDistinctEnvironments() as $env) {
-                $this->cache->delete(self::CACHE_KEY.'_'.$env);
+                $this->cache->delete(self::CACHE_KEY . '_' . $env);
             }
         } catch (\Throwable) {
             // Ignore cache clearing errors
@@ -154,7 +154,7 @@ class GlobalEnvVariableRepository extends ServiceEntityRepository
      */
     public function getAllAsKeyValue(?string $environment = null): array
     {
-        $cacheKey = self::CACHE_KEY.($environment ? '_'.$environment : '_global');
+        $cacheKey = self::CACHE_KEY . ($environment ? '_' . $environment : '_global');
 
         return $this->cache->get($cacheKey, function (ItemInterface $item) use ($environment): array {
             $item->expiresAfter(self::CACHE_TTL);

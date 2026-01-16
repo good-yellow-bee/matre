@@ -68,7 +68,7 @@ class PasswordResetService
         $resetRequest->setUser($user);
         $resetRequest->setToken($token);
         $resetRequest->setExpiresAt(
-            (new \DateTimeImmutable())->modify('+'.self::TOKEN_LIFETIME.' seconds'),
+            (new \DateTimeImmutable())->modify('+' . self::TOKEN_LIFETIME . ' seconds'),
         );
         $resetRequest->setIpAddress($ipAddress);
 

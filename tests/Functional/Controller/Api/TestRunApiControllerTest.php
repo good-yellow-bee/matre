@@ -54,7 +54,7 @@ class TestRunApiControllerTest extends WebTestCase
         $this->loginAsUser($client);
         $run = $this->createTestRun(status: TestRun::STATUS_RUNNING);
 
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL.'/'.$run->getId().'/cancel');
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $run->getId() . '/cancel');
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -65,7 +65,7 @@ class TestRunApiControllerTest extends WebTestCase
         $this->loginAsUser($client);
         $run = $this->createTestRun(status: TestRun::STATUS_FAILED);
 
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL.'/'.$run->getId().'/retry');
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $run->getId() . '/retry');
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -94,7 +94,7 @@ class TestRunApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsUser($client);
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'?page=1&limit=5');
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '?page=1&limit=5');
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertLessThanOrEqual(5, count($data['data']));
@@ -110,7 +110,7 @@ class TestRunApiControllerTest extends WebTestCase
         $this->createTestRun($env, TestRun::STATUS_COMPLETED);
         $this->createTestRun($env, TestRun::STATUS_FAILED);
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'?status=completed');
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '?status=completed');
         $data = $this->assertJsonResponse($response, 200);
 
         foreach ($data['data'] as $run) {
@@ -126,7 +126,7 @@ class TestRunApiControllerTest extends WebTestCase
         $this->createTestRun($env, TestRun::STATUS_PENDING, TestRun::TYPE_MFTF);
         $this->createTestRun($env, TestRun::STATUS_PENDING, TestRun::TYPE_PLAYWRIGHT);
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'?type=mftf');
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '?type=mftf');
         $data = $this->assertJsonResponse($response, 200);
 
         foreach ($data['data'] as $run) {
@@ -144,7 +144,7 @@ class TestRunApiControllerTest extends WebTestCase
         $this->loginAsUser($client);
         $run = $this->createTestRun();
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'/'.$run->getId());
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '/' . $run->getId());
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertEquals($run->getId(), $data['id']);
@@ -158,7 +158,7 @@ class TestRunApiControllerTest extends WebTestCase
         $this->loginAsUser($client);
 
         // Uses ParamConverter which returns Symfony's 404
-        $this->jsonRequest($client, 'GET', self::BASE_URL.'/99999');
+        $this->jsonRequest($client, 'GET', self::BASE_URL . '/99999');
 
         $this->assertResponseStatusCodeSame(404);
     }
@@ -174,7 +174,7 @@ class TestRunApiControllerTest extends WebTestCase
         $run = $this->createTestRun(status: TestRun::STATUS_RUNNING);
 
         // No CSRF token
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL.'/'.$run->getId().'/cancel');
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $run->getId() . '/cancel');
 
         $this->assertJsonError($response, 403, 'CSRF');
     }
@@ -203,7 +203,7 @@ class TestRunApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $run = $this->createTestRun(status: TestRun::STATUS_FAILED);
 
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL.'/'.$run->getId().'/retry');
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $run->getId() . '/retry');
 
         $this->assertJsonError($response, 403, 'CSRF');
     }

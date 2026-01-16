@@ -106,7 +106,7 @@ class LoadFixturesCommand extends Command
 
         if (!empty($groups)) {
             $arguments['--group'] = $groups;
-            $io->note('Loading fixture groups: '.implode(', ', $groups));
+            $io->note('Loading fixture groups: ' . implode(', ', $groups));
         }
 
         // Don't ask for confirmation again, we already did
