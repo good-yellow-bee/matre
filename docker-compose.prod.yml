@@ -12,6 +12,16 @@ services:
     profiles:
       - disabled
 
+  # Disable mailpit in production (using real SMTP)
+  mailpit:
+    profiles:
+      - disabled
+
+  # Disable frontend-build in production (assets pre-built)
+  frontend-build:
+    profiles:
+      - disabled
+
   # Enable production Traefik (remove profile requirement)
   traefik:
     profiles: []
@@ -21,6 +31,8 @@ services:
     environment:
       APP_ENV: prod
       APP_DEBUG: "0"
+      MAILER_DSN: ${MAILER_DSN}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
     volumes: []  # No volume mounts - use image vendor
 
   # Test workers - scale for parallel execution across environments
@@ -30,6 +42,8 @@ services:
   test-worker:
     environment:
       APP_ENV: prod
+      MAILER_DSN: ${MAILER_DSN}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./var/test-modules:/app/var/test-modules
@@ -40,6 +54,8 @@ services:
   scheduler:
     environment:
       APP_ENV: prod
+      MAILER_DSN: ${MAILER_DSN}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
     volumes: []  # No volume mounts - use image vendor
 
   nginx:
