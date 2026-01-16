@@ -409,11 +409,8 @@ class TestRunnerService
         }
 
         $totalTests = count($testNames);
-        // Count already PASSED tests (for worker restart recovery)
-        // Only count passed - failed/broken tests will be retried
-        $completedTests = $run->getResults()->filter(
-            fn ($r) => TestResult::STATUS_PASSED === $r->getStatus(),
-        )->count();
+        // Count already-executed tests (for redelivery protection - skip all existing results)
+        $completedTests = $run->getResults()->count();
 
         $this->logger->info('Resolved group tests', [
             'groupName' => $groupName,
@@ -435,15 +432,13 @@ class TestRunnerService
         $this->entityManager->flush();
 
         foreach ($testNames as $testName) {
-            // Skip tests that already have PASSED results (handles worker restart/retry)
-            // Only skip passed tests - failed/broken tests should be retried
+            // Skip tests that already have ANY result (prevents duplicates on redelivery)
             $existingResult = $run->getResults()->filter(
-                fn ($r) => ($r->getTestName() === $testName || $r->getTestId() === $testName)
-                           && TestResult::STATUS_PASSED === $r->getStatus(),
+                fn ($r) => $r->getTestName() === $testName || $r->getTestId() === $testName,
             )->first();
 
             if ($existingResult) {
-                $this->logger->info('Skipping passed test (worker restart recovery)', [
+                $this->logger->info('Skipping already-executed test (redelivery protection)', [
                     'runId' => $run->getId(),
                     'testName' => $testName,
                     'existingStatus' => $existingResult->getStatus(),

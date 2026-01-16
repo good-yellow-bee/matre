@@ -20,8 +20,8 @@ use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
 {
     private const QUEUE_PREFIX = 'test_runner_env_';
-    private const LOCK_TTL = 3600; // 1 hour
-    private const REDELIVER_AFTER_SECONDS = 900; // 15 minutes
+    private const LOCK_TTL = 21600; // 6 hours (full test suite can take 3-4 hours)
+    private const REDELIVER_AFTER_SECONDS = 14400; // 4 hours (43 tests × 5min = ~3.5 hours)
 
     /** @var array<int, LockInterface> */
     private array $activeLocks = [];
