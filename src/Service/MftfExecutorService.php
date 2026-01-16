@@ -213,7 +213,7 @@ class MftfExecutorService
         // so we must modify codeception.yml directly to use per-run subdirectory.
         $perRunOutputDir = 'allure-results/run-' . $runId;
         $parts[] = sprintf(
-            "sed -i 's|outputDirectory: allure-results$|outputDirectory: %s|' codeception.yml",
+            "sed -i 's|outputDirectory: allure-results.*|outputDirectory: %s|' codeception.yml",
             $perRunOutputDir
         );
 

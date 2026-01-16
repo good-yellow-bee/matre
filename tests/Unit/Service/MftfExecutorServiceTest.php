@@ -22,27 +22,32 @@ use Psr\Log\LoggerInterface;
  */
 class MftfExecutorServiceTest extends TestCase
 {
-    private MockObject&LoggerInterface $logger;
+    private LoggerInterface $logger;
 
-    private MockObject&GlobalEnvVariableRepository $envRepository;
+    private GlobalEnvVariableRepository $envRepository;
 
-    private MockObject&ShellEscapeService $shellEscapeService;
+    private ShellEscapeService $shellEscapeService;
 
-    private MockObject&MagentoContainerPoolService $containerPool;
+    private MagentoContainerPoolService $containerPool;
 
     private MftfExecutorService $service;
 
     protected function setUp(): void
     {
-        $this->logger = $this->createMock(LoggerInterface::class);
-        $this->envRepository = $this->createMock(GlobalEnvVariableRepository::class);
-        $this->shellEscapeService = $this->createMock(ShellEscapeService::class);
-        $this->containerPool = $this->createMock(MagentoContainerPoolService::class);
+        $this->logger = $this->createStub(LoggerInterface::class);
+        $this->envRepository = $this->createStub(GlobalEnvVariableRepository::class);
+        $this->shellEscapeService = $this->createStub(ShellEscapeService::class);
+        $this->containerPool = $this->createStub(MagentoContainerPoolService::class);
 
         // Mock container pool to return a fixed container name
         $this->containerPool->method('getContainerForEnvironment')
             ->willReturn('matre_magento_env_1');
 
+        $this->rebuildService();
+    }
+
+    private function rebuildService(): void
+    {
         $this->service = new MftfExecutorService(
             $this->logger,
             $this->envRepository,
@@ -54,6 +59,36 @@ class MftfExecutorServiceTest extends TestCase
             '/var/www/html',
             'app/code/SiiPoland/Catalog',
         );
+    }
+
+    private function mockLogger(): LoggerInterface
+    {
+        if (!$this->logger instanceof MockObject) {
+            $this->logger = $this->createMock(LoggerInterface::class);
+            $this->rebuildService();
+        }
+
+        return $this->logger;
+    }
+
+    private function mockEnvRepository(): GlobalEnvVariableRepository
+    {
+        if (!$this->envRepository instanceof MockObject) {
+            $this->envRepository = $this->createMock(GlobalEnvVariableRepository::class);
+            $this->rebuildService();
+        }
+
+        return $this->envRepository;
+    }
+
+    private function mockShellEscapeService(): ShellEscapeService
+    {
+        if (!$this->shellEscapeService instanceof MockObject) {
+            $this->shellEscapeService = $this->createMock(ShellEscapeService::class);
+            $this->rebuildService();
+        }
+
+        return $this->shellEscapeService;
     }
 
     // =====================
@@ -109,7 +144,7 @@ class MftfExecutorServiceTest extends TestCase
     {
         $run = $this->createTestRun('MOEC5157Cest', 1);
 
-        $this->envRepository->expects($this->once())
+        $this->mockEnvRepository()->expects($this->once())
             ->method('getAllAsKeyValue')
             ->willReturn([]);
 
@@ -124,7 +159,7 @@ class MftfExecutorServiceTest extends TestCase
     {
         $run = $this->createTestRun('AdminLoginTest', 1);
 
-        $this->envRepository->expects($this->once())
+        $this->mockEnvRepository()->expects($this->once())
             ->method('getAllAsKeyValue')
             ->willReturn([]);
 
@@ -137,12 +172,12 @@ class MftfExecutorServiceTest extends TestCase
     {
         $run = $this->createTestRun('MOEC5157Cest', 1);
 
-        $this->envRepository->expects($this->once())
+        $this->mockEnvRepository()->expects($this->once())
             ->method('getAllAsKeyValue')
             ->willReturn([]);
 
         // 2 calls: SELENIUM_HOST and SELENIUM_PORT
-        $this->shellEscapeService->expects($this->exactly(2))
+        $this->mockShellEscapeService()->expects($this->exactly(2))
             ->method('buildEnvFileLine')
             ->willReturnCallback(function ($key, $value) {
                 return "{$key}={$value}";
@@ -158,7 +193,7 @@ class MftfExecutorServiceTest extends TestCase
     {
         $run = $this->createTestRun('MOEC5157Cest', 1);
 
-        $this->envRepository->expects($this->once())
+        $this->mockEnvRepository()->expects($this->once())
             ->method('getAllAsKeyValue')
             ->with('stage-us')
             ->willReturn([
@@ -166,7 +201,7 @@ class MftfExecutorServiceTest extends TestCase
                 'MAGENTO_ADMIN_USERNAME' => 'admin',
             ]);
 
-        $this->shellEscapeService->expects($this->atLeastOnce())
+        $this->mockShellEscapeService()->expects($this->atLeastOnce())
             ->method('buildEnvFileLine')
             ->willReturnCallback(function ($key, $value) {
                 return "{$key}=\"{$value}\"";
@@ -181,14 +216,14 @@ class MftfExecutorServiceTest extends TestCase
     {
         $run = $this->createTestRun('MOEC5157Cest', 1);
 
-        $this->envRepository->expects($this->once())
+        $this->mockEnvRepository()->expects($this->once())
             ->method('getAllAsKeyValue')
             ->willReturn([
                 'VALID_VAR' => 'value',
                 'INVALID_VAR' => 'bad value',
             ]);
 
-        $this->shellEscapeService->expects($this->atLeast(3))
+        $this->mockShellEscapeService()->expects($this->atLeast(3))
             ->method('buildEnvFileLine')
             ->willReturnCallback(function ($key, $value) {
                 if ('INVALID_VAR' === $key) {
@@ -198,7 +233,7 @@ class MftfExecutorServiceTest extends TestCase
                 return "{$key}=\"{$value}\"";
             });
 
-        $this->logger->expects($this->once())
+        $this->mockLogger()->expects($this->once())
             ->method('warning')
             ->with('Skipping invalid environment variable', $this->anything());
 
@@ -211,7 +246,7 @@ class MftfExecutorServiceTest extends TestCase
     {
         $run = $this->createTestRun('MOEC5157Cest', 42);
 
-        $this->envRepository->expects($this->once())
+        $this->mockEnvRepository()->expects($this->once())
             ->method('getAllAsKeyValue')
             ->willReturn([]);
 
@@ -227,7 +262,7 @@ class MftfExecutorServiceTest extends TestCase
     {
         $run = $this->createTestRun('MOEC5157Cest', 1);
 
-        $this->envRepository->expects($this->once())
+        $this->mockEnvRepository()->expects($this->once())
             ->method('getAllAsKeyValue')
             ->willReturn([]);
 
@@ -239,7 +274,7 @@ class MftfExecutorServiceTest extends TestCase
         $this->assertStringContainsString('AllureCodeception', $command);
 
         // Should set per-run outputDirectory for Allure result isolation
-        $this->assertStringContainsString("sed -i 's|outputDirectory: allure-results\$|outputDirectory: allure-results/run-1|'", $command);
+        $this->assertStringContainsString("sed -i 's|outputDirectory: allure-results.*|outputDirectory: allure-results/run-1|'", $command);
     }
 
     // =====================
