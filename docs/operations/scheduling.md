@@ -136,7 +136,7 @@ In Docker environment, the `matre_scheduler` container handles all scheduling au
 ```yaml
 # docker-compose.yml
 scheduler:
-  command: php bin/console messenger:consume scheduler_cron --time-limit=60 -vv
+  command: php bin/console messenger:consume scheduler_test_runner scheduler_cron scheduled_test_messages --time-limit=60 -vv
   restart: unless-stopped
 ```
 
@@ -154,7 +154,7 @@ php bin/console app:cron:install --show-only
 
 Output:
 ```
-* * * * * cd /path/to/matre && php bin/console messenger:consume scheduler_cron --time-limit=55 >> var/log/scheduler.log 2>&1
+* * * * * cd /path/to/matre && php bin/console messenger:consume scheduler_test_runner scheduler_cron scheduled_test_messages --time-limit=55 >> var/log/scheduler.log 2>&1
 ```
 
 #### Install to Crontab
