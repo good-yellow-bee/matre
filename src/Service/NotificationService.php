@@ -24,7 +24,20 @@ class NotificationService
         private readonly LoggerInterface $logger,
         private readonly string $slackWebhookUrl,
         private readonly string $mailFrom = 'noreply@matre.local',
+        private readonly string $allurePublicUrl = '',
     ) {
+    }
+
+    /**
+     * Generate Allure report URL for environment.
+     */
+    private function getAllureReportUrl(string $envName): string
+    {
+        if (empty($this->allurePublicUrl)) {
+            return '';
+        }
+
+        return $this->allurePublicUrl . '/allure-docker-service/projects/' . $envName . '/reports/latest/index.html';
     }
 
     /**
@@ -205,17 +218,14 @@ class NotificationService
             ];
         }
 
-        // Add report link if available
-        $reports = $run->getReports();
-        if (!$reports->isEmpty()) {
-            $report = $reports->first();
-            if ($report && $report->getPublicUrl()) {
-                $fields[] = [
-                    'title' => 'Report',
-                    'value' => '<' . $report->getPublicUrl() . '|View Allure Report>',
-                    'short' => false,
-                ];
-            }
+        // Add Allure report link
+        $allureUrl = $this->getAllureReportUrl($env->getName());
+        if ($allureUrl) {
+            $fields[] = [
+                'title' => 'Report',
+                'value' => '<' . $allureUrl . '|View Allure Report>',
+                'short' => false,
+            ];
         }
 
         return [
@@ -290,13 +300,10 @@ class NotificationService
             $html .= '</ul>';
         }
 
-        // Add report link
-        $reports = $run->getReports();
-        if (!$reports->isEmpty()) {
-            $report = $reports->first();
-            if ($report && $report->getPublicUrl()) {
-                $html .= '<p><a href="' . htmlspecialchars($report->getPublicUrl()) . '">View Allure Report</a></p>';
-            }
+        // Add Allure report link
+        $allureUrl = $this->getAllureReportUrl($env->getName());
+        if ($allureUrl) {
+            $html .= '<p><a href="' . htmlspecialchars($allureUrl) . '">View Allure Report</a></p>';
         }
 
         if ($run->getErrorMessage()) {
