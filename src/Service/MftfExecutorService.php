@@ -208,9 +208,14 @@ class MftfExecutorService
         // Check for "- Qameta" with 8-space indent (enabled list format), add if missing.
         $parts[] = "grep -q '^        - Qameta' codeception.yml || sed -i '/Subscriber.Console/a\\        - Qameta\\\\Allure\\\\Codeception\\\\AllureCodeception' codeception.yml";
 
-        // MFTF fix: Remove hardcoded outputDirectory so ALLURE_OUTPUT_PATH env var takes effect.
-        // Without this, codeception.yml's outputDirectory config takes precedence over env var.
-        $parts[] = "sed -i '/outputDirectory: allure-results/d' codeception.yml";
+        // MFTF fix: Set per-run outputDirectory for Allure result isolation.
+        // allure-framework/allure-codeception doesn't support ALLURE_OUTPUT_PATH env var,
+        // so we must modify codeception.yml directly to use per-run subdirectory.
+        $perRunOutputDir = 'allure-results/run-' . $runId;
+        $parts[] = sprintf(
+            "sed -i 's|outputDirectory: allure-results$|outputDirectory: %s|' codeception.yml",
+            $perRunOutputDir
+        );
 
         // Build .env file with layered configuration:
         // 1. Global variables (shared across all environments)
@@ -259,18 +264,10 @@ class MftfExecutorService
         $parts[] = sprintf('echo %s >> %s', escapeshellarg($seleniumHostLine), escapeshellarg($mftfEnvFile));
         $parts[] = sprintf('echo %s >> %s', escapeshellarg($seleniumPortLine), escapeshellarg($mftfEnvFile));
 
-        // Layer 3: Set per-run Allure output path for result isolation
-        // This prevents concurrent runs from polluting each other's results
-        $allureOutputPath = $this->magentoRoot . '/dev/tests/acceptance/allure-results/run-' . $runId;
-        $allureOutputLine = $this->shellEscapeService->buildEnvFileLine('ALLURE_OUTPUT_PATH', $allureOutputPath);
-        $parts[] = sprintf('echo %s >> %s', escapeshellarg($allureOutputLine), escapeshellarg($mftfEnvFile));
-
         // Create per-run Allure output directory before MFTF runs
+        // (codeception.yml outputDirectory is set via sed earlier in this command)
+        $allureOutputPath = $this->magentoRoot . '/dev/tests/acceptance/allure-results/run-' . $runId;
         $parts[] = sprintf('mkdir -p %s', escapeshellarg($allureOutputPath));
-
-        // Export ALLURE_OUTPUT_PATH to shell environment so AllureCodeception's getenv() finds it
-        // (Codeception params from .env are NOT exported to PHP environment)
-        $parts[] = sprintf('export ALLURE_OUTPUT_PATH=%s', escapeshellarg($allureOutputPath));
 
         // Generate credentials file from env variables (MFTF requires this for _CREDS references)
         $credentialsFile = $envConfigDir . '/.credentials';

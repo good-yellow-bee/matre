@@ -141,8 +141,8 @@ class MftfExecutorServiceTest extends TestCase
             ->method('getAllAsKeyValue')
             ->willReturn([]);
 
-        // Now 3 calls: SELENIUM_HOST, SELENIUM_PORT, and ALLURE_OUTPUT_PATH
-        $this->shellEscapeService->expects($this->exactly(3))
+        // 2 calls: SELENIUM_HOST and SELENIUM_PORT
+        $this->shellEscapeService->expects($this->exactly(2))
             ->method('buildEnvFileLine')
             ->willReturnCallback(function ($key, $value) {
                 return "{$key}={$value}";
@@ -152,7 +152,6 @@ class MftfExecutorServiceTest extends TestCase
 
         $this->assertStringContainsString('SELENIUM_HOST', $command);
         $this->assertStringContainsString('SELENIUM_PORT', $command);
-        $this->assertStringContainsString('ALLURE_OUTPUT_PATH', $command);
     }
 
     public function testBuildCommandWithGlobalEnvVariables(): void
@@ -239,8 +238,8 @@ class MftfExecutorServiceTest extends TestCase
         $this->assertStringContainsString('sed -i', $command);
         $this->assertStringContainsString('AllureCodeception', $command);
 
-        // Should remove hardcoded outputDirectory so ALLURE_OUTPUT_PATH env var works
-        $this->assertStringContainsString("sed -i '/outputDirectory: allure-results/d'", $command);
+        // Should set per-run outputDirectory for Allure result isolation
+        $this->assertStringContainsString("sed -i 's|outputDirectory: allure-results\$|outputDirectory: allure-results/run-1|'", $command);
     }
 
     // =====================
