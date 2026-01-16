@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\TestResult;
+use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Finder\Finder;
 
@@ -13,6 +14,7 @@ class AllureStepParserService
     public function __construct(
         private readonly string $projectDir,
         private readonly LoggerInterface $logger,
+        private readonly EntityManagerInterface $entityManager,
     ) {
     }
 
@@ -142,6 +144,12 @@ class AllureStepParserService
         ]);
 
         if (empty($matchingFiles)) {
+            // Strategy 4: Exclusion-based matching for "Unknown" tests
+            // Find Allure files that don't match any other test in this run
+            if ('Unknown' === $testName) {
+                return $this->findUnmatchedAllureFile($result, $runDir);
+            }
+
             return null;
         }
 
@@ -151,6 +159,88 @@ class AllureStepParserService
         $this->logger->debug('Allure: Returning file', ['path' => $matchingFiles[0]['path']]);
 
         return $matchingFiles[0]['path'];
+    }
+
+    /**
+     * Find unmatched Allure file by exclusion for "Unknown" tests.
+     * Collects testIds from other results in the run and returns first unmatched Allure file.
+     */
+    private function findUnmatchedAllureFile(TestResult $result, string $runDir): ?string
+    {
+        $testRun = $result->getTestRun();
+        if (!$testRun) {
+            return null;
+        }
+
+        // Collect testIds from other results in this run
+        $knownTestIds = [];
+        foreach ($testRun->getResults() as $otherResult) {
+            if ($otherResult->getId() === $result->getId()) {
+                continue;
+            }
+            if ($testId = $otherResult->getTestId()) {
+                $knownTestIds[] = strtoupper($testId);
+            }
+        }
+
+        $this->logger->debug('Allure: Exclusion matching for Unknown test', [
+            'knownTestIds' => $knownTestIds,
+            'runDir' => $runDir,
+        ]);
+
+        $finder = new Finder();
+        $finder->files()->in($runDir)->name('*-result.json');
+
+        $unmatchedFiles = [];
+
+        foreach ($finder as $file) {
+            $content = file_get_contents($file->getRealPath());
+            if (!$content) {
+                continue;
+            }
+
+            $data = json_decode($content, true);
+            if (!$data) {
+                continue;
+            }
+
+            // Extract testId from this Allure file
+            $allureTestId = $this->extractTestId($data['name'] ?? '');
+            if (!$allureTestId) {
+                $allureTestId = $this->extractTestId($data['fullName'] ?? '');
+            }
+
+            // Skip if this Allure file matches a known testId
+            if ($allureTestId && in_array(strtoupper($allureTestId), $knownTestIds, true)) {
+                continue;
+            }
+
+            // This file doesn't match any known test - potential match
+            $unmatchedFiles[] = [
+                'path' => $file->getRealPath(),
+                'mtime' => $file->getMTime(),
+                'testId' => $allureTestId,
+                'fullName' => $data['fullName'] ?? null,
+            ];
+        }
+
+        $this->logger->debug('Allure: Exclusion search complete', [
+            'unmatchedCount' => count($unmatchedFiles),
+        ]);
+
+        if (empty($unmatchedFiles)) {
+            return null;
+        }
+
+        // Prefer most recent unmatched file
+        usort($unmatchedFiles, fn ($a, $b) => $b['mtime'] <=> $a['mtime']);
+
+        $this->logger->debug('Allure: Returning unmatched file', [
+            'path' => $unmatchedFiles[0]['path'],
+            'testId' => $unmatchedFiles[0]['testId'],
+        ]);
+
+        return $unmatchedFiles[0]['path'];
     }
 
     /**
@@ -170,6 +260,13 @@ class AllureStepParserService
             return $this->createEmptyResponse($result, 'Invalid JSON in Allure file');
         }
 
+        // Backfill testId/testName for "Unknown" tests from Allure data
+        $testName = $result->getTestName();
+        if ('Unknown' === $testName) {
+            $this->backfillTestInfo($result, $data);
+            $testName = $result->getTestName(); // Get updated name
+        }
+
         $steps = $data['steps'] ?? [];
         $parsedSteps = $this->parseSteps($steps);
         $parsedSteps = $this->buildHierarchy($parsedSteps);
@@ -185,12 +282,52 @@ class AllureStepParserService
         }
 
         return [
-            'testName' => $result->getTestName(),
+            'testName' => $testName,
             'status' => $data['status'] ?? $result->getStatus(),
             'duration' => $duration,
             'steps' => $parsedSteps,
             'error' => $error,
         ];
+    }
+
+    /**
+     * Backfill testId and testName from Allure data for "Unknown" tests.
+     * Persists the extracted info to database for future lookups.
+     */
+    private function backfillTestInfo(TestResult $result, array $allureData): void
+    {
+        $fullName = $allureData['fullName'] ?? '';
+        $allureName = $allureData['name'] ?? '';
+
+        // Extract testId from Allure data
+        $testId = $this->extractTestId($allureName) ?? $this->extractTestId($fullName);
+
+        if (!$testId) {
+            return;
+        }
+
+        // Extract Cest class and method from fullName
+        // Format: "Magento\AcceptanceTest\_default\Backend\MOEC2606Cest::MOEC2606"
+        $testName = null;
+        if (preg_match('/([A-Z][A-Za-z0-9]+Cest)::(\w+)/', $fullName, $matches)) {
+            $testName = $matches[1] . ':' . $matches[2];
+        }
+
+        $this->logger->debug('Allure: Backfilling test info', [
+            'resultId' => $result->getId(),
+            'extractedTestId' => $testId,
+            'extractedTestName' => $testName,
+        ]);
+
+        // Update the entity
+        $result->setTestId($testId);
+        if ($testName) {
+            $result->setTestName($testName);
+        }
+
+        // Persist to database
+        $this->entityManager->persist($result);
+        $this->entityManager->flush();
     }
 
     /**

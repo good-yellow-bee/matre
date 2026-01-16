@@ -191,11 +191,6 @@ class UserApiController extends AbstractController
             return $this->json(['error' => 'User not found'], 404);
         }
 
-        // Prevent users from modifying themselves
-        if ($user === $this->getUser()) {
-            return $this->json(['error' => 'You cannot modify your own account via this endpoint'], 400);
-        }
-
         $data = json_decode($request->getContent(), true);
 
         // Validate input
