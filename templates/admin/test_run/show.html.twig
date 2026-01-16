@@ -753,6 +753,41 @@
             }
             stepsContainer.textContent = '';
         });
+
+        // Listen for test name updates (backfilled from Allure)
+        window.addEventListener('test-name-updated', (e) => {
+            const { testName, apiUrl } = e.detail;
+            if (!testName || testName === 'Unknown') return;
+
+            // Update modal title
+            const textNode = modalTitleText.lastChild;
+            if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+                textNode.textContent = testName;
+            }
+
+            // Update table row and button data
+            const btn = document.querySelector(`.btn-steps[data-api-url="${apiUrl}"]`);
+            if (btn) {
+                btn.dataset.testName = testName;
+                const row = btn.closest('tr');
+                if (row) {
+                    const nameCell = row.querySelector('td:first-child');
+                    if (nameCell) {
+                        // Preserve the testId small tag if exists
+                        const small = nameCell.querySelector('small');
+                        const historyLink = nameCell.querySelector('a');
+                        nameCell.textContent = testName;
+                        if (small) {
+                            nameCell.appendChild(document.createElement('br'));
+                            nameCell.appendChild(small);
+                        }
+                        if (historyLink) {
+                            nameCell.appendChild(historyLink);
+                        }
+                    }
+                }
+            }
+        });
     </script>
 
     {# Output Modal for sequential group runs #}

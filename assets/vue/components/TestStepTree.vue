@@ -110,6 +110,13 @@ const fetchSteps = async () => {
     if (data.error && !data.steps?.length) {
       error.value = data.error;
     }
+
+    // Emit event if test name was updated (backfilled from Allure)
+    if (testName.value && testName.value !== 'Unknown') {
+      window.dispatchEvent(new CustomEvent('test-name-updated', {
+        detail: { testName: testName.value, apiUrl: props.apiUrl }
+      }));
+    }
   } catch (e) {
     error.value = `Failed to load steps: ${e.message}`;
   } finally {
