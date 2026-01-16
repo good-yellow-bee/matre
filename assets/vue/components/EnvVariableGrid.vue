@@ -285,20 +285,15 @@ MAGENTO_VERSION=2.4.6"
       </div>
     </div>
 
-    <!-- Toast Notification -->
-    <div
-      v-if="toast.show"
-      :class="['toast-notification', `toast-${toast.type}`]"
-      role="alert"
-    >
-      {{ toast.message }}
-    </div>
+    <ToastNotification />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { useEnvVariableGrid } from '../composables/useEnvVariableGrid.js';
+import { useToast } from '../composables/useToast.js';
+import ToastNotification from './ToastNotification.vue';
 
 // Bootstrap is loaded globally via CDN
 const Dropdown = window.bootstrap?.Dropdown;
@@ -337,9 +332,10 @@ const {
   setGlobal,
 } = useEnvVariableGrid(props.apiUrl, props.csrfToken);
 
+const { showToast } = useToast();
+
 const showImportModal = ref(false);
 const importContent = ref('');
-const toast = ref({ show: false, message: '', type: 'success' });
 
 const sort = (field) => {
   doSort(field);
@@ -414,13 +410,6 @@ const handleImport = async () => {
   } else {
     showToast(result.message, 'error');
   }
-};
-
-const showToast = (message, type = 'success') => {
-  toast.value = { show: true, message, type };
-  setTimeout(() => {
-    toast.value.show = false;
-  }, 3000);
 };
 
 // Initialize Bootstrap dropdowns with fixed positioning to escape overflow containers
@@ -505,37 +494,6 @@ onUnmounted(() => {
 
 .modal.show {
   display: block;
-}
-
-.toast-notification {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  padding: 12px 24px;
-  border-radius: 8px;
-  color: white;
-  font-weight: 500;
-  z-index: 9999;
-  animation: slideIn 0.3s ease-out;
-}
-
-.toast-success {
-  background-color: #10b981;
-}
-
-.toast-error {
-  background-color: #ef4444;
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
 }
 
 /* Environment dropdown styles */

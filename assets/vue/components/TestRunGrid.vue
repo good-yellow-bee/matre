@@ -196,20 +196,15 @@
       </a>
     </div>
 
-    <!-- Toast Notification -->
-    <div
-      v-if="toast.show"
-      :class="['toast-notification', `toast-${toast.type}`]"
-      role="alert"
-    >
-      {{ toast.message }}
-    </div>
+    <ToastNotification />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useTestRunGrid } from '../composables/useTestRunGrid.js';
+import { useToast } from '../composables/useToast.js';
+import ToastNotification from './ToastNotification.vue';
 
 const props = defineProps({
   apiUrl: {
@@ -237,6 +232,8 @@ const {
   goToPage,
 } = useTestRunGrid(props.apiUrl, props.csrfToken);
 
+const { showToast } = useToast();
+
 const filters = ref({
   status: '',
   type: '',
@@ -245,7 +242,6 @@ const filters = ref({
 const autoRefresh = ref(true);
 const cancelling = ref(null);
 const retrying = ref(null);
-const toast = ref({ show: false, message: '', type: 'success' });
 let refreshInterval = null;
 
 const applyFilters = () => {
@@ -336,13 +332,6 @@ const visiblePages = computed(() => {
   return pagesArr;
 });
 
-const showToast = (message, type = 'success') => {
-  toast.value = { show: true, message, type };
-  setTimeout(() => {
-    toast.value.show = false;
-  }, 3000);
-};
-
 // Visibility API handler - pause polling when tab is hidden
 const isTabVisible = ref(true);
 const handleVisibilityChange = () => {
@@ -401,36 +390,5 @@ onUnmounted(() => {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
-}
-
-.toast-notification {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  padding: 12px 24px;
-  border-radius: 8px;
-  color: white;
-  font-weight: 500;
-  z-index: 9999;
-  animation: slideIn 0.3s ease-out;
-}
-
-.toast-success {
-  background-color: #10b981;
-}
-
-.toast-error {
-  background-color: #ef4444;
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
 }
 </style>

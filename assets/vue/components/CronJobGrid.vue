@@ -217,20 +217,15 @@
       </div>
     </div>
 
-    <!-- Toast Notification -->
-    <div
-      v-if="toast.show"
-      :class="['toast-notification', `toast-${toast.type}`]"
-      role="alert"
-    >
-      {{ toast.message }}
-    </div>
+    <ToastNotification />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useCronJobGrid } from '../composables/useCronJobGrid.js';
+import { useToast } from '../composables/useToast.js';
+import ToastNotification from './ToastNotification.vue';
 
 const props = defineProps({
   apiUrl: {
@@ -261,12 +256,13 @@ const {
   deleteJob,
 } = useCronJobGrid(props.apiUrl, props.csrfToken);
 
+const { showToast } = useToast();
+
 const perPage = ref(10);
 const totalItems = computed(() => jobs.value.length > 0 ? totalPages.value * perPage.value : 0);
 const jobToDelete = ref(null);
 const deleting = ref(false);
 const runningJob = ref(null);
-const toast = ref({ show: false, message: '', type: 'success' });
 let searchTimeout = null;
 
 // Search with debounce
@@ -383,14 +379,6 @@ const visiblePages = computed(() => {
   return pagesArr;
 });
 
-// Toast
-const showToast = (message, type = 'success') => {
-  toast.value = { show: true, message, type };
-  setTimeout(() => {
-    toast.value.show = false;
-  }, 3000);
-};
-
 onMounted(() => {
   fetchJobs();
 });
@@ -438,36 +426,5 @@ onMounted(() => {
 
 .modal.show {
   display: block;
-}
-
-.toast-notification {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  padding: 12px 24px;
-  border-radius: 8px;
-  color: white;
-  font-weight: 500;
-  z-index: 9999;
-  animation: slideIn 0.3s ease-out;
-}
-
-.toast-success {
-  background-color: #10b981;
-}
-
-.toast-error {
-  background-color: #ef4444;
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
 }
 </style>

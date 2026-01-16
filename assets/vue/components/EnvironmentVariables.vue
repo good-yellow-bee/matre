@@ -152,20 +152,21 @@ ANOTHER_VAR=another_value"
       </div>
     </div>
 
-    <!-- Toast -->
-    <div v-if="toast.show" :class="['toast-notification', `toast-${toast.type}`]">
-      {{ toast.message }}
-    </div>
+    <ToastNotification />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { useToast } from '../composables/useToast.js';
+import ToastNotification from './ToastNotification.vue';
 
 const props = defineProps({
   apiUrl: { type: String, required: true },
   csrfToken: { type: String, required: true },
 });
+
+const { showToast } = useToast();
 
 const globalVariables = ref([]);
 const envVariables = ref([]);
@@ -173,7 +174,6 @@ const loading = ref(false);
 const saving = ref(false);
 const showImportModal = ref(false);
 const importContent = ref('');
-const toast = ref({ show: false, message: '', type: 'success' });
 
 const hasChanges = computed(() => envVariables.value.some(v => v._dirty));
 
@@ -294,11 +294,6 @@ const truncate = (str, len) => {
   return str.length > len ? str.slice(0, len) + '...' : str;
 };
 
-const showToast = (message, type) => {
-  toast.value = { show: true, message, type };
-  setTimeout(() => toast.value.show = false, 3000);
-};
-
 onMounted(fetchVariables);
 </script>
 
@@ -307,20 +302,6 @@ onMounted(fetchVariables);
   font-family: 'SF Mono', SFMono-Regular, ui-monospace, monospace;
   font-size: 0.85rem;
 }
-
-.toast-notification {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  padding: 12px 24px;
-  border-radius: 8px;
-  color: white;
-  font-weight: 500;
-  z-index: 9999;
-}
-
-.toast-success { background-color: #10b981; }
-.toast-error { background-color: #ef4444; }
 
 .modal.show { display: block; }
 </style>

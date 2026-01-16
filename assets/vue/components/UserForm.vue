@@ -312,22 +312,16 @@
       </div>
     </form>
 
-    <!-- Toast Notification -->
-    <div
-      v-if="toast.show"
-      :class="['toast-notification', `toast-${toast.type}`]"
-      role="alert"
-    >
-      <i :class="['bi', toastIcon, 'me-2']"></i>
-      {{ toast.message }}
-    </div>
+    <ToastNotification />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useUserForm } from '../composables/useUserForm.js';
+import { useToast } from '../composables/useToast.js';
 import PasswordStrength from './PasswordStrength.vue';
+import ToastNotification from './ToastNotification.vue';
 
 const props = defineProps({
   userId: {
@@ -360,6 +354,8 @@ const {
   clearErrors,
 } = useUserForm(props.apiUrl);
 
+const { showToast } = useToast();
+
 const isEditMode = computed(() => !!props.userId);
 const usernameValid = ref(false);
 const usernameValidMessage = ref('');
@@ -368,7 +364,6 @@ const emailValid = ref(false);
 const emailValidMessage = ref('');
 const validatingEmail = ref(false);
 const showPassword = ref(false);
-const toast = ref({ show: false, message: '', type: 'success' });
 const originalData = ref(null);
 const environments = ref([]);
 
@@ -549,23 +544,6 @@ const handleSubmit = async () => {
   } else {
     showToast(result.message || 'An error occurred', 'error');
   }
-};
-
-// Toast helpers
-const toastIcon = computed(() => {
-  switch (toast.value.type) {
-    case 'success': return 'bi-check-circle-fill';
-    case 'error': return 'bi-exclamation-circle-fill';
-    case 'warning': return 'bi-exclamation-triangle-fill';
-    default: return 'bi-info-circle-fill';
-  }
-});
-
-const showToast = (message, type = 'success') => {
-  toast.value = { show: true, message, type };
-  setTimeout(() => {
-    toast.value.show = false;
-  }, 3000);
 };
 
 // Fetch available environments
@@ -963,47 +941,6 @@ onMounted(async () => {
   color: #991b1b;
   padding: 1rem;
   font-size: 0.875rem;
-}
-
-/* Toast Notification */
-.toast-notification {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  padding: 1rem 1.5rem;
-  border-radius: 10px;
-  color: white;
-  font-weight: 500;
-  font-size: 0.875rem;
-  z-index: 9999;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-  animation: slideIn 0.3s ease-out;
-  display: flex;
-  align-items: center;
-  max-width: 400px;
-}
-
-.toast-success {
-  background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
-}
-
-.toast-error {
-  background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%);
-}
-
-.toast-warning {
-  background: linear-gradient(135deg, var(--warning) 0%, #d97706 100%);
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
 }
 
 /* Loading Spinner */
