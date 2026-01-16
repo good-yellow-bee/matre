@@ -60,7 +60,7 @@ class CronInstallCommand extends Command
                 '  build:',
                 '    context: .',
                 '    target: app_dev',
-                '  command: php bin/console messenger:consume scheduler_cron --time-limit=60',
+                '  command: php bin/console messenger:consume scheduler_test_runner scheduler_cron scheduled_test_messages --time-limit=55',
                 '  restart: unless-stopped',
                 '  # ... (copy volumes, env_file, networks from php service)',
             ]);
@@ -73,7 +73,7 @@ class CronInstallCommand extends Command
         $logPath = $this->projectDir . '/var/log/cron.log';
 
         $cronEntry = sprintf(
-            '* * * * * cd %s && %s %s messenger:consume scheduler_cron --time-limit=60 >> %s 2>&1 # %s',
+            '* * * * * cd %s && %s %s messenger:consume scheduler_test_runner scheduler_cron scheduled_test_messages --time-limit=55 >> %s 2>&1 # %s',
             $this->projectDir,
             $phpBin,
             $consolePath,

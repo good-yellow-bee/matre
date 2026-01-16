@@ -104,7 +104,7 @@ docker-compose exec php php bin/console app:test:run <type> <environment> [optio
 | Argument | Values | Description |
 |----------|--------|-------------|
 | type | `mftf`, `playwright`, `both` | Test framework to execute |
-| environment | environment code | Target environment (e.g., `staging`, `production`) |
+| environment | environment name | Target environment (e.g., `dev-us`, `staging-us`) |
 
 **Options:**
 | Option | Example | Description |
@@ -173,7 +173,7 @@ docker-compose exec php php bin/console app:test:run mftf staging --filter=Admin
 
 See [API Reference](api-reference.md#test-runs) for programmatic access:
 
-- `POST /api/test-runs` - Create new run
+- `GET /api/test-runs` - List test runs
 - `GET /api/test-runs/{id}` - Get run details
 - `POST /api/test-runs/{id}/cancel` - Cancel running test
 - `POST /api/test-runs/{id}/retry` - Retry failed test
