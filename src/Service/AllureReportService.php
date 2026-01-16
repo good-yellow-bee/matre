@@ -80,9 +80,19 @@ class AllureReportService
     public function mergeResults(array $sourcePaths, string $targetPath): void
     {
         $this->filesystem->mkdir($targetPath);
+        $normalizedTarget = rtrim(realpath($targetPath) ?: $targetPath, '/');
 
         foreach ($sourcePaths as $sourcePath) {
             if (!$this->filesystem->exists($sourcePath)) {
+                continue;
+            }
+
+            // Skip self-copy (prevents file truncation when source == target)
+            $normalizedSource = rtrim(realpath($sourcePath) ?: $sourcePath, '/');
+            if ($normalizedSource === $normalizedTarget) {
+                $this->logger->debug('Skipping self-copy for Allure results', [
+                    'path' => $sourcePath,
+                ]);
                 continue;
             }
 
