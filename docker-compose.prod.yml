@@ -28,6 +28,8 @@ services:
 
   # Production optimizations - use image vendor, no bind mounts
   php:
+    depends_on:
+      - db
     environment:
       APP_ENV: prod
       APP_DEBUG: "0"
