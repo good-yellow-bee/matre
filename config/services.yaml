@@ -96,6 +96,7 @@ services:
     App\Service\NotificationService:
         arguments:
             $slackWebhookUrl: '%env(SLACK_WEBHOOK_URL)%'
+            $mailFrom: '%env(MAIL_FROM)%'
 
     App\Command\CleanupTestsCommand:
         arguments:

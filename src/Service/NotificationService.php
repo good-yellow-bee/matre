@@ -23,6 +23,7 @@ class NotificationService
         private readonly MailerInterface $mailer,
         private readonly LoggerInterface $logger,
         private readonly string $slackWebhookUrl,
+        private readonly string $mailFrom = 'noreply@matre.local',
     ) {
     }
 
@@ -77,6 +78,7 @@ class NotificationService
 
         try {
             $email = (new Email())
+                ->from($this->mailFrom)
                 ->subject($subject)
                 ->html($body);
 
