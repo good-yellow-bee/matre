@@ -268,6 +268,10 @@ class MftfExecutorService
         // Create per-run Allure output directory before MFTF runs
         $parts[] = sprintf('mkdir -p %s', escapeshellarg($allureOutputPath));
 
+        // Export ALLURE_OUTPUT_PATH to shell environment so AllureCodeception's getenv() finds it
+        // (Codeception params from .env are NOT exported to PHP environment)
+        $parts[] = sprintf('export ALLURE_OUTPUT_PATH=%s', escapeshellarg($allureOutputPath));
+
         // Generate credentials file from env variables (MFTF requires this for _CREDS references)
         $credentialsFile = $envConfigDir . '/.credentials';
         $parts[] = $this->buildCredentialsCommand($mftfEnvFile, $credentialsFile);
