@@ -17,19 +17,12 @@ services:
     profiles:
       - disabled
 
-  # Disable frontend-build in production (assets pre-built)
-  frontend-build:
-    profiles:
-      - disabled
-
   # Enable production Traefik (remove profile requirement)
   traefik:
     profiles: []
 
   # Production optimizations - use image vendor, no bind mounts
   php:
-    depends_on:
-      - db
     environment:
       APP_ENV: prod
       APP_DEBUG: "0"
