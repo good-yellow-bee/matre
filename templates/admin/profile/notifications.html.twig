@@ -40,27 +40,15 @@
             </div>
 
             <div class="form-section">
-                <h3 class="form-section-title">Notification Channels</h3>
+                <h3 class="form-section-title">Email Notifications</h3>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="p-4 border border-slate-200 rounded-lg">
-                        <div class="form-check mb-2">
-                            {{ form_widget(form.notifyByEmail) }}
-                            {{ form_label(form.notifyByEmail) }}
-                        </div>
-                        <div class="text-sm text-slate-500">
-                            Receive individual email notifications to <strong>{{ app.user.email }}</strong>
-                        </div>
+                <div class="p-4 border border-slate-200 rounded-lg max-w-md">
+                    <div class="form-check mb-2">
+                        {{ form_widget(form.notifyByEmail) }}
+                        {{ form_label(form.notifyByEmail) }}
                     </div>
-
-                    <div class="p-4 border border-slate-200 rounded-lg">
-                        <div class="form-check mb-2">
-                            {{ form_widget(form.notifyBySlack) }}
-                            {{ form_label(form.notifyBySlack) }}
-                        </div>
-                        <div class="text-sm text-slate-500">
-                            Trigger notification to shared Slack channel
-                        </div>
+                    <div class="text-sm text-slate-500">
+                        Receive email notifications to <strong>{{ app.user.email }}</strong>
                     </div>
                 </div>
             </div>
@@ -69,12 +57,12 @@
                 <h3 class="form-section-title">Environments</h3>
                 <p class="text-sm text-slate-500 mb-4">Select which test environments you want to receive notifications for</p>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                     {% for child in form.notificationEnvironments %}
-                        <div class="form-check p-3 border border-slate-200 rounded-lg hover:bg-slate-50">
-                            {{ form_widget(child, {'attr': {'class': 'form-check-input'}}) }}
-                            {{ form_label(child, null, {'label_attr': {'class': 'form-check-label ms-2'}}) }}
-                        </div>
+                        <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
+                            {{ form_widget(child, {'attr': {'class': 'h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500'}}) }}
+                            <span class="text-sm font-medium text-slate-700">{{ child.vars.label }}</span>
+                        </label>
                     {% else %}
                         <div class="col-span-full p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-700">
                             <i class="bi bi-exclamation-triangle me-2"></i>
@@ -100,7 +88,6 @@
     <h4 class="text-sm font-medium text-blue-900 mb-2"><i class="bi bi-info-circle me-2"></i>How notifications work</h4>
     <ul class="text-sm text-blue-700 space-y-1">
         <li><strong>Email:</strong> You receive individual emails when test runs complete for your selected environments.</li>
-        <li><strong>Slack:</strong> A message is posted to the shared Slack channel if any subscribed user has Slack enabled.</li>
         <li><strong>Failures only:</strong> Only notified when tests fail or the run itself fails.</li>
         <li><strong>All runs:</strong> Notified for all completed test runs regardless of status.</li>
     </ul>

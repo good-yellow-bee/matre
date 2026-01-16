@@ -55,17 +55,6 @@ class NotificationPreferencesType extends AbstractType
                 ],
                 'help' => 'Receive email notifications',
             ])
-            ->add('notifyBySlack', CheckboxType::class, [
-                'label' => 'Slack',
-                'required' => false,
-                'attr' => [
-                    'class' => 'form-check-input',
-                ],
-                'label_attr' => [
-                    'class' => 'form-check-label',
-                ],
-                'help' => 'Trigger Slack notifications (shared channel)',
-            ])
             ->add('notificationEnvironments', EntityType::class, [
                 'class' => TestEnvironment::class,
                 'choice_label' => 'name',
