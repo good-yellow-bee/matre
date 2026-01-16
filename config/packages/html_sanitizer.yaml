@@ -27,5 +27,13 @@ framework:
                 drop_attributes:
                     'on*': '*'  # All event handlers (onclick, onmouseover, etc.)
                     'style': '*'  # Inline styles can be used for CSS injection
-                # Force HTTPS for links
-                force_https_urls: true
+                # Force HTTPS for links (dev: false, prod overrides to true)
+                force_https_urls: false
+
+# Production: Force HTTPS for sanitized links
+when@prod:
+    framework:
+        html_sanitizer:
+            sanitizers:
+                app.html_sanitizer:
+                    force_https_urls: true

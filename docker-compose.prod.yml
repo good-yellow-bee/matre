@@ -43,9 +43,25 @@ services:
     volumes: []  # No volume mounts - use image vendor
 
   nginx:
+    ports: []  # Disable direct port, use Traefik
     volumes:
       - ./public:/app/public:ro
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - matre_network
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.matre.rule=Host(`${APP_DOMAIN:-matre.local}`)"
+      - "traefik.http.routers.matre.entrypoints=websecure"
+      - "traefik.http.routers.matre.tls=true"
+      - "traefik.http.routers.matre.tls.certresolver=${CERT_RESOLVER:-}"
+      - "traefik.http.routers.matre.middlewares=security-headers@file"
+      - "traefik.http.services.matre.loadbalancer.server.port=80"
+      - "traefik.http.routers.matre-http.rule=Host(`${APP_DOMAIN:-matre.local}`)"
+      - "traefik.http.routers.matre-http.entrypoints=web"
+      - "traefik.http.routers.matre-http.middlewares=redirect-https"
+      - "traefik.http.middlewares.redirect-https.redirectscheme.scheme=https"
 
   # noVNC with password + Traefik routing
   # Note: noVNC uses absolute paths (/app/*, /core/*, /vendor/*) for assets,
