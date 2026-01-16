@@ -161,10 +161,11 @@
 {% block javascripts %}
 {{ parent() }}
 <script>
-document.querySelector('form').addEventListener('keypress', function(e) {
+const form = document.querySelector('form');
+form.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
-        this.submit();
+        form.requestSubmit();
     }
 });
 </script>
