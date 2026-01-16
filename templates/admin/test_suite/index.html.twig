@@ -76,7 +76,7 @@
                                     <i class="bi bi-{{ suite.isActive ? 'pause' : 'play' }}"></i>
                                 </button>
                             </form>
-                            <form action="{{ path('admin_test_suite_delete', {id: suite.id}) }}" method="post" class="d-inline" onsubmit="return confirm('Delete suite {{ suite.name }}?')">
+                            <form action="{{ path('admin_test_suite_delete', {id: suite.id}) }}" method="post" class="d-inline" data-confirm="Delete suite {{ suite.name }}?">
                                 <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ suite.id) }}">
                                 <button type="submit" class="btn btn-outline-danger" title="Delete">
                                     <i class="bi bi-trash"></i>
