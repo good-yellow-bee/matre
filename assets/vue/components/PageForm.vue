@@ -285,33 +285,16 @@
       </div>
     </form>
 
-    <!-- Toast Container -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-      <div
-        ref="toastEl"
-        class="toast"
-        :class="toastClass"
-        role="alert"
-        aria-live="assertive"
-        aria-atomic="true"
-      >
-        <div class="toast-header">
-          <i class="bi me-2" :class="toastIcon"></i>
-          <strong class="me-auto">{{ toastTitle }}</strong>
-          <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
-        </div>
-        <div class="toast-body">
-          {{ toastMessage }}
-        </div>
-      </div>
-    </div>
+    <ToastNotification />
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { usePageForm } from '../composables/usePageForm';
+import { useToast } from '../composables/useToast.js';
 import RichTextEditor from './RichTextEditor.vue';
+import ToastNotification from './ToastNotification.vue';
 
 const props = defineProps({
   pageId: {
@@ -334,18 +317,13 @@ const props = defineProps({
 
 const { form, errors, submitting, fetchPage, createPage, updatePage, validateSlugUniqueness, generateSlug, clearErrors } = usePageForm(props.apiUrl);
 
+const { showToast } = useToast();
+
 const loading = ref(false);
 const slugValid = ref(false);
 const validatingSlug = ref(false);
 const originalForm = reactive({});
 const categories = ref([]);
-
-// Toast
-const toastEl = ref(null);
-const toastMessage = ref('');
-const toastTitle = ref('');
-const toastClass = ref('');
-const toastIcon = ref('');
 
 const hasChanges = computed(() => {
   if (!props.pageId) return false;
@@ -416,42 +394,21 @@ const handleSubmit = async () => {
     : await createPage();
 
   if (result.success) {
-    showToast('Success', result.message, 'success');
+    showToast(result.message, 'success');
 
     // Redirect after short delay
     setTimeout(() => {
       window.location.href = props.cancelUrl;
     }, 1500);
   } else {
-    showToast('Error', result.message, 'danger');
+    showToast(result.message, 'error');
   }
 };
 
 const resetToOriginal = () => {
   Object.assign(form, JSON.parse(JSON.stringify(originalForm)));
   clearErrors();
-  showToast('Reset', 'Form has been reset to original values', 'info');
-};
-
-const showToast = (title, message, type = 'success') => {
-  toastTitle.value = title;
-  toastMessage.value = message;
-
-  if (type === 'success') {
-    toastClass.value = 'bg-success text-white';
-    toastIcon.value = 'bi-check-circle-fill text-white';
-  } else if (type === 'danger') {
-    toastClass.value = 'bg-danger text-white';
-    toastIcon.value = 'bi-exclamation-triangle-fill text-white';
-  } else if (type === 'info') {
-    toastClass.value = 'bg-info text-white';
-    toastIcon.value = 'bi-info-circle-fill text-white';
-  }
-
-  if (toastEl.value && window.bootstrap) {
-    const toast = new window.bootstrap.Toast(toastEl.value);
-    toast.show();
-  }
+  showToast('Form has been reset to original values', 'info');
 };
 
 onMounted(async () => {
@@ -470,7 +427,7 @@ onMounted(async () => {
     loading.value = false;
 
     if (!result.success) {
-      showToast('Error', result.message, 'danger');
+      showToast(result.message, 'error');
       return;
     }
 
@@ -775,40 +732,6 @@ onMounted(async () => {
   border-color: var(--slate-200) !important;
 }
 
-/* Toast Notifications */
-.toast-container {
-  z-index: 1050;
-}
-
-.toast {
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-}
-
-.toast.bg-success {
-  background: linear-gradient(135deg, var(--success) 0%, #059669 100%) !important;
-}
-
-.toast.bg-danger {
-  background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%) !important;
-}
-
-.toast.bg-info {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%) !important;
-}
-
-.toast .toast-header {
-  background: transparent;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 0.75rem 1rem;
-}
-
-.toast .toast-body {
-  padding: 0.75rem 1rem;
-  font-size: 0.875rem;
-}
-
 /* Loading Spinner */
 .spinner-border-sm {
   width: 1rem;
@@ -818,11 +741,6 @@ onMounted(async () => {
 
 .page-form .spinner-border.text-primary {
   color: var(--primary) !important;
-}
-
-/* Toast Close Button */
-.btn-close {
-  filter: invert(1);
 }
 
 /* Responsive Adjustments */
