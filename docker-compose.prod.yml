@@ -1,5 +1,5 @@
 # Production override for ABB server deployment
-# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --scale test-worker=4
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 #
 # IMPORTANT: After starting, run:
 # 1. docker exec matre_php php bin/console doctrine:migrations:migrate --no-interaction
@@ -32,11 +32,12 @@ services:
       ALLURE_PUBLIC_URL: https://${APP_DOMAIN:-matre.local}/allure
     volumes: []  # No volume mounts - use image vendor
 
-  # Test workers - scale for parallel execution across environments
-  # Usage: docker-compose ... up -d --scale test-worker=4
+  # Test workers - 4 replicas for parallel execution across environments
   # Each worker handles different environment (per-env locking prevents conflicts)
   # Match SE_NODE_MAX_SESSIONS in chrome-node for optimal parallelism
   test-worker:
+    deploy:
+      replicas: 4
     environment:
       APP_ENV: prod
       MAILER_DSN: ${MAILER_DSN}
