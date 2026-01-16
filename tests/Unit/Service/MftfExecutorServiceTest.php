@@ -238,6 +238,9 @@ class MftfExecutorServiceTest extends TestCase
         $this->assertStringContainsString('grep -q', $command);
         $this->assertStringContainsString('sed -i', $command);
         $this->assertStringContainsString('AllureCodeception', $command);
+
+        // Should remove hardcoded outputDirectory so ALLURE_OUTPUT_PATH env var works
+        $this->assertStringContainsString("sed -i '/outputDirectory: allure-results/d'", $command);
     }
 
     // =====================

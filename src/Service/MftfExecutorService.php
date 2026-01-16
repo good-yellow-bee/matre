@@ -208,6 +208,10 @@ class MftfExecutorService
         // Check for "- Qameta" with 8-space indent (enabled list format), add if missing.
         $parts[] = "grep -q '^        - Qameta' codeception.yml || sed -i '/Subscriber.Console/a\\        - Qameta\\\\Allure\\\\Codeception\\\\AllureCodeception' codeception.yml";
 
+        // MFTF fix: Remove hardcoded outputDirectory so ALLURE_OUTPUT_PATH env var takes effect.
+        // Without this, codeception.yml's outputDirectory config takes precedence over env var.
+        $parts[] = "sed -i '/outputDirectory: allure-results/d' codeception.yml";
+
         // Build .env file with layered configuration:
         // 1. Global variables (shared across all environments)
         // 2. Module's Cron/data/.env.{env-name} (test-specific data, ~200 vars)
