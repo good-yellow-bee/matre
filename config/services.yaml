@@ -97,6 +97,7 @@ services:
         arguments:
             $slackWebhookUrl: '%env(SLACK_WEBHOOK_URL)%'
             $mailFrom: '%env(MAIL_FROM)%'
+            $allurePublicUrl: '%env(ALLURE_PUBLIC_URL)%'
 
     App\Command\CleanupTestsCommand:
         arguments:
