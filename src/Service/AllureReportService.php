@@ -200,7 +200,7 @@ class AllureReportService
     public function cleanupExpired(): int
     {
         $cleaned = 0;
-        $basePath = $this->projectDir . '/var/allure-results';
+        $basePath = $this->projectDir . '/var/mftf-results/allure-results';
 
         if (!$this->filesystem->exists($basePath)) {
             return 0;

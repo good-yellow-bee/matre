@@ -57,14 +57,14 @@ Real-time system statistics.
     "scheduled": 3
   },
   "activity": {
-    "running": 2
+    "runningNow": 2
   }
 }
 ```
 
 **Notes:**
 - `testRuns` counts are for last 30 days
-- `activity.running` is current active test count
+- `activity.runningNow` is current active test count
 
 ---
 
@@ -80,7 +80,7 @@ List test runs with pagination and filtering.
 |-------|------|---------|-------------|
 | `page` | int | 1 | Page number |
 | `limit` | int | 20 | Items per page (max: 100) |
-| `status` | string | - | Filter: `pending`, `running`, `completed`, `failed`, `canceled` |
+| `status` | string | - | Filter: `pending`, `running`, `completed`, `failed`, `cancelled` |
 | `type` | string | - | Filter: `mftf`, `playwright`, `both` |
 | `environment` | int | - | Filter by environment ID |
 
@@ -97,7 +97,7 @@ curl "http://localhost:8089/api/test-runs?status=completed&limit=10"
       "id": 42,
       "status": "completed",
       "type": "mftf",
-      "trigger": "manual",
+      "triggeredBy": "manual",
       "duration": "5m 23s",
       "environment": {
         "id": 1,
@@ -145,8 +145,8 @@ curl "http://localhost:8089/api/test-runs/42"
   "id": 42,
   "status": "completed",
   "type": "mftf",
-  "trigger": "manual",
-  "filter": "SmokeTestGroup",
+  "triggeredBy": "manual",
+  "testFilter": "SmokeTestGroup",
   "duration": "5m 23s",
   "environment": {
     "id": 1,
@@ -198,46 +198,6 @@ curl "http://localhost:8089/api/test-runs/42"
 
 ---
 
-### POST /api/test-runs
-
-Create new test run.
-
-**Request Body:**
-```json
-{
-  "environmentId": 1,
-  "type": "mftf",
-  "suiteId": 3,
-  "filter": "CheckoutTest"
-}
-```
-
-| Field | Required | Type | Description |
-|-------|----------|------|-------------|
-| `environmentId` | Yes | int | Target environment ID |
-| `type` | No | string | `mftf`, `playwright`, `both` (default: `mftf`) |
-| `suiteId` | No | int | Predefined suite ID |
-| `filter` | No | string | Test name/group pattern |
-
-**Response:**
-```json
-{
-  "id": 43,
-  "status": "pending",
-  "message": "Test run created and queued for execution"
-}
-```
-
-**Example:**
-```bash
-curl -X POST "http://localhost:8089/api/test-runs" \
-  -H "Content-Type: application/json" \
-  -H "X-CSRF-TOKEN: {token}" \
-  -d '{"environmentId": 1, "type": "mftf", "filter": "SmokeTestGroup"}'
-```
-
----
-
 ### POST /api/test-runs/{id}/cancel
 
 Cancel a running test.
@@ -250,7 +210,7 @@ Cancel a running test.
 ```json
 {
   "id": 42,
-  "status": "canceled",
+  "status": "cancelled",
   "message": "Test run canceled successfully"
 }
 ```

@@ -83,7 +83,7 @@ class AllureStepParserService
             return null;
         }
 
-        $runDir = sprintf('%s/var/allure-results/run-%d', $this->projectDir, $testRun->getId());
+        $runDir = sprintf('%s/var/mftf-results/allure-results/run-%d', $this->projectDir, $testRun->getId());
 
         $this->logger->debug('Allure: Searching for result file', [
             'resultId' => $result->getId(),
