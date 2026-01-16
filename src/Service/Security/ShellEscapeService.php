@@ -133,7 +133,7 @@ class ShellEscapeService
 
         // Use single quotes and escape embedded single quotes
         // 'foo'bar' becomes 'foo'\''bar'
-        return "'".str_replace("'", "'\\''", $value)."'";
+        return "'" . str_replace("'", "'\\''", $value) . "'";
     }
 
     /**
@@ -181,11 +181,11 @@ class ShellEscapeService
             }
 
             // Reconstruct with real parent
-            $realPath = $realParent.'/'.basename($path);
+            $realPath = $realParent . '/' . basename($path);
         }
 
         // Ensure path starts with base directory
-        if (!str_starts_with($realPath.'/', $realBase.'/')) {
+        if (!str_starts_with($realPath . '/', $realBase . '/')) {
             throw new \InvalidArgumentException('Path escapes allowed directory');
         }
 

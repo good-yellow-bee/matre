@@ -192,44 +192,8 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress --no-interaction
 
-      - name: Create PHP-CS-Fixer config if not exists
-        run: |
-          if [ ! -f ".php-cs-fixer.php" ]; then
-            cat > .php-cs-fixer.php <<'EOF'
-          <?php
-
-          $finder = PhpCsFixer\Finder::create()
-              ->in(__DIR__ . '/src')
-              ->exclude('Tests')
-              ->name('*.php')
-              ->notName('*.blade.php')
-              ->ignoreDotFiles(true)
-              ->ignoreVCS(true);
-
-          return (new PhpCsFixer\Config())
-              ->setRules([
-                  '@PSR2' => true,
-                  '@Symfony' => true,
-                  'array_syntax' => ['syntax' => 'short'],
-                  'ordered_imports' => true,
-                  'no_unused_imports' => true,
-                  'not_operator_with_successor_space' => true,
-                  'trailing_comma_in_multiline' => true,
-                  'phpdoc_scalar' => true,
-                  'unary_operator_spaces' => true,
-                  'binary_operator_spaces' => true,
-                  'blank_line_before_statement' => [
-                      'statements' => ['break', 'continue', 'declare', 'return', 'throw', 'try'],
-                  ],
-                  'phpdoc_single_line_var_spacing' => true,
-                  'phpdoc_var_without_name' => true,
-              ])
-              ->setFinder($finder);
-          EOF
-          fi
-
       - name: Run PHP-CS-Fixer
-        run: php-cs-fixer fix --dry-run --diff --verbose
+        run: php-cs-fixer fix --config=.php-cs-fixer.dist.php --dry-run --diff --verbose
 
   # Security Vulnerability Check
   security-check:

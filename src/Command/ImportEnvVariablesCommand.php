@@ -127,7 +127,7 @@ class ImportEnvVariablesCommand extends Command
         }
 
         // Check if module exists
-        $envDataPath = $modulePath.'/'.self::ENV_DATA_PATH;
+        $envDataPath = $modulePath . '/' . self::ENV_DATA_PATH;
         if (!is_dir($envDataPath)) {
             $io->error(sprintf(
                 'Module not found at %s. Use --clone to fetch from TEST_MODULE_REPO.',
@@ -261,9 +261,9 @@ class ImportEnvVariablesCommand extends Command
                 }
             }
 
-            $displayValue = strlen($value) > 40 ? substr($value, 0, 37).'...' : $value;
+            $displayValue = strlen($value) > 40 ? substr($value, 0, 37) . '...' : $value;
             $displayTests = count($usedInTests) > 3
-                ? implode(', ', array_slice($usedInTests, 0, 3)).sprintf(' (+%d)', count($usedInTests) - 3)
+                ? implode(', ', array_slice($usedInTests, 0, 3)) . sprintf(' (+%d)', count($usedInTests) - 3)
                 : implode(', ', $usedInTests);
             $displayEnv = $asGlobal ? 'Global' : $environment;
 

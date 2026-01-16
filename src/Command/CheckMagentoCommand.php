@@ -34,7 +34,7 @@ class CheckMagentoCommand extends Command
         // Check if Magento container is running
         $io->section('Docker Container Status');
 
-        $process = new Process(['docker', 'ps', '--filter', 'name='.$this->magentoContainer, '--format', '{{.Status}}']);
+        $process = new Process(['docker', 'ps', '--filter', 'name=' . $this->magentoContainer, '--format', '{{.Status}}']);
         $process->run();
 
         if ($process->isSuccessful() && !empty(trim($process->getOutput()))) {

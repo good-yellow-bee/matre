@@ -88,7 +88,7 @@ class PlaywrightExecutorService
      */
     public function getOutputFilePath(TestRun $run): string
     {
-        return $this->projectDir.'/var/test-output/playwright-run-'.$run->getId().'.log';
+        return $this->projectDir . '/var/test-output/playwright-run-' . $run->getId() . '.log';
     }
 
     /**
@@ -189,7 +189,7 @@ class PlaywrightExecutorService
      */
     public function getOutputPath(): string
     {
-        return $this->projectDir.'/var/playwright-results';
+        return $this->projectDir . '/var/playwright-results';
     }
 
     /**
@@ -197,7 +197,7 @@ class PlaywrightExecutorService
      */
     public function getAllureResultsPath(): string
     {
-        return $this->projectDir.'/var/playwright-results/allure-results';
+        return $this->projectDir . '/var/playwright-results/allure-results';
     }
 
     /**
@@ -217,7 +217,7 @@ class PlaywrightExecutorService
         // Read last N bytes for large files
         $handle = fopen($path, 'r');
         fseek($handle, -$maxBytes, SEEK_END);
-        $content = '... [truncated - showing last '.round($maxBytes / 1024)."KB]\n".fread($handle, $maxBytes);
+        $content = '... [truncated - showing last ' . round($maxBytes / 1024) . "KB]\n" . fread($handle, $maxBytes);
         fclose($handle);
 
         return $content;
@@ -230,7 +230,7 @@ class PlaywrightExecutorService
      */
     private function parseJsonResults(TestRun $run): array
     {
-        $jsonPath = $this->getOutputPath().'/results.json';
+        $jsonPath = $this->getOutputPath() . '/results.json';
         if (!file_exists($jsonPath)) {
             return [];
         }

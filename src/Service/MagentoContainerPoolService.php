@@ -29,9 +29,9 @@ class MagentoContainerPoolService
 
     public function getContainerForEnvironment(TestEnvironment $env): string
     {
-        $containerName = self::CONTAINER_PREFIX.$env->getId();
+        $containerName = self::CONTAINER_PREFIX . $env->getId();
 
-        $lock = $this->lockFactory->createLock('container_'.$containerName, 60);
+        $lock = $this->lockFactory->createLock('container_' . $containerName, 60);
         $lock->acquire(true);
 
         try {
@@ -51,7 +51,7 @@ class MagentoContainerPoolService
     {
         $process = new Process([
             'docker', 'ps', '-a',
-            '--filter', 'name=^/'.$name.'$',
+            '--filter', 'name=^/' . $name . '$',
             '--format', '{{.Names}}',
         ]);
         $process->run();
@@ -63,7 +63,7 @@ class MagentoContainerPoolService
     {
         $process = new Process([
             'docker', 'ps',
-            '--filter', 'name=^/'.$name.'$',
+            '--filter', 'name=^/' . $name . '$',
             '--filter', 'status=running',
             '--format', '{{.Names}}',
         ]);
@@ -89,24 +89,24 @@ class MagentoContainerPoolService
         $this->logger->info('Creating per-environment Magento container', ['container' => $name]);
 
         // Use host paths for docker bind mounts (not container /app path)
-        $testModulePath = $this->hostProjectDir.'/var/test-modules/current';
-        $mftfResultsPath = $this->hostProjectDir.'/var/mftf-results';
-        $abbModulePath = $this->hostProjectDir.'/abb-custom-mftf';
+        $testModulePath = $this->hostProjectDir . '/var/test-modules/current';
+        $mftfResultsPath = $this->hostProjectDir . '/var/mftf-results';
+        $abbModulePath = $this->hostProjectDir . '/abb-custom-mftf';
 
         $process = new Process([
             'docker', 'run', '-d',
             '--name', $name,
             '--network', $this->networkName,
             // Shared code volume (writable - needed for nested mounts)
-            '-v', $this->codeVolume.':/var/www/html',
+            '-v', $this->codeVolume . ':/var/www/html',
             // Test module (read-only)
-            '-v', $testModulePath.':/var/www/html/app/code/TestModule:ro',
+            '-v', $testModulePath . ':/var/www/html/app/code/TestModule:ro',
             // MFTF results (writable - for screenshots, output)
-            '-v', $mftfResultsPath.':/var/www/html/dev/tests/acceptance/tests/_output',
+            '-v', $mftfResultsPath . ':/var/www/html/dev/tests/acceptance/tests/_output',
             // Allure results (writable)
-            '-v', $mftfResultsPath.'/allure-results:/var/www/html/dev/tests/acceptance/allure-results',
+            '-v', $mftfResultsPath . '/allure-results:/var/www/html/dev/tests/acceptance/allure-results',
             // Dev mode module mount
-            '-v', $abbModulePath.':/app/abb-custom-mftf:ro',
+            '-v', $abbModulePath . ':/app/abb-custom-mftf:ro',
             // Per-environment tmpfs for .env isolation (prevents shared volume race condition)
             '--mount', 'type=tmpfs,destination=/var/www/html/dev/tests/acceptance/env-config',
             // Environment
@@ -142,7 +142,7 @@ class MagentoContainerPoolService
 
     public function cleanupEnvironmentContainer(TestEnvironment $env): void
     {
-        $containerName = self::CONTAINER_PREFIX.$env->getId();
+        $containerName = self::CONTAINER_PREFIX . $env->getId();
 
         if ($this->containerExists($containerName)) {
             $this->removeContainer($containerName);
@@ -153,7 +153,7 @@ class MagentoContainerPoolService
     {
         $process = new Process([
             'docker', 'ps', '-a',
-            '--filter', 'name='.self::CONTAINER_PREFIX,
+            '--filter', 'name=' . self::CONTAINER_PREFIX,
             '--format', '{{.Names}}',
         ]);
         $process->run();

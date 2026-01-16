@@ -77,7 +77,7 @@ class FileUploadService
 
         if (null !== $subdirectory) {
             $subdirectory = trim($subdirectory, '/');
-            $fileName = $subdirectory.'/'.$fileName;
+            $fileName = $subdirectory . '/' . $fileName;
         }
 
         try {
@@ -94,7 +94,7 @@ class FileUploadService
 
             return $fileName;
         } catch (\Exception $e) {
-            throw new FileException('Could not upload file: '.$e->getMessage());
+            throw new FileException('Could not upload file: ' . $e->getMessage());
         }
     }
 
@@ -120,7 +120,7 @@ class FileUploadService
 
         if (null !== $subdirectory) {
             $subdirectory = trim($subdirectory, '/');
-            $fileName = $subdirectory.'/'.$fileName;
+            $fileName = $subdirectory . '/' . $fileName;
         }
 
         try {
@@ -137,7 +137,7 @@ class FileUploadService
 
             return $fileName;
         } catch (\Exception $e) {
-            throw new FileException('Could not upload file: '.$e->getMessage());
+            throw new FileException('Could not upload file: ' . $e->getMessage());
         }
     }
 
@@ -194,7 +194,7 @@ class FileUploadService
      */
     public function getPublicUrl(string $path): string
     {
-        return '/uploads/'.ltrim($path, '/');
+        return '/uploads/' . ltrim($path, '/');
     }
 
     /**
@@ -315,10 +315,10 @@ class FileUploadService
 
         if (!$preserveOriginalName) {
             // Generate unique filename with timestamp
-            $safeFilename .= '-'.uniqid('', true);
+            $safeFilename .= '-' . uniqid('', true);
         }
 
-        return $safeFilename.'.'.$extension;
+        return $safeFilename . '.' . $extension;
     }
 
     /**
@@ -388,6 +388,6 @@ class FileUploadService
         $pow = min($pow, count($units) - 1);
         $bytes /= (1024 ** $pow);
 
-        return round($bytes, 2).' '.$units[$pow];
+        return round($bytes, 2) . ' ' . $units[$pow];
     }
 }

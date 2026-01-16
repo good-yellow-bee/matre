@@ -93,7 +93,7 @@ class TestResultRepository extends ServiceEntityRepository
     {
         return $this->createQueryBuilder('r')
             ->andWhere('r.testName LIKE :pattern')
-            ->setParameter('pattern', '%'.$pattern.'%')
+            ->setParameter('pattern', '%' . $pattern . '%')
             ->orderBy('r.createdAt', 'DESC')
             ->getQuery()
             ->getResult();

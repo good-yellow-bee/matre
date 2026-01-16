@@ -109,7 +109,7 @@ MAILER_DSN=smtp://mailpit:1025
 
 ### matre_scheduler
 - **Image:** Custom (from Dockerfile)
-- **Command:** `php bin/console messenger:consume scheduler_cron --time-limit=60 -vv`
+- **Command:** `php bin/console messenger:consume scheduler_test_runner scheduler_cron scheduled_test_messages --time-limit=60 -vv`
 - **Purpose:** Processes scheduled test runs
 - **Restart:** `unless-stopped`
 
@@ -190,14 +190,14 @@ framework:
                 dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
                 options:
                     queue_name: test_runner
-            scheduler_cron:
+            scheduled_test_messages:
                 dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
                 options:
-                    queue_name: scheduler_cron
+                    queue_name: scheduled_test_messages
 
         routing:
             'App\Message\TestRunMessage': test_runner
-            'App\Message\ScheduledTestRunMessage': scheduler_cron
+            'App\Message\ScheduledTestRunMessage': scheduled_test_messages
 ```
 
 ---

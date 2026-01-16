@@ -21,11 +21,16 @@ framework:
                     max_retries: 2
                     delay: 10000
                     multiplier: 3
-            scheduler_test_runner:
+            failed: 'doctrine://default?queue_name=failed'
+            # Dedicated transport for scheduled test suite messages
+            scheduled_test_messages:
                 dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
                 options:
-                    queue_name: scheduler_test_runner
-            failed: 'doctrine://default?queue_name=failed'
+                    queue_name: scheduled_test_messages
+                retry_strategy:
+                    max_retries: 2
+                    delay: 5000
+                    multiplier: 2
             # sync: 'sync://'
 
         default_bus: messenger.bus.default
@@ -42,4 +47,4 @@ framework:
 
             # Test Runner messages
             App\Message\TestRunMessage: test_runner_per_env
-            App\Message\ScheduledTestRunMessage: scheduler_test_runner
+            App\Message\ScheduledTestRunMessage: scheduled_test_messages

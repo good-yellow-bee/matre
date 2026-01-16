@@ -109,7 +109,7 @@ class TestRunnerService
         // Per-env lock - serializes same-env runs to prevent artifact contamination
         // Different-env runs can still be parallel (per-run dirs isolate artifacts)
         $envLock = $this->lockFactory->createLock(
-            'mftf_execution_env_'.$run->getEnvironment()->getId(),
+            'mftf_execution_env_' . $run->getEnvironment()->getId(),
             3600, // 1 hour timeout
         );
         $envLock->acquire(true); // blocking
@@ -150,7 +150,7 @@ class TestRunnerService
                 // Execute MFTF tests
                 if (TestRun::TYPE_MFTF === $type || TestRun::TYPE_BOTH === $type) {
                     $mftfResult = $this->mftfExecutor->execute($run, $outputCallback);
-                    $output .= "=== MFTF Output ===\n".$mftfResult['output']."\n\n";
+                    $output .= "=== MFTF Output ===\n" . $mftfResult['output'] . "\n\n";
 
                     // Check for fatal errors that prevent test execution
                     $isFatalError = preg_match('/ERROR: \d+ Test\(s\) failed to generate/i', $mftfResult['output'])
@@ -180,7 +180,7 @@ class TestRunnerService
                             $failedCount = count(array_filter($mftfResults, fn ($r) => $r->isFailed()));
                             $failureReason = $failedCount > 0
                                 ? sprintf('%d test(s) failed', $failedCount)
-                                : 'MFTF execution failed with exit code '.$mftfResult['exitCode'];
+                                : 'MFTF execution failed with exit code ' . $mftfResult['exitCode'];
                         }
                     }
                 }
@@ -188,7 +188,7 @@ class TestRunnerService
                 // Execute Playwright tests
                 if (TestRun::TYPE_PLAYWRIGHT === $type || TestRun::TYPE_BOTH === $type) {
                     $playwrightResult = $this->playwrightExecutor->execute($run, $outputCallback);
-                    $output .= "=== Playwright Output ===\n".$playwrightResult['output']."\n\n";
+                    $output .= "=== Playwright Output ===\n" . $playwrightResult['output'] . "\n\n";
 
                     // ALWAYS parse results (even on failure) to capture partial test data
                     $playwrightResults = $this->playwrightExecutor->parseResults($run, $playwrightResult['output']);
@@ -206,8 +206,8 @@ class TestRunnerService
                         $failedCount = count(array_filter($playwrightResults, fn ($r) => $r->isFailed()));
                         $pwReason = $failedCount > 0
                             ? sprintf('%d test(s) failed', $failedCount)
-                            : 'Playwright execution failed with exit code '.$playwrightResult['exitCode'];
-                        $failureReason = $failureReason ? $failureReason.'; '.$pwReason : $pwReason;
+                            : 'Playwright execution failed with exit code ' . $playwrightResult['exitCode'];
+                        $failureReason = $failureReason ? $failureReason . '; ' . $pwReason : $pwReason;
                     }
                 }
 
@@ -241,7 +241,7 @@ class TestRunnerService
                     'id' => $run->getId(),
                     'error' => $e->getMessage(),
                 ]);
-                $run->setOutput($output."\n\nERROR: ".$e->getMessage());
+                $run->setOutput($output . "\n\nERROR: " . $e->getMessage());
                 $run->markFailed($e->getMessage());
                 $this->entityManager->flush();
 
@@ -295,8 +295,8 @@ class TestRunnerService
 
                 // Add warning to run output so user knows why report is missing
                 $run->setOutput(
-                    ($run->getOutput() ?? '').
-                    "\n\n⚠️ Allure report generation failed: ".$e->getMessage(),
+                    ($run->getOutput() ?? '') .
+                    "\n\n⚠️ Allure report generation failed: " . $e->getMessage(),
                 );
             }
             $this->entityManager->persist($report);
@@ -323,7 +323,7 @@ class TestRunnerService
                 'id' => $run->getId(),
                 'error' => $e->getMessage(),
             ]);
-            $run->markFailed('Report generation failed: '.$e->getMessage());
+            $run->markFailed('Report generation failed: ' . $e->getMessage());
             $this->entityManager->flush();
 
             throw $e;
@@ -473,7 +473,7 @@ class TestRunnerService
             $this->logger->info('Executing test in group', [
                 'runId' => $run->getId(),
                 'testName' => $testName,
-                'progress' => ($completedTests + 1).'/'.$totalTests,
+                'progress' => ($completedTests + 1) . '/' . $totalTests,
             ]);
 
             try {
@@ -515,7 +515,7 @@ class TestRunnerService
                 $testResult->setTestRun($run);
                 $testResult->setTestName($testName);
                 $testResult->setStatus(TestResult::STATUS_BROKEN);
-                $testResult->setErrorMessage('Test crashed: '.$e->getMessage());
+                $testResult->setErrorMessage('Test crashed: ' . $e->getMessage());
                 $run->addResult($testResult);
                 $this->entityManager->persist($testResult);
             }

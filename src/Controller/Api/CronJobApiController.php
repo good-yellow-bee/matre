@@ -49,12 +49,12 @@ class CronJobApiController extends AbstractController
         $order = 'DESC' === strtoupper($order) ? 'DESC' : 'ASC';
 
         $qb = $this->cronJobRepository->createQueryBuilder('c')
-            ->orderBy('c.'.$sort, $order);
+            ->orderBy('c.' . $sort, $order);
 
         if ('' !== $search) {
             $qb
                 ->andWhere('LOWER(c.name) LIKE :search OR LOWER(c.command) LIKE :search')
-                ->setParameter('search', '%'.mb_strtolower($search).'%');
+                ->setParameter('search', '%' . mb_strtolower($search) . '%');
         }
 
         // Count total

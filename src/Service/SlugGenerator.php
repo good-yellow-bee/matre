@@ -52,16 +52,16 @@ class SlugGenerator
 
         // Check for uniqueness and append counter if needed
         while ($this->slugExists($slug, $entityClass, $excludeId, $slugField)) {
-            $suffix = '-'.$counter;
+            $suffix = '-' . $counter;
             $maxBaseLength = $maxLength - strlen($suffix);
             $truncatedBase = substr($baseSlug, 0, $maxBaseLength);
-            $slug = $truncatedBase.$suffix;
+            $slug = $truncatedBase . $suffix;
             ++$counter;
 
             // Safety check to prevent infinite loops
             if ($counter > 1000) {
                 // Fallback: add timestamp
-                $slug = $baseSlug.'-'.time();
+                $slug = $baseSlug . '-' . time();
 
                 break;
             }
@@ -117,7 +117,7 @@ class SlugGenerator
     public function generateFromParts(array $parts, string $separator = '-'): string
     {
         $filtered = array_filter($parts, fn ($part) => !empty($part));
-        $combined = implode(' '.$separator.' ', $filtered);
+        $combined = implode(' ' . $separator . ' ', $filtered);
 
         return $this->slugify($combined);
     }

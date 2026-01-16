@@ -210,7 +210,7 @@ class NotificationService
             if ($report && $report->getPublicUrl()) {
                 $fields[] = [
                     'title' => 'Report',
-                    'value' => '<'.$report->getPublicUrl().'|View Allure Report>',
+                    'value' => '<' . $report->getPublicUrl() . '|View Allure Report>',
                     'short' => false,
                 ];
             }
@@ -220,7 +220,7 @@ class NotificationService
             'attachments' => [
                 [
                     'color' => $color,
-                    'pretext' => $emoji.' Test Run #'.$run->getId().' '.$status,
+                    'pretext' => $emoji . ' Test Run #' . $run->getId() . ' ' . $status,
                     'fields' => $fields,
                     'footer' => 'ATR - Automation Test Runner',
                     'ts' => time(),
@@ -263,7 +263,7 @@ class NotificationService
 
         $html = '<html><body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">';
 
-        $html .= '<h2>Test Run #'.$run->getId().'</h2>';
+        $html .= '<h2>Test Run #' . $run->getId() . '</h2>';
 
         $html .= '<table style="width: 100%; border-collapse: collapse;">';
         $html .= $this->tableRow('Environment', $env->getName());
@@ -281,10 +281,10 @@ class NotificationService
         if ($counts['total'] > 0) {
             $html .= '<h3>Results</h3>';
             $html .= '<ul>';
-            $html .= '<li>✅ Passed: '.$counts['passed'].'</li>';
-            $html .= '<li>❌ Failed: '.$counts['failed'].'</li>';
-            $html .= '<li>⏭ Skipped: '.$counts['skipped'].'</li>';
-            $html .= '<li>🔧 Broken: '.$counts['broken'].'</li>';
+            $html .= '<li>✅ Passed: ' . $counts['passed'] . '</li>';
+            $html .= '<li>❌ Failed: ' . $counts['failed'] . '</li>';
+            $html .= '<li>⏭ Skipped: ' . $counts['skipped'] . '</li>';
+            $html .= '<li>🔧 Broken: ' . $counts['broken'] . '</li>';
             $html .= '</ul>';
         }
 
@@ -293,13 +293,13 @@ class NotificationService
         if (!$reports->isEmpty()) {
             $report = $reports->first();
             if ($report && $report->getPublicUrl()) {
-                $html .= '<p><a href="'.htmlspecialchars($report->getPublicUrl()).'">View Allure Report</a></p>';
+                $html .= '<p><a href="' . htmlspecialchars($report->getPublicUrl()) . '">View Allure Report</a></p>';
             }
         }
 
         if ($run->getErrorMessage()) {
             $html .= '<h3 style="color: red;">Error</h3>';
-            $html .= '<pre style="background: #f5f5f5; padding: 10px;">'.htmlspecialchars($run->getErrorMessage()).'</pre>';
+            $html .= '<pre style="background: #f5f5f5; padding: 10px;">' . htmlspecialchars($run->getErrorMessage()) . '</pre>';
         }
 
         $html .= '<hr><p style="color: #666; font-size: 12px;">ATR - Automation Test Runner</p>';

@@ -38,7 +38,7 @@ class TestEnvironmentApiController extends AbstractController
         $globalData = [];
         foreach ($globalVars as $var) {
             $globalData[] = [
-                'id' => 'global_'.$var->getId(),
+                'id' => 'global_' . $var->getId(),
                 'name' => $var->getName(),
                 'value' => $var->getValue(),
                 'usedInTests' => $var->getUsedInTests(),
@@ -53,7 +53,7 @@ class TestEnvironmentApiController extends AbstractController
         $index = 0;
         foreach ($envVarsWithMeta as $name => $data) {
             $envData[] = [
-                'id' => 'env_'.$index++,
+                'id' => 'env_' . $index++,
                 'name' => $name,
                 'value' => $data['value'],
                 'usedInTests' => $data['usedInTests'],

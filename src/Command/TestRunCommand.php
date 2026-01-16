@@ -86,7 +86,7 @@ class TestRunCommand extends Command
 
             $available = $this->environmentRepository->findAllOrdered();
             if ($available) {
-                $io->note('Available environments: '.implode(', ', array_map(fn ($e) => $e->getName(), $available)));
+                $io->note('Available environments: ' . implode(', ', array_map(fn ($e) => $e->getName(), $available)));
             }
 
             return Command::FAILURE;

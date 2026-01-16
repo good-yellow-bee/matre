@@ -150,7 +150,7 @@ class TestEnvironment
 
     public function setBaseUrl(string $baseUrl): static
     {
-        $this->baseUrl = rtrim($baseUrl, '/').'/';
+        $this->baseUrl = rtrim($baseUrl, '/') . '/';
 
         return $this;
     }
@@ -352,7 +352,7 @@ class TestEnvironment
      */
     public function getAdminUrl(): string
     {
-        return $this->baseUrl.$this->backendName;
+        return $this->baseUrl . $this->backendName;
     }
 
     /**

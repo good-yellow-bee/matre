@@ -53,7 +53,7 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
                 $this->tableName,
             ),
             [
-                'prefix' => self::QUEUE_PREFIX.'%',
+                'prefix' => self::QUEUE_PREFIX . '%',
                 'stale_threshold' => $staleThreshold,
                 'now' => new \DateTimeImmutable(),
             ],
@@ -110,7 +110,7 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
     private function fetchFromQueue(string $queueName): ?Envelope
     {
         $envId = $this->extractEnvId($queueName);
-        $lockKey = 'test_runner_env_processing_'.$envId;
+        $lockKey = 'test_runner_env_processing_' . $envId;
         $lock = $this->lockFactory->createLock($lockKey, self::LOCK_TTL);
 
         // Try to acquire env lock (non-blocking)

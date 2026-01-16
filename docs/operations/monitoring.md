@@ -169,7 +169,7 @@ docker-compose exec db mysql -umatre -pmatre -e \
 
 Expected queues:
 - `test_runner` - Test execution messages
-- `scheduler_test_runner` - Scheduled test messages
+- `scheduled_test_messages` - Scheduled test messages
 - `async` - Email/notification messages
 
 ### Check Failed Messages

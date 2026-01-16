@@ -103,7 +103,7 @@ class CronJobController extends AbstractController
     #[Route('/{id}/delete', name: 'admin_cron_job_delete', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function delete(Request $request, CronJob $cronJob): Response
     {
-        if ($this->isCsrfTokenValid('delete'.$cronJob->getId(), $request->request->get('_token'))) {
+        if ($this->isCsrfTokenValid('delete' . $cronJob->getId(), $request->request->get('_token'))) {
             $name = $cronJob->getName();
             $this->entityManager->remove($cronJob);
             $this->entityManager->flush();
@@ -122,7 +122,7 @@ class CronJobController extends AbstractController
     #[Route('/{id}/toggle-active', name: 'admin_cron_job_toggle_active', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function toggleActive(Request $request, CronJob $cronJob): Response
     {
-        if ($this->isCsrfTokenValid('toggle'.$cronJob->getId(), $request->request->get('_token'))) {
+        if ($this->isCsrfTokenValid('toggle' . $cronJob->getId(), $request->request->get('_token'))) {
             $cronJob->setIsActive(!$cronJob->getIsActive());
             $this->entityManager->flush();
 
@@ -141,7 +141,7 @@ class CronJobController extends AbstractController
     #[Route('/{id}/run', name: 'admin_cron_job_run', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function run(Request $request, CronJob $cronJob, \Symfony\Component\Messenger\MessageBusInterface $messageBus): Response
     {
-        if ($this->isCsrfTokenValid('run'.$cronJob->getId(), $request->request->get('_token'))) {
+        if ($this->isCsrfTokenValid('run' . $cronJob->getId(), $request->request->get('_token'))) {
             $messageBus->dispatch(new \App\Message\CronJobMessage($cronJob->getId()));
             $this->addFlash('success', sprintf('Cron job "%s" has been triggered.', $cronJob->getName()));
         } else {

@@ -31,7 +31,7 @@ class EnvVariableApiControllerTest extends WebTestCase
     {
         $client = self::createClient();
 
-        $client->request('GET', self::BASE_URL.'/list');
+        $client->request('GET', self::BASE_URL . '/list');
 
         $this->assertResponseRedirects('/login');
     }
@@ -41,7 +41,7 @@ class EnvVariableApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsUser($client);
 
-        $client->request('GET', self::BASE_URL.'/list');
+        $client->request('GET', self::BASE_URL . '/list');
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -56,7 +56,7 @@ class EnvVariableApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $this->createEnvVariable();
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'/list');
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '/list');
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertArrayHasKey('data', $data);
@@ -71,7 +71,7 @@ class EnvVariableApiControllerTest extends WebTestCase
         $suffix = bin2hex(random_bytes(4));
         $this->createEnvVariable("SEARCHABLE_{$suffix}");
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL."/list?search=SEARCHABLE_{$suffix}");
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . "/list?search=SEARCHABLE_{$suffix}");
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertGreaterThanOrEqual(1, count($data['data']));
@@ -87,7 +87,7 @@ class EnvVariableApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $var = $this->createEnvVariable();
 
-        $response = $this->jsonRequest($client, 'GET', self::BASE_URL.'/'.$var->getId());
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '/' . $var->getId());
         $data = $this->assertJsonResponse($response, 200);
 
         $this->assertEquals($var->getName(), $data['name']);
@@ -99,7 +99,7 @@ class EnvVariableApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsAdmin($client);
 
-        $this->jsonRequest($client, 'GET', self::BASE_URL.'/99999');
+        $this->jsonRequest($client, 'GET', self::BASE_URL . '/99999');
 
         $this->assertResponseStatusCodeSame(404);
     }
@@ -143,9 +143,9 @@ class EnvVariableApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsAdmin($client);
         $var = $this->createEnvVariable();
-        $newValue = 'updated_value_'.bin2hex(random_bytes(4));
+        $newValue = 'updated_value_' . bin2hex(random_bytes(4));
 
-        $response = $this->jsonRequest($client, 'PUT', self::BASE_URL.'/'.$var->getId(), [
+        $response = $this->jsonRequest($client, 'PUT', self::BASE_URL . '/' . $var->getId(), [
             'name' => $var->getName(),
             'value' => $newValue,
         ]);
@@ -169,7 +169,7 @@ class EnvVariableApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $var = $this->createEnvVariable();
 
-        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL.'/'.$var->getId());
+        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/' . $var->getId());
 
         $this->assertJsonError($response, 403, 'CSRF');
     }

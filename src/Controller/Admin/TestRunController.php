@@ -160,7 +160,7 @@ class TestRunController extends AbstractController
             return $this->redirectToRoute('admin_test_run_index');
         }
 
-        if ($this->isCsrfTokenValid('cancel'.$run->getId(), $request->request->get('_token'))) {
+        if ($this->isCsrfTokenValid('cancel' . $run->getId(), $request->request->get('_token'))) {
             if ($run->canBeCancelled()) {
                 $this->testRunnerService->cancelRun($run);
                 $this->addFlash('success', sprintf('Test run #%d cancelled.', $run->getId()));
@@ -184,7 +184,7 @@ class TestRunController extends AbstractController
             return $this->redirectToRoute('admin_test_run_index');
         }
 
-        if ($this->isCsrfTokenValid('retry'.$run->getId(), $request->request->get('_token'))) {
+        if ($this->isCsrfTokenValid('retry' . $run->getId(), $request->request->get('_token'))) {
             $newRun = $this->testRunnerService->retryRun($run);
 
             // Dispatch async execution
@@ -214,7 +214,7 @@ class TestRunController extends AbstractController
             return $this->redirectToRoute('admin_test_run_index');
         }
 
-        if (!$this->isCsrfTokenValid('resend_notification'.$run->getId(), $request->request->get('_token'))) {
+        if (!$this->isCsrfTokenValid('resend_notification' . $run->getId(), $request->request->get('_token'))) {
             $this->addFlash('error', 'Invalid CSRF token.');
 
             return $this->redirectToRoute('admin_test_run_show', ['id' => $run->getId()]);
@@ -243,7 +243,7 @@ class TestRunController extends AbstractController
 
         if ($slackSent || $emailSent) {
             $channels = array_filter(['Slack' => $slackSent, 'Email' => $emailSent], fn ($v) => $v);
-            $this->addFlash('success', 'Notification sent via: '.implode(', ', array_keys($channels)));
+            $this->addFlash('success', 'Notification sent via: ' . implode(', ', array_keys($channels)));
         } else {
             $this->addFlash('warning', 'No users subscribed to notifications for this environment.');
         }
@@ -272,7 +272,7 @@ class TestRunController extends AbstractController
             // Find current test's output file
             $safeFileName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $currentTest);
             $outputPath = $this->getParameter('kernel.project_dir')
-                .sprintf('/var/test-output/run-%d/%s.log', $run->getId(), $safeFileName);
+                . sprintf('/var/test-output/run-%d/%s.log', $run->getId(), $safeFileName);
 
             if (file_exists($outputPath)) {
                 $output = $this->readTailOfFile($outputPath, 102400);
@@ -413,6 +413,6 @@ class TestRunController extends AbstractController
         $content = fread($handle, $maxBytes);
         fclose($handle);
 
-        return '... [truncated - showing last '.round($maxBytes / 1024)."KB]\n".$content;
+        return '... [truncated - showing last ' . round($maxBytes / 1024) . "KB]\n" . $content;
     }
 }

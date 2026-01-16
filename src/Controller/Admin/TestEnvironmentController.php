@@ -87,7 +87,7 @@ class TestEnvironmentController extends AbstractController
     #[Route('/{id}/delete', name: 'admin_test_environment_delete', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function delete(Request $request, TestEnvironment $environment): Response
     {
-        if ($this->isCsrfTokenValid('delete'.$environment->getId(), $request->request->get('_token'))) {
+        if ($this->isCsrfTokenValid('delete' . $environment->getId(), $request->request->get('_token'))) {
             $name = $environment->getName();
             $this->entityManager->remove($environment);
             $this->entityManager->flush();
@@ -103,7 +103,7 @@ class TestEnvironmentController extends AbstractController
     #[Route('/{id}/toggle-active', name: 'admin_test_environment_toggle_active', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function toggleActive(Request $request, TestEnvironment $environment): Response
     {
-        if ($this->isCsrfTokenValid('toggle'.$environment->getId(), $request->request->get('_token'))) {
+        if ($this->isCsrfTokenValid('toggle' . $environment->getId(), $request->request->get('_token'))) {
             $environment->setIsActive(!$environment->isActive());
             $this->entityManager->flush();
 

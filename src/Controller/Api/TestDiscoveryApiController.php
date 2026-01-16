@@ -115,7 +115,7 @@ class TestDiscoveryApiController extends AbstractController
         } catch (\Exception $e) {
             return $this->json([
                 'success' => false,
-                'error' => 'Failed to refresh cache: '.$e->getMessage(),
+                'error' => 'Failed to refresh cache: ' . $e->getMessage(),
             ], 500);
         }
     }
