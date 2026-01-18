@@ -18,7 +18,7 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
 
-#[AsMessageHandler(handles: TestRunMessage::class)]
+#[AsMessageHandler]
 class TestRunMessageHandler
 {
     public function __construct(
@@ -32,12 +32,8 @@ class TestRunMessageHandler
     ) {
     }
 
-    public function __invoke(Envelope $envelope): void
+    public function __invoke(TestRunMessage $message, Envelope $envelope): void
     {
-        $message = $envelope->getMessage();
-        if (!$message instanceof TestRunMessage) {
-            return;
-        }
 
         $runId = $message->testRunId;
         $phase = $message->phase;
