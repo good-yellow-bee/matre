@@ -203,11 +203,7 @@ class ModuleCloneService
         // Dev mode: module is mounted directly via docker-compose, no preparation needed
         if ($this->isDevModeEnabled()) {
             if (!$this->filesystem->exists($targetPath)) {
-                throw new \RuntimeException(sprintf(
-                    'Dev module path does not exist: %s (DEV_MODULE_PATH=%s)',
-                    $targetPath,
-                    $this->devModulePath
-                ));
+                throw new \RuntimeException(sprintf('Dev module path does not exist: %s (DEV_MODULE_PATH=%s)', $targetPath, $this->devModulePath));
             }
             $this->logger->info('Using local module (dev mode)', ['path' => $targetPath]);
 

@@ -192,6 +192,7 @@ class UserApiController extends AbstractController
         }
 
         // Prevent self-modification via API
+        /** @var User|null $currentUser */
         $currentUser = $this->getUser();
         if ($currentUser && $currentUser->getId() === $user->getId()) {
             return $this->json(['error' => 'You cannot modify your own account via API'], 400);
