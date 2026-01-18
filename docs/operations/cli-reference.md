@@ -4,6 +4,27 @@ All MATRE commands. Click links for detailed usage.
 
 ---
 
+## Management Scripts
+
+Wrapper scripts for common operations:
+
+| Command | Description |
+|---------|-------------|
+| `./local.sh start` | Start dev environment with migrations |
+| `./local.sh stop` | Stop all containers |
+| `./local.sh logs [svc]` | Follow logs |
+| `./local.sh shell` | Open PHP shell |
+| `./local.sh console <cmd>` | Run Symfony console |
+| `./local.sh test` | Run PHPUnit |
+| `./local.sh phpstan` | Run PHPStan |
+| `./local.sh fix` | Fix code style |
+| `./prod.sh start` | Start production |
+| `./prod.sh update` | Update production (pull, recreate, migrate) |
+| `./prod.sh recreate <svc>` | Recreate single service |
+| `./prod.sh status` | Show container status |
+
+---
+
 ## Test Operations
 
 | Command | Purpose | Guide |

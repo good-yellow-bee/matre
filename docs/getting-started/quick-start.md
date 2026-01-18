@@ -25,19 +25,18 @@ Get MATRE running and execute your first MFTF test in minutes.
 ## 1. Start the Environment
 
 ```bash
-# Clone and start
+# Clone and configure
 git clone <repository-url> matre
 cd matre
 cp .env.example .env
+# Edit .env (see .env.example for DATABASE_URL, TEST_MODULE_REPO, etc.)
 
-# Configure (edit .env)
-# - DATABASE_URL
-# - TEST_MODULE_REPO (your MFTF test repository)
-# - MAILER_DSN (optional)
-
-# Start all services
-docker-compose up -d
+# Start local development
+chmod +x local.sh
+./local.sh start
 ```
+
+This runs migrations automatically and shows access URLs.
 
 **Services started:**
 - PHP + Nginx (web app)
@@ -54,16 +53,10 @@ docker-compose up -d
 | Allure Reports | http://localhost:5050 |
 | Mailpit (dev) | http://localhost:8025 |
 
-### Run Database Migrations
-
-```bash
-docker-compose exec php php bin/console doctrine:migrations:migrate --no-interaction
-```
-
 ### Create Admin User
 
 ```bash
-docker-compose exec php php bin/console app:create-admin
+./local.sh console app:create-admin
 ```
 
 Follow prompts to set email and password.
@@ -100,10 +93,10 @@ Import multiple environments from `.env.*` files:
 
 ```bash
 # Import from module's Cron/data directory
-docker-compose exec php php bin/console app:test:import-env /var/www/html/var/test-modules/current/Cron/data
+./local.sh console app:test:import-env /var/www/html/var/test-modules/current/Cron/data
 
 # Dry run first
-docker-compose exec php php bin/console app:test:import-env /path/to/data --dry-run
+./local.sh console app:test:import-env /path/to/data --dry-run
 ```
 
 **Expected file format:** `.env.{name}` (e.g., `.env.dev-us`, `.env.stage-es`)
@@ -124,10 +117,10 @@ MFTF tests use `{{_ENV.VARIABLE}}` placeholders. Import these from your test mod
 
 ```bash
 # Clone fresh module and import interactively
-docker-compose exec php php bin/console app:env:import --clone
+./local.sh console app:env:import --clone
 
 # Or specify environment directly
-docker-compose exec php php bin/console app:env:import dev-us --clone
+./local.sh console app:env:import dev-us --clone
 ```
 
 **What happens:**
@@ -214,19 +207,19 @@ Test Suites group tests for reuse and scheduling. You can skip this and run test
 
 ```bash
 # Run specific test (async - returns immediately)
-docker-compose exec php php bin/console app:test:run mftf dev-us --filter="MOEC1625"
+./local.sh console app:test:run mftf dev-us --filter="MOEC1625"
 
 # Run and wait for completion (sync)
-docker-compose exec php php bin/console app:test:run mftf dev-us --filter="MOEC1625" --sync
+./local.sh console app:test:run mftf dev-us --filter="MOEC1625" --sync
 
 # Run a test group
-docker-compose exec php php bin/console app:test:run mftf dev-us --filter="@checkout"
+./local.sh console app:test:run mftf dev-us --filter="@checkout"
 
 # Run using a suite
-docker-compose exec php php bin/console app:test:run mftf dev-us --suite="Checkout Tests"
+./local.sh console app:test:run mftf dev-us --suite="Checkout Tests"
 
 # Run all tests (no filter)
-docker-compose exec php php bin/console app:test:run mftf dev-us --sync
+./local.sh console app:test:run mftf dev-us --sync
 ```
 
 **CLI Output (sync mode):**
@@ -337,8 +330,8 @@ Check `TEST_MODULE_REPO` in `.env` and ensure git credentials are configured.
 
 ### Selenium unreachable
 ```bash
-docker-compose ps  # Check selenium-hub is running
-docker-compose logs selenium-hub
+docker compose ps              # Check selenium-hub is running
+./local.sh logs selenium-hub   # View selenium logs
 ```
 
 ### Tests timeout

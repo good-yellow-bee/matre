@@ -129,6 +129,8 @@ services:
 
   # Allure reports with Traefik routing
   allure:
+    environment:
+      URL_PREFIX: /allure
     networks:
       - matre_network
       - traefik

@@ -112,22 +112,36 @@ MATRE (Magento Automated Test Run Environment) is a test automation orchestratio
 - Mount: `<div data-vue-island="{feature}" data-api-url="...">`
 - Register in `vite.config.mjs` rollupOptions.input
 
-## Docker Commands
+## Management Scripts
 
+| Script | Environment | Purpose |
+|--------|-------------|---------|
+| `./local.sh` | Development | Local dev workflow |
+| `./prod.sh` | Production | Production management |
+
+**Local Development (`./local.sh`):**
 ```bash
-docker-compose up -d --build           # Start environment
-docker-compose exec php php bin/console <cmd>  # Symfony commands
-docker-compose exec php bin/phpunit    # Run tests
-npm run dev                            # Frontend HMR
-docker-compose logs -f matre_test_worker  # Test worker logs
+start       # Start + migrations
+stop        # Stop containers
+restart     # Quick restart
+logs [svc]  # Follow logs
+shell [svc] # Open shell (default: php)
+console     # Run Symfony command
+test        # Run PHPUnit
+phpstan     # Run static analysis
+fix         # PHP-CS-Fixer
 ```
 
-## Testing
-
+**Production (`./prod.sh`):**
 ```bash
-docker-compose exec php bin/phpunit
-docker-compose exec php vendor/bin/phpstan analyse
-docker-compose exec php vendor/bin/php-cs-fixer fix --dry-run
+start          # Start + migrations + cache warmup
+stop           # Stop containers
+restart        # Quick restart
+update         # Full update (pull, recreate, migrate, cache)
+recreate <svc> # Recreate single service
+status         # Container status
+logs [svc]     # Follow logs
+shell [svc]    # Open shell
 ```
 
 ## Commit Format
