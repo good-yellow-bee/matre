@@ -47,9 +47,51 @@ class MftfExecutorService
                 'pid' => $process->getPid(),
             ]);
 
+            $this->terminateRunProcess($run);
             $process->stop(10); // Give 10 seconds for graceful shutdown
 
             throw new \RuntimeException('Test run was cancelled');
+        }
+    }
+
+    /**
+     * Stop a running MFTF process inside the Magento container for this run.
+     */
+    public function stopRun(TestRun $run): void
+    {
+        $this->terminateRunProcess($run);
+    }
+
+    private function terminateRunProcess(TestRun $run): void
+    {
+        $pidFile = $this->getPidFilePath((int) $run->getId());
+        $container = $this->containerPool->getContainerForEnvironment($run->getEnvironment());
+
+        $killCommand = sprintf(
+            'if [ -f %1$s ]; then pid=$(cat %1$s); ' .
+            'if [ -n "$pid" ]; then ' .
+            'kill -TERM -- -"$pid" 2>/dev/null || true; kill -TERM "$pid" 2>/dev/null || true; ' .
+            'sleep 2; ' .
+            'kill -KILL -- -"$pid" 2>/dev/null || true; kill -KILL "$pid" 2>/dev/null || true; ' .
+            'fi; ' .
+            'rm -f %1$s; fi',
+            escapeshellarg($pidFile),
+        );
+
+        $process = new Process([
+            'docker', 'exec',
+            $container,
+            'bash', '-c',
+            $killCommand,
+        ]);
+        $process->setTimeout(30);
+        $process->run();
+
+        if (!$process->isSuccessful()) {
+            $this->logger->warning('Failed to terminate MFTF process', [
+                'runId' => $run->getId(),
+                'error' => $process->getErrorOutput(),
+            ]);
         }
     }
 
@@ -325,7 +367,9 @@ class MftfExecutorService
 
         $mftfParts[] = '--ansi'; // Force colored output
 
-        $parts[] = implode(' ', $mftfParts);
+        $pidFile = $this->getPidFilePath($runId);
+        $parts[] = sprintf('rm -f %s', escapeshellarg($pidFile));
+        $parts[] = sprintf('(%s) & echo $! > %s; wait $!', implode(' ', $mftfParts), escapeshellarg($pidFile));
 
         // Build command chain with && for dependencies
         $mainCommand = implode(' && ', $parts);
@@ -339,6 +383,7 @@ class MftfExecutorService
         $moveCommands = [
             'mkdir -p ' . escapeshellarg($runOutputDir),
             'find tests/_output -maxdepth 1 -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.gif" -o -name "*.html" \) -exec mv {} ' . escapeshellarg($runOutputDir) . '/ \; 2>/dev/null || true',
+            'rm -f ' . escapeshellarg($pidFile) . ' || true',
         ];
 
         // Append move commands with ; so they run regardless of test result
@@ -725,5 +770,10 @@ class MftfExecutorService
             'SKIP' => TestResult::STATUS_SKIPPED,
             default => TestResult::STATUS_BROKEN,
         };
+    }
+
+    private function getPidFilePath(int $runId): string
+    {
+        return $this->magentoRoot . '/dev/tests/acceptance/.mftf-run-' . $runId . '.pid';
     }
 }

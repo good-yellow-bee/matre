@@ -245,6 +245,17 @@ class TestRunnerService
                     'id' => $run->getId(),
                     'error' => $e->getMessage(),
                 ]);
+
+                $this->entityManager->refresh($run);
+                if (TestRun::STATUS_CANCELLED === $run->getStatus()) {
+                    $this->logger->info('Test run cancelled during execution', [
+                        'id' => $run->getId(),
+                    ]);
+                    $run->setOutput($output . "\n\nCANCELLED: " . $e->getMessage());
+                    $this->entityManager->flush();
+
+                    return;
+                }
                 $run->setOutput($output . "\n\nERROR: " . $e->getMessage());
                 $run->markFailed($e->getMessage());
                 $this->entityManager->flush();
@@ -345,8 +356,12 @@ class TestRunnerService
 
         $this->logger->info('Cancelling test run', ['id' => $run->getId()]);
 
-        $run->setStatus(TestRun::STATUS_CANCELLED);
+        $run->markCancelled();
         $this->entityManager->flush();
+
+        if (TestRun::TYPE_MFTF === $run->getType() || TestRun::TYPE_BOTH === $run->getType()) {
+            $this->mftfExecutor->stopRun($run);
+        }
 
         // Note: Module is shared, no per-run cleanup needed
     }
