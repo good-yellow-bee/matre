@@ -38,10 +38,6 @@ class TestEnvironment
         minMessage: 'Name must be at least {{ limit }} characters long.',
         maxMessage: 'Name cannot be longer than {{ limit }} characters.',
     )]
-    #[Assert\Regex(
-        pattern: '/^[a-z0-9-]+$/',
-        message: 'Name must contain only lowercase letters, numbers, and dashes.',
-    )]
     private string $name;
 
     #[ORM\Column(type: Types::STRING, length: 20)]

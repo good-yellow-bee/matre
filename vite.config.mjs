@@ -30,6 +30,7 @@ export default defineConfig({
         'test-history-app': './assets/vue/test-history-app.js',
         'test-id-selector-app': './assets/vue/test-id-selector-app.js',
         'test-step-tree-app': './assets/vue/test-step-tree-app.js',
+        'test-run-form-app': './assets/vue/test-run-form-app.js',
       },
     },
   },

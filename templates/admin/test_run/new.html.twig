@@ -1,5 +1,4 @@
 {% extends 'admin/base.html.twig' %}
-{% form_theme form 'form/bootstrap_5_custom.html.twig' %}
 
 {% block title %}Start Test Run{% endblock %}
 
@@ -24,26 +23,16 @@
 
 <div class="card">
     <div class="card-body">
-        {{ form_start(form, {'attr': {'novalidate': 'novalidate'}}) }}
-
-            <div class="form-section">
-                <h3 class="form-section-title">Run Configuration</h3>
-
-                <div class="form-grid">
-                    <div>{{ form_row(form.environment) }}</div>
-                    <div>{{ form_row(form.suite) }}</div>
-                </div>
+        <div data-vue-island="test-run-form"
+             data-suites-url="{{ path('api_test_suite_list') }}"
+             data-form-action="{{ path('admin_test_run_new') }}"
+             data-cancel-url="{{ path('admin_test_run_index') }}"
+             data-csrf-token="{{ csrf_token('test_run') }}">
+            <div class="text-center py-4">
+                <span class="spinner-border spinner-border-sm text-primary"></span>
+                <span class="ms-2 text-muted">Loading form...</span>
             </div>
-
-            <div class="form-actions">
-                <button type="submit" class="btn btn-success">
-                    <i class="bi bi-play-fill"></i> Start Run
-                </button>
-                <a href="{{ path('admin_test_run_index') }}" class="btn btn-secondary">
-                    <i class="bi bi-x-circle"></i> Cancel
-                </a>
-            </div>
-        {{ form_end(form) }}
+        </div>
     </div>
 </div>
 
@@ -52,4 +41,9 @@
         <strong>Note:</strong> Tests will be executed asynchronously. You can monitor progress on the run details page.
     </div>
 </div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {{ vite_entry_script_tags('test-run-form-app') }}
 {% endblock %}

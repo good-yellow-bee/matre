@@ -226,7 +226,7 @@ class TestDiscoveryService
     /**
      * Resolve MFTF group name to list of test names.
      *
-     * @param string      $groupName  The group name to resolve
+     * @param string $groupName The group name to resolve
      * @param string|null $modulePath Path to module directory (uses cache if null)
      *
      * @return array<string> Test names belonging to this group

@@ -29,18 +29,6 @@ class NotificationService
     }
 
     /**
-     * Generate Allure report URL for environment.
-     */
-    private function getAllureReportUrl(string $envName): string
-    {
-        if (empty($this->allurePublicUrl)) {
-            return '';
-        }
-
-        return $this->allurePublicUrl . '/allure-docker-service/projects/' . $envName . '/reports/latest/index.html';
-    }
-
-    /**
      * Send Slack notification for test run (with retry).
      */
     public function sendSlackNotification(TestRun $run): void
@@ -107,6 +95,18 @@ class NotificationService
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Generate Allure report URL for environment.
+     */
+    private function getAllureReportUrl(string $envName): string
+    {
+        if (empty($this->allurePublicUrl)) {
+            return '';
+        }
+
+        return $this->allurePublicUrl . '/allure-docker-service/projects/' . $envName . '/reports/latest/index.html';
     }
 
     /**

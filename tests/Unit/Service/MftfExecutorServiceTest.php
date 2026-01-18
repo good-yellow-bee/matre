@@ -50,52 +50,6 @@ class MftfExecutorServiceTest extends TestCase
         $this->rebuildService();
     }
 
-    private function rebuildService(): void
-    {
-        $this->service = new MftfExecutorService(
-            $this->logger,
-            $this->envRepository,
-            $this->shellEscapeService,
-            $this->containerPool,
-            $this->entityManager,
-            '/app',
-            'selenium-hub',
-            4444,
-            '/var/www/html',
-            'app/code/SiiPoland/Catalog',
-        );
-    }
-
-    private function mockLogger(): LoggerInterface
-    {
-        if (!$this->logger instanceof MockObject) {
-            $this->logger = $this->createMock(LoggerInterface::class);
-            $this->rebuildService();
-        }
-
-        return $this->logger;
-    }
-
-    private function mockEnvRepository(): GlobalEnvVariableRepository
-    {
-        if (!$this->envRepository instanceof MockObject) {
-            $this->envRepository = $this->createMock(GlobalEnvVariableRepository::class);
-            $this->rebuildService();
-        }
-
-        return $this->envRepository;
-    }
-
-    private function mockShellEscapeService(): ShellEscapeService
-    {
-        if (!$this->shellEscapeService instanceof MockObject) {
-            $this->shellEscapeService = $this->createMock(ShellEscapeService::class);
-            $this->rebuildService();
-        }
-
-        return $this->shellEscapeService;
-    }
-
     // =====================
     // getOutputFilePath() Tests
     // =====================
@@ -532,6 +486,52 @@ class MftfExecutorServiceTest extends TestCase
 
         $this->assertCount(1, $results);
         $this->assertEquals('Unknown', $results[0]->getTestName());
+    }
+
+    private function rebuildService(): void
+    {
+        $this->service = new MftfExecutorService(
+            $this->logger,
+            $this->envRepository,
+            $this->shellEscapeService,
+            $this->containerPool,
+            $this->entityManager,
+            '/app',
+            'selenium-hub',
+            4444,
+            '/var/www/html',
+            'app/code/SiiPoland/Catalog',
+        );
+    }
+
+    private function mockLogger(): LoggerInterface
+    {
+        if (!$this->logger instanceof MockObject) {
+            $this->logger = $this->createMock(LoggerInterface::class);
+            $this->rebuildService();
+        }
+
+        return $this->logger;
+    }
+
+    private function mockEnvRepository(): GlobalEnvVariableRepository
+    {
+        if (!$this->envRepository instanceof MockObject) {
+            $this->envRepository = $this->createMock(GlobalEnvVariableRepository::class);
+            $this->rebuildService();
+        }
+
+        return $this->envRepository;
+    }
+
+    private function mockShellEscapeService(): ShellEscapeService
+    {
+        if (!$this->shellEscapeService instanceof MockObject) {
+            $this->shellEscapeService = $this->createMock(ShellEscapeService::class);
+            $this->rebuildService();
+        }
+
+        return $this->shellEscapeService;
     }
 
     private function createTestEnvironment(string $name = 'stage-us'): TestEnvironment
