@@ -302,15 +302,20 @@ class AllureStepParserService
         // Extract testId from Allure data
         $testId = $this->extractTestId($allureName) ?? $this->extractTestId($fullName);
 
-        if (!$testId) {
-            return;
-        }
-
         // Extract Cest class and method from fullName
         // Format: "Magento\AcceptanceTest\_default\Backend\MOEC2606Cest::MOEC2606"
         $testName = null;
         if (preg_match('/([A-Z][A-Za-z0-9]+Cest)::(\w+)/', $fullName, $matches)) {
             $testName = $matches[1] . ':' . $matches[2];
+        }
+
+        // Fallback to Allure "name" when no Cest::method is available
+        if (!$testName && $allureName) {
+            $testName = $allureName;
+        }
+
+        if (!$testId && !$testName) {
+            return;
         }
 
         $this->logger->debug('Allure: Backfilling test info', [
@@ -320,8 +325,13 @@ class AllureStepParserService
         ]);
 
         // Update the entity
-        $result->setTestId($testId);
+        if ($testId) {
+            $result->setTestId($testId);
+        }
         if ($testName) {
+            if (strlen($testName) > 255) {
+                $testName = substr($testName, 0, 255);
+            }
             $result->setTestName($testName);
         }
 

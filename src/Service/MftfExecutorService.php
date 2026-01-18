@@ -317,13 +317,14 @@ class MftfExecutorService
      *
      * @return TestResult[]
      */
-    public function parseResults(TestRun $run, string $output): array
+    public function parseResults(TestRun $run, string $output, ?string $outputFilePath = null): array
     {
         $results = [];
 
         // Strip ANSI escape codes for clean parsing
         // Handles both \x1b[...m (ESC sequences) and [...m (raw brackets from logs)
-        $cleanOutput = preg_replace('/\x1b\[[0-9;]*m|\[[0-9;]*m/', '', $output);
+        $parseOutput = $this->getOutputForParsing($output, $outputFilePath);
+        $cleanOutput = preg_replace('/\x1b\[[0-9;]*m|\[[0-9;]*m/', '', $parseOutput);
 
         // Pattern to match test blocks in Codeception output
         // Format: "TestCest: MethodName" ... (steps) ... "PASSED/FAIL"
@@ -500,6 +501,48 @@ class MftfExecutorService
         fclose($handle);
 
         return $content;
+    }
+
+    /**
+     * Get output suitable for parsing test names/statuses.
+     * Prefer head+tail of the full output file to avoid truncation issues.
+     */
+    private function getOutputForParsing(string $fallback, ?string $outputFilePath): string
+    {
+        if (!$outputFilePath || !file_exists($outputFilePath)) {
+            return $fallback;
+        }
+
+        $parsed = $this->readOutputFileForParsing($outputFilePath);
+
+        return '' !== $parsed ? $parsed : $fallback;
+    }
+
+    /**
+     * Read head+tail of output file to preserve test headers and summaries.
+     */
+    private function readOutputFileForParsing(string $path, int $headBytes = 200000, int $tailBytes = 200000): string
+    {
+        $size = filesize($path);
+        if (false === $size) {
+            return '';
+        }
+
+        if ($size <= $headBytes + $tailBytes) {
+            return file_get_contents($path) ?: '';
+        }
+
+        $handle = fopen($path, 'r');
+        if (false === $handle) {
+            return '';
+        }
+
+        $head = fread($handle, $headBytes) ?: '';
+        fseek($handle, -$tailBytes, SEEK_END);
+        $tail = fread($handle, $tailBytes) ?: '';
+        fclose($handle);
+
+        return $head . "\n... [truncated for parsing]\n" . $tail;
     }
 
     /**
