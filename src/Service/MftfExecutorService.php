@@ -493,7 +493,8 @@ class MftfExecutorService
     private function terminateRunProcess(TestRun $run): void
     {
         $pidFile = $this->getPidFilePath((int) $run->getId());
-        $container = $this->containerPool->getContainerForEnvironment($run->getEnvironment());
+        // Use getContainerNameForEnvironment to avoid container creation side effects
+        $container = $this->containerPool->getContainerNameForEnvironment($run->getEnvironment());
 
         $killCommand = sprintf(
             'if [ -f %1$s ]; then pid=$(cat %1$s); ' .

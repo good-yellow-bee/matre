@@ -59,6 +59,21 @@ class MagentoContainerPoolService
         return $containerName;
     }
 
+    /**
+     * Get container name for environment without creating/starting it.
+     *
+     * Use this when you just need the name (e.g., for cancel/kill operations)
+     * and don't want the side effect of container creation.
+     */
+    public function getContainerNameForEnvironment(TestEnvironment $env): string
+    {
+        if (!$this->useContainerPool) {
+            return $this->mainContainer;
+        }
+
+        return self::CONTAINER_PREFIX . $env->getId();
+    }
+
     public function cleanupEnvironmentContainer(TestEnvironment $env): void
     {
         $containerName = self::CONTAINER_PREFIX . $env->getId();
