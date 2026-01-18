@@ -32,67 +32,11 @@ class MftfExecutorService
     }
 
     /**
-     * Check if run was cancelled and stop process if so.
-     *
-     * @throws \RuntimeException if cancelled
-     */
-    private function checkCancellation(TestRun $run, Process $process): void
-    {
-        // Refresh from DB to get latest status
-        $this->entityManager->refresh($run);
-
-        if (TestRun::STATUS_CANCELLED === $run->getStatus()) {
-            $this->logger->info('Test run cancelled, stopping MFTF process', [
-                'runId' => $run->getId(),
-                'pid' => $process->getPid(),
-            ]);
-
-            $this->terminateRunProcess($run);
-            $process->stop(10); // Give 10 seconds for graceful shutdown
-
-            throw new \RuntimeException('Test run was cancelled');
-        }
-    }
-
-    /**
      * Stop a running MFTF process inside the Magento container for this run.
      */
     public function stopRun(TestRun $run): void
     {
         $this->terminateRunProcess($run);
-    }
-
-    private function terminateRunProcess(TestRun $run): void
-    {
-        $pidFile = $this->getPidFilePath((int) $run->getId());
-        $container = $this->containerPool->getContainerForEnvironment($run->getEnvironment());
-
-        $killCommand = sprintf(
-            'if [ -f %1$s ]; then pid=$(cat %1$s); ' .
-            'if [ -n "$pid" ]; then ' .
-            'kill -TERM -- -"$pid" 2>/dev/null || true; kill -TERM "$pid" 2>/dev/null || true; ' .
-            'sleep 2; ' .
-            'kill -KILL -- -"$pid" 2>/dev/null || true; kill -KILL "$pid" 2>/dev/null || true; ' .
-            'fi; ' .
-            'rm -f %1$s; fi',
-            escapeshellarg($pidFile),
-        );
-
-        $process = new Process([
-            'docker', 'exec',
-            $container,
-            'bash', '-c',
-            $killCommand,
-        ]);
-        $process->setTimeout(30);
-        $process->run();
-
-        if (!$process->isSuccessful()) {
-            $this->logger->warning('Failed to terminate MFTF process', [
-                'runId' => $run->getId(),
-                'error' => $process->getErrorOutput(),
-            ]);
-        }
     }
 
     /**
@@ -294,7 +238,7 @@ class MftfExecutorService
         $perRunOutputDir = 'allure-results/run-' . $runId;
         $parts[] = sprintf(
             "sed -i 's|outputDirectory: allure-results.*|outputDirectory: %s|' codeception.yml",
-            $perRunOutputDir
+            $perRunOutputDir,
         );
 
         // Build .env file with layered configuration:
@@ -303,7 +247,7 @@ class MftfExecutorService
         // 3. TestEnvironment entity values (can override)
         // 4. Infrastructure overrides (Selenium)
         $env = $run->getEnvironment();
-        $envFileName = '.env.' . $env->getName(); // e.g., .env.stage-us
+        $envFileName = '.env.' . $env->getCode(); // e.g., .env.stage-us
         $moduleEnvFile = $mountedModulePath . '/Cron/data/' . $envFileName;
 
         // Per-environment config directory (tmpfs mount - isolated per container)
@@ -316,7 +260,7 @@ class MftfExecutorService
 
         // Layer 1: Start with global + environment-specific variables from database
         // SECURITY: Validate and escape all variables to prevent command injection
-        $globalVars = $this->globalEnvVariableRepository->getAllAsKeyValue($env->getName());
+        $globalVars = $this->globalEnvVariableRepository->getAllAsKeyValue($env->getCode());
         if (!empty($globalVars)) {
             $globalContent = "# Global variables (from ATR database)\n";
             foreach ($globalVars as $key => $value) {
@@ -498,6 +442,62 @@ class MftfExecutorService
     public function getAllureResultsPath(int $runId): string
     {
         return $this->projectDir . '/var/mftf-results/allure-results/run-' . $runId;
+    }
+
+    /**
+     * Check if run was cancelled and stop process if so.
+     *
+     * @throws \RuntimeException if cancelled
+     */
+    private function checkCancellation(TestRun $run, Process $process): void
+    {
+        // Refresh from DB to get latest status
+        $this->entityManager->refresh($run);
+
+        if (TestRun::STATUS_CANCELLED === $run->getStatus()) {
+            $this->logger->info('Test run cancelled, stopping MFTF process', [
+                'runId' => $run->getId(),
+                'pid' => $process->getPid(),
+            ]);
+
+            $this->terminateRunProcess($run);
+            $process->stop(10); // Give 10 seconds for graceful shutdown
+
+            throw new \RuntimeException('Test run was cancelled');
+        }
+    }
+
+    private function terminateRunProcess(TestRun $run): void
+    {
+        $pidFile = $this->getPidFilePath((int) $run->getId());
+        $container = $this->containerPool->getContainerForEnvironment($run->getEnvironment());
+
+        $killCommand = sprintf(
+            'if [ -f %1$s ]; then pid=$(cat %1$s); ' .
+            'if [ -n "$pid" ]; then ' .
+            'kill -TERM -- -"$pid" 2>/dev/null || true; kill -TERM "$pid" 2>/dev/null || true; ' .
+            'sleep 2; ' .
+            'kill -KILL -- -"$pid" 2>/dev/null || true; kill -KILL "$pid" 2>/dev/null || true; ' .
+            'fi; ' .
+            'rm -f %1$s; fi',
+            escapeshellarg($pidFile),
+        );
+
+        $process = new Process([
+            'docker', 'exec',
+            $container,
+            'bash', '-c',
+            $killCommand,
+        ]);
+        $process->setTimeout(30);
+        $process->run();
+
+        if (!$process->isSuccessful()) {
+            $this->logger->warning('Failed to terminate MFTF process', [
+                'runId' => $run->getId(),
+                'error' => $process->getErrorOutput(),
+            ]);
+        }
     }
 
     /**
