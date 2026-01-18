@@ -47,8 +47,8 @@ class TestEnvironment
     #[ORM\Column(type: Types::STRING, length: 20)]
     #[Assert\NotBlank]
     #[Assert\Regex(
-        pattern: '/^(dev|stage|preprod|prod)(-[a-z]{2})?$/',
-        message: 'Invalid environment code. Use format: dev, stage, preprod, prod (optionally with region suffix like -us, -es).',
+        pattern: '/^[a-z0-9-]+$/',
+        message: 'Code must contain only lowercase letters, numbers, and dashes.',
     )]
     private string $code;
 
