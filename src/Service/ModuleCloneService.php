@@ -142,6 +142,7 @@ class ModuleCloneService
 
     /**
      * Pull latest changes from repository.
+     * Resets local changes first to ensure clean state.
      */
     public function pullLatest(string $targetPath): void
     {
@@ -150,6 +151,16 @@ class ModuleCloneService
         }
 
         $this->logger->info('Pulling latest changes', ['path' => $targetPath]);
+
+        // Reset any local changes to ensure clean pull
+        $resetProcess = new Process(['git', 'checkout', '.'], $targetPath);
+        $resetProcess->setTimeout(30);
+        $resetProcess->run();
+
+        // Clean untracked files
+        $cleanProcess = new Process(['git', 'clean', '-fd'], $targetPath);
+        $cleanProcess->setTimeout(30);
+        $cleanProcess->run();
 
         $process = new Process(['git', 'pull', 'origin', $this->moduleBranch], $targetPath);
         $process->setTimeout(120);
