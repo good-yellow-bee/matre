@@ -228,6 +228,7 @@ services:
     volumes:
       - ./var/allure-results:/app/allure-results
       - ./var/allure-reports:/app/default-reports
+      - ./var/allure-projects:/app/projects
     environment:
       CHECK_RESULTS_EVERY_SECONDS: 3
       KEEP_HISTORY: 25
