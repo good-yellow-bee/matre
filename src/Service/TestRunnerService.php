@@ -97,9 +97,9 @@ class TestRunnerService
     /**
      * Execute the test run.
      *
-     * @param callable|null $outputCallback Optional callback for real-time output streaming
+     * @param callable|null $lockRefreshCallback Optional callback to refresh environment lock during long-running execution
      */
-    public function executeRun(TestRun $run, ?callable $outputCallback = null): void
+    public function executeRun(TestRun $run, ?callable $lockRefreshCallback = null): void
     {
         $this->logger->info('Executing test run', ['id' => $run->getId()]);
 
@@ -135,7 +135,7 @@ class TestRunnerService
                 // Sequential execution - one test at a time
                 // Note: Report generation and notifications are handled by the message handler
                 // (PHASE_REPORT and PHASE_NOTIFY) after executeRun returns
-                $this->executeGroupRun($run);
+                $this->executeGroupRun($run, $lockRefreshCallback);
 
                 return;
             }
@@ -149,7 +149,7 @@ class TestRunnerService
             try {
                 // Execute MFTF tests
                 if (TestRun::TYPE_MFTF === $type || TestRun::TYPE_BOTH === $type) {
-                    $mftfResult = $this->mftfExecutor->execute($run, $outputCallback);
+                    $mftfResult = $this->mftfExecutor->execute($run, $lockRefreshCallback);
                     $output .= "=== MFTF Output ===\n" . $mftfResult['output'] . "\n\n";
 
                     // Check for fatal errors that prevent test execution
@@ -191,7 +191,7 @@ class TestRunnerService
 
                 // Execute Playwright tests
                 if (TestRun::TYPE_PLAYWRIGHT === $type || TestRun::TYPE_BOTH === $type) {
-                    $playwrightResult = $this->playwrightExecutor->execute($run, $outputCallback);
+                    $playwrightResult = $this->playwrightExecutor->execute($run);
                     $output .= "=== Playwright Output ===\n" . $playwrightResult['output'] . "\n\n";
 
                     // ALWAYS parse results (even on failure) to capture partial test data
@@ -401,7 +401,7 @@ class TestRunnerService
     /**
      * Execute a group test run sequentially (one test at a time).
      */
-    private function executeGroupRun(TestRun $run): void
+    private function executeGroupRun(TestRun $run, ?callable $lockRefreshCallback = null): void
     {
         $groupName = $run->getTestFilter();
 
@@ -492,7 +492,7 @@ class TestRunnerService
 
             try {
                 // Execute single test
-                $result = $this->mftfExecutor->executeSingleTest($run, $testName);
+                $result = $this->mftfExecutor->executeSingleTest($run, $testName, $lockRefreshCallback);
 
                 // Parse and create TestResult
                 $testResults = $this->mftfExecutor->parseResults(
@@ -529,6 +529,7 @@ class TestRunnerService
                         'testName' => $testName,
                     ]);
                     $this->entityManager->flush();
+
                     break; // Exit the loop
                 }
 

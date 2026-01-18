@@ -7,6 +7,7 @@ namespace App\MessageHandler;
 use App\Entity\TestRun;
 use App\Entity\User;
 use App\Message\TestRunMessage;
+use App\Messenger\Stamp\LockRefreshStamp;
 use App\Repository\TestRunRepository;
 use App\Repository\UserRepository;
 use App\Service\NotificationService;
@@ -14,9 +15,10 @@ use App\Service\TestRunnerService;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
+use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
 
-#[AsMessageHandler]
+#[AsMessageHandler(handles: TestRunMessage::class)]
 class TestRunMessageHandler
 {
     public function __construct(
@@ -30,8 +32,13 @@ class TestRunMessageHandler
     ) {
     }
 
-    public function __invoke(TestRunMessage $message): void
+    public function __invoke(Envelope $envelope): void
     {
+        $message = $envelope->getMessage();
+        if (!$message instanceof TestRunMessage) {
+            return;
+        }
+
         $runId = $message->testRunId;
         $phase = $message->phase;
 
@@ -82,7 +89,7 @@ class TestRunMessageHandler
         try {
             match ($phase) {
                 TestRunMessage::PHASE_PREPARE => $this->handlePrepare($run),
-                TestRunMessage::PHASE_EXECUTE => $this->handleExecute($run),
+                TestRunMessage::PHASE_EXECUTE => $this->handleExecute($run, $envelope),
                 TestRunMessage::PHASE_REPORT => $this->handleReport($run),
                 TestRunMessage::PHASE_NOTIFY => $this->handleNotify($run),
                 TestRunMessage::PHASE_CLEANUP => $this->handleCleanup($run),
@@ -122,10 +129,14 @@ class TestRunMessageHandler
         ));
     }
 
-    private function handleExecute(TestRun $run): void
+    private function handleExecute(TestRun $run, Envelope $envelope): void
     {
+        // Extract lock refresh callback if available (from PerEnvironmentDoctrineReceiver)
+        $refreshStamp = $envelope->last(LockRefreshStamp::class);
+        $lockRefreshCallback = $refreshStamp ? $refreshStamp->refresh(...) : null;
+
         try {
-            $this->testRunnerService->executeRun($run);
+            $this->testRunnerService->executeRun($run, $lockRefreshCallback);
         } catch (\Throwable $e) {
             $this->logger->error('Execute phase failed, continuing to REPORT', [
                 'runId' => $run->getId(),

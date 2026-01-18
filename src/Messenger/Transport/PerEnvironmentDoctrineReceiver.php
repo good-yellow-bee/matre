@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Messenger\Transport;
 
 use App\Messenger\Stamp\DoctrineReceivedStamp;
+use App\Messenger\Stamp\LockRefreshStamp;
 use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Lock\LockFactory;
@@ -20,7 +21,7 @@ use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
 {
     private const QUEUE_PREFIX = 'test_runner_env_';
-    private const LOCK_TTL = 600; // 10 minutes - short enough for auto-cleanup on crash
+    private const LOCK_TTL = 1800; // 30 minutes - with refresh every 30s, safe for long-running tests
     private const REDELIVER_AFTER_SECONDS = 14400; // 4 hours (43 tests × 5min = ~3.5 hours)
 
     /** @var array<int, LockInterface> */
@@ -199,13 +200,20 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
                 'envId' => $envId,
             ]);
 
-            // Decode and return with stamp
+            // Decode and return with stamps
             $envelope = $this->serializer->decode([
                 'body' => $row['body'],
                 'headers' => json_decode($row['headers'], true),
             ]);
 
-            return $envelope->with(new DoctrineReceivedStamp($row['id']));
+            // Create refresh callback that captures the lock for this message
+            $refreshCallback = function () use ($lock): void {
+                $lock->refresh();
+            };
+
+            return $envelope
+                ->with(new DoctrineReceivedStamp($row['id']))
+                ->with(new LockRefreshStamp($refreshCallback));
         } catch (\Throwable $e) {
             $lock->release();
             $this->logger->error('Error fetching message', [
