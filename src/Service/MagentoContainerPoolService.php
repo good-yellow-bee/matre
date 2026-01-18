@@ -11,6 +11,7 @@ use Symfony\Component\Process\Process;
 
 /**
  * Manages per-environment Magento containers for parallel test execution.
+ * When USE_CONTAINER_POOL=false (local dev), uses the main container instead.
  */
 class MagentoContainerPoolService
 {
@@ -24,11 +25,22 @@ class MagentoContainerPoolService
         private readonly string $magentoImage,
         private readonly string $networkName,
         private readonly string $codeVolume,
+        private readonly string $mainContainer,
+        private readonly bool $useContainerPool = true,
     ) {
     }
 
     public function getContainerForEnvironment(TestEnvironment $env): string
     {
+        // Local dev: use main container (no pool)
+        if (!$this->useContainerPool) {
+            $this->logger->debug('Using main container (container pool disabled)', [
+                'container' => $this->mainContainer,
+            ]);
+
+            return $this->mainContainer;
+        }
+
         $containerName = self::CONTAINER_PREFIX . $env->getId();
 
         $lock = $this->lockFactory->createLock('container_' . $containerName, 60);
@@ -45,6 +57,35 @@ class MagentoContainerPoolService
         }
 
         return $containerName;
+    }
+
+    public function cleanupEnvironmentContainer(TestEnvironment $env): void
+    {
+        $containerName = self::CONTAINER_PREFIX . $env->getId();
+
+        if ($this->containerExists($containerName)) {
+            $this->removeContainer($containerName);
+        }
+    }
+
+    public function cleanupAllContainers(): int
+    {
+        $process = new Process([
+            'docker', 'ps', '-a',
+            '--filter', 'name=' . self::CONTAINER_PREFIX,
+            '--format', '{{.Names}}',
+        ]);
+        $process->run();
+
+        $containers = array_filter(explode("\n", trim($process->getOutput())));
+        $removed = 0;
+
+        foreach ($containers as $containerName) {
+            $this->removeContainer($containerName);
+            ++$removed;
+        }
+
+        return $removed;
     }
 
     private function containerExists(string $name): bool
@@ -140,35 +181,6 @@ class MagentoContainerPoolService
         }
 
         throw new \RuntimeException(sprintf('Container %s did not start within %d seconds', $name, $timeoutSeconds));
-    }
-
-    public function cleanupEnvironmentContainer(TestEnvironment $env): void
-    {
-        $containerName = self::CONTAINER_PREFIX . $env->getId();
-
-        if ($this->containerExists($containerName)) {
-            $this->removeContainer($containerName);
-        }
-    }
-
-    public function cleanupAllContainers(): int
-    {
-        $process = new Process([
-            'docker', 'ps', '-a',
-            '--filter', 'name=' . self::CONTAINER_PREFIX,
-            '--format', '{{.Names}}',
-        ]);
-        $process->run();
-
-        $containers = array_filter(explode("\n", trim($process->getOutput())));
-        $removed = 0;
-
-        foreach ($containers as $containerName) {
-            $this->removeContainer($containerName);
-            ++$removed;
-        }
-
-        return $removed;
     }
 
     private function removeContainer(string $name): void
