@@ -281,7 +281,13 @@ class AllureReportService
 
         for ($attempt = 0; $attempt < self::MAX_RETRIES; ++$attempt) {
             try {
-                return $requestFn();
+                $response = $requestFn();
+                // Consume response body to free memory (prevent leak)
+                if (method_exists($response, 'getContent')) {
+                    $response->getContent(false); // false = don't throw on error status
+                }
+
+                return $response;
             } catch (\Throwable $e) {
                 $lastException = $e;
                 $delayMs = self::INITIAL_RETRY_DELAY_MS * (2 ** $attempt); // Exponential backoff
@@ -327,11 +333,12 @@ class AllureReportService
 
         // Clean previous results for this project so "latest" shows only current run
         try {
-            $this->httpClient->request(
+            $response = $this->httpClient->request(
                 'GET',
                 $this->allureUrl . '/allure-docker-service/clean-results',
                 ['query' => ['project_id' => $projectId]],
             );
+            $response->getContent(false); // Consume to free memory
             $this->logger->debug('Cleaned previous Allure results', ['projectId' => $projectId]);
         } catch (\Throwable $e) {
             // Project may not exist yet or cleaning failed, that's ok

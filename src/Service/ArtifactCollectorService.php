@@ -44,14 +44,25 @@ class ArtifactCollectorService
         $lock->acquire(true);
 
         try {
-            $sourcePath = $this->projectDir . '/' . $this->mftfResultsDir . '/run-' . $run->getId();
+            $perRunPath = $this->projectDir . '/' . $this->mftfResultsDir . '/run-' . $run->getId();
+            $rootPath = $this->projectDir . '/' . $this->mftfResultsDir;
             $targetPath = $this->getRunArtifactsPath($run);
+
+            // Prefer per-run directory, but fallback to root if not found
+            // (move command may not have run if test crashed/cancelled)
+            $sourcePath = is_dir($perRunPath) ? $perRunPath : $rootPath;
 
             if (!is_dir($sourcePath)) {
                 $this->logger->warning('MFTF results directory not found', ['path' => $sourcePath]);
 
                 return $collected;
             }
+
+            // Log which source we're using
+            $this->logger->debug('Collecting artifacts', [
+                'runId' => $run->getId(),
+                'source' => $sourcePath === $perRunPath ? 'per-run' : 'root',
+            ]);
 
             $filesystem = new Filesystem();
             $filesystem->mkdir($targetPath);
@@ -121,8 +132,12 @@ class ArtifactCollectorService
      */
     public function collectTestScreenshot(TestRun $run, TestResult $result): void
     {
-        $sourcePath = $this->projectDir . '/' . $this->mftfResultsDir . '/run-' . $run->getId();
+        $perRunPath = $this->projectDir . '/' . $this->mftfResultsDir . '/run-' . $run->getId();
+        $rootPath = $this->projectDir . '/' . $this->mftfResultsDir;
         $targetPath = $this->getRunArtifactsPath($run);
+
+        // Prefer per-run directory, fallback to root
+        $sourcePath = is_dir($perRunPath) ? $perRunPath : $rootPath;
 
         if (!is_dir($sourcePath)) {
             return;

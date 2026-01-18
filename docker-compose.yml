@@ -312,7 +312,7 @@ services:
     build:
       context: .
       target: app_dev
-    command: php bin/console messenger:consume test_runner_per_env --time-limit=3600 -vv
+    command: php -d memory_limit=512M bin/console messenger:consume test_runner_per_env --time-limit=3600 -vv
     restart: unless-stopped
     volumes:
       - .:/app
