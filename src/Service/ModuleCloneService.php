@@ -168,9 +168,14 @@ class ModuleCloneService
 
     /**
      * Get the default module target path.
+     * In dev mode, returns the dev module path; otherwise var/test-modules/current.
      */
     public function getDefaultTargetPath(): string
     {
+        if ($this->isDevModeEnabled()) {
+            return $this->getDevModulePath();
+        }
+
         return $this->projectDir . '/var/test-modules/current';
     }
 
@@ -184,17 +189,26 @@ class ModuleCloneService
     {
         $targetPath = $this->getDefaultTargetPath();
 
+        // Dev mode: module is mounted directly via docker-compose, no preparation needed
+        if ($this->isDevModeEnabled()) {
+            if (!$this->filesystem->exists($targetPath)) {
+                throw new \RuntimeException(sprintf(
+                    'Dev module path does not exist: %s (DEV_MODULE_PATH=%s)',
+                    $targetPath,
+                    $this->devModulePath
+                ));
+            }
+            $this->logger->info('Using local module (dev mode)', ['path' => $targetPath]);
+
+            return $targetPath;
+        }
+
         // Lock to prevent race conditions when multiple workers try to clone/pull simultaneously
         $lock = $this->lockFactory->createLock('module_clone', 300);
         $lock->acquire(true);
 
         try {
-            if ($this->isDevModeEnabled()) {
-                // Dev mode: symlink to local module
-                if (!$this->filesystem->exists($targetPath) || !is_link($targetPath)) {
-                    $this->useLocalModule($targetPath);
-                }
-            } elseif ($this->filesystem->exists($targetPath . '/.git')) {
+            if ($this->filesystem->exists($targetPath . '/.git')) {
                 // Existing clone: pull latest changes
                 $this->pullLatest($targetPath);
             } else {

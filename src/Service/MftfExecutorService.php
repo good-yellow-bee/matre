@@ -43,11 +43,11 @@ class MftfExecutorService
      * Execute MFTF tests for a test run.
      * Output is streamed to a file to prevent memory bloat on long-running tests.
      *
-     * @param callable|null $outputCallback Optional callback for real-time output streaming
+     * @param callable|null $lockRefreshCallback Optional callback to refresh environment lock during execution
      *
      * @return array{output: string, exitCode: int}
      */
-    public function execute(TestRun $run, ?callable $outputCallback = null): array
+    public function execute(TestRun $run, ?callable $lockRefreshCallback = null): array
     {
         $this->logger->info('Executing MFTF tests', [
             'runId' => $run->getId(),
@@ -81,19 +81,29 @@ class MftfExecutorService
         ]);
         $process->setTimeout(3600); // 1 hour timeout
 
-        // Stream output to file and optionally to callback with cancellation support
+        // Stream output to file with cancellation and lock refresh support
         $handle = fopen($outputFile, 'w');
-        $process->start(function ($type, $buffer) use ($handle, $outputCallback) {
+        $process->start(function ($type, $buffer) use ($handle) {
             fwrite($handle, $buffer);
-            if (null !== $outputCallback) {
-                $outputCallback($buffer);
-            }
         });
 
-        // Poll for completion with cancellation check
+        // Poll for completion with cancellation check and lock refresh
+        $lastRefresh = time();
+        $refreshInterval = 30; // Refresh lock every 30 seconds
+
         while ($process->isRunning()) {
             usleep(500000); // Check every 500ms
             $this->checkCancellation($run, $process);
+
+            // Refresh environment lock to prevent expiration during long-running tests
+            if ($lockRefreshCallback && (time() - $lastRefresh) >= $refreshInterval) {
+                try {
+                    $lockRefreshCallback();
+                    $lastRefresh = time();
+                } catch (\Throwable $e) {
+                    $this->logger->warning('Lock refresh failed', ['error' => $e->getMessage()]);
+                }
+            }
         }
         fclose($handle);
 
@@ -117,9 +127,11 @@ class MftfExecutorService
      *
      * Used for sequential group execution where each test gets its own output.
      *
+     * @param callable|null $lockRefreshCallback Optional callback to refresh environment lock during execution
+     *
      * @return array{output: string, exitCode: int, outputFilePath: string}
      */
-    public function executeSingleTest(TestRun $run, string $testName): array
+    public function executeSingleTest(TestRun $run, string $testName, ?callable $lockRefreshCallback = null): array
     {
         $this->logger->info('Executing single MFTF test', [
             'runId' => $run->getId(),
@@ -157,18 +169,29 @@ class MftfExecutorService
         ]);
         $process->setTimeout(3600); // 1 hour timeout per test
 
-        // Stream to per-test file with cancellation support
+        // Stream to per-test file with cancellation and lock refresh support
         $handle = fopen($outputFile, 'w');
         $process->start(function ($type, $buffer) use ($handle) {
             fwrite($handle, $buffer);
         });
 
-        // Poll for completion with cancellation check
+        // Poll for completion with cancellation check and lock refresh
+        $lastRefresh = time();
+        $refreshInterval = 30; // Refresh lock every 30 seconds
+
         while ($process->isRunning()) {
             usleep(500000); // Check every 500ms
-
-            // Check if run was cancelled (refresh from DB)
             $this->checkCancellation($run, $process);
+
+            // Refresh environment lock to prevent expiration during long-running tests
+            if ($lockRefreshCallback && (time() - $lastRefresh) >= $refreshInterval) {
+                try {
+                    $lockRefreshCallback();
+                    $lastRefresh = time();
+                } catch (\Throwable $e) {
+                    $this->logger->warning('Lock refresh failed', ['error' => $e->getMessage()]);
+                }
+            }
         }
         fclose($handle);
 

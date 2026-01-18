@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Messenger\Transport;
 
 use App\Messenger\Stamp\DoctrineReceivedStamp;
+use App\Messenger\Stamp\LockRefreshStamp;
 use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Lock\LockFactory;
@@ -20,7 +21,7 @@ use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
 {
     private const QUEUE_PREFIX = 'test_runner_env_';
-    private const LOCK_TTL = 21600; // 6 hours (full test suite can take 3-4 hours)
+    private const LOCK_TTL = 1800; // 30 minutes - with refresh every 30s, safe for long-running tests
     private const REDELIVER_AFTER_SECONDS = 14400; // 4 hours (43 tests × 5min = ~3.5 hours)
 
     /** @var array<int, LockInterface> */
@@ -107,6 +108,25 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
         $this->logger->debug('Message rejected', ['id' => $id]);
     }
 
+    /**
+     * Refresh the lock for a message (extend TTL during long-running operations).
+     */
+    public function refreshLock(int $messageId): void
+    {
+        if (isset($this->activeLocks[$messageId])) {
+            $this->activeLocks[$messageId]->refresh();
+            $this->logger->debug('Lock refreshed', ['messageId' => $messageId]);
+        }
+    }
+
+    /**
+     * Get lock key for an environment ID (for external lock management).
+     */
+    public static function getLockKeyForEnv(int $envId): string
+    {
+        return 'test_runner_env_processing_' . $envId;
+    }
+
     private function fetchFromQueue(string $queueName): ?Envelope
     {
         $envId = $this->extractEnvId($queueName);
@@ -180,13 +200,20 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
                 'envId' => $envId,
             ]);
 
-            // Decode and return with stamp
+            // Decode and return with stamps
             $envelope = $this->serializer->decode([
                 'body' => $row['body'],
                 'headers' => json_decode($row['headers'], true),
             ]);
 
-            return $envelope->with(new DoctrineReceivedStamp($row['id']));
+            // Create refresh callback that captures the lock for this message
+            $refreshCallback = function () use ($lock): void {
+                $lock->refresh();
+            };
+
+            return $envelope
+                ->with(new DoctrineReceivedStamp($row['id']))
+                ->with(new LockRefreshStamp($refreshCallback));
         } catch (\Throwable $e) {
             $lock->release();
             $this->logger->error('Error fetching message', [
