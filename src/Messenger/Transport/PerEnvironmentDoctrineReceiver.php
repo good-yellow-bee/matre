@@ -20,7 +20,7 @@ use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
 {
     private const QUEUE_PREFIX = 'test_runner_env_';
-    private const LOCK_TTL = 21600; // 6 hours (full test suite can take 3-4 hours)
+    private const LOCK_TTL = 600; // 10 minutes - short enough for auto-cleanup on crash
     private const REDELIVER_AFTER_SECONDS = 14400; // 4 hours (43 tests × 5min = ~3.5 hours)
 
     /** @var array<int, LockInterface> */
@@ -105,6 +105,25 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
         $this->releaseEnvLock($id);
 
         $this->logger->debug('Message rejected', ['id' => $id]);
+    }
+
+    /**
+     * Refresh the lock for a message (extend TTL during long-running operations).
+     */
+    public function refreshLock(int $messageId): void
+    {
+        if (isset($this->activeLocks[$messageId])) {
+            $this->activeLocks[$messageId]->refresh();
+            $this->logger->debug('Lock refreshed', ['messageId' => $messageId]);
+        }
+    }
+
+    /**
+     * Get lock key for an environment ID (for external lock management).
+     */
+    public static function getLockKeyForEnv(int $envId): string
+    {
+        return 'test_runner_env_processing_' . $envId;
     }
 
     private function fetchFromQueue(string $queueName): ?Envelope

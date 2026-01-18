@@ -244,11 +244,10 @@ services:
     container_name: matre_magento
     volumes:
       - matre_magento_code:/var/www/html
-      - ./var/test-modules/current:/var/www/html/app/code/TestModule:ro
+      # Dev mode: mount DEV_MODULE_PATH directly; Prod: mount cloned module
+      - ${DEV_MODULE_PATH:-./var/test-modules/current}:/var/www/html/app/code/TestModule:ro
       - ./var/mftf-results:/var/www/html/dev/tests/acceptance/tests/_output
       - ./var/mftf-results/allure-results:/var/www/html/dev/tests/acceptance/allure-results
-      # Dev mode: mount local module for DEV_MODULE_PATH symlinks
-      - ./abb-custom-mftf:/app/abb-custom-mftf:ro
     env_file: .env
     environment:
       MAGENTO_RUN_MODE: developer

@@ -127,5 +127,10 @@ services:
     App\Messenger\Transport\PerEnvironmentDoctrineTransportFactory:
         tags: ['messenger.transport_factory']
 
+    # Clear stale environment locks command
+    App\Command\ClearEnvLocksCommand:
+        arguments:
+            $lockDsn: '%env(LOCK_DSN)%'
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
