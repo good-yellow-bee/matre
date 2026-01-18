@@ -50,6 +50,10 @@ FROM app_base AS app_dev
 # Install Docker CLI for executing commands in other containers
 RUN apk add --no-cache docker-cli
 
+# Configure git safe.directory globally to prevent "dubious ownership" errors
+# when test modules are mounted with different ownership
+RUN git config --system --add safe.directory '*'
+
 # Xdebug not yet available for PHP 8.5 (requires <= 8.4.99)
 # Uncomment when xdebug adds PHP 8.5 support:
 # RUN apk add --no-cache --update linux-headers $PHPIZE_DEPS \
