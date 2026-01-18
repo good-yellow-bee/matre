@@ -144,6 +144,27 @@ logs [svc]     # Follow logs
 shell [svc]    # Open shell
 ```
 
+## Production Deployment Rules
+
+⚠️ **Choose the right deployment command:**
+
+| Change Type | Command | Why |
+|-------------|---------|-----|
+| Code only (PHP) | `git pull && cache:clear && restart` | No container rebuild needed |
+| Dependencies | `git pull && composer install && restart` | Must install new packages |
+| Docker/config | `./prod.sh update` | Full recreate needed |
+| Migrations | `doctrine:migrations:migrate` | Run after code deployment |
+
+**NEVER use `./prod.sh update` for code-only changes** - it recreates all containers, causes downtime, and may expose timing issues (like services not ready).
+
+## Redis Lock (Production)
+
+Production uses Redis for distributed locking (`LOCK_DSN=redis://magento-redis:6379`).
+
+**Required:** `predis/predis` package must be installed. Without it, workers crash on startup.
+
+⚠️ If workers restart-loop with "predis" error → run `composer require predis/predis` in php container.
+
 ## Commit Format
 
 ```
