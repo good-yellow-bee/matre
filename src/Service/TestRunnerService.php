@@ -157,7 +157,11 @@ class TestRunnerService
                         || preg_match('/is not available under/i', $mftfResult['output']);
 
                     // ALWAYS parse results (even on failure) to capture partial test data
-                    $mftfResults = $this->mftfExecutor->parseResults($run, $mftfResult['output']);
+                    $mftfResults = $this->mftfExecutor->parseResults(
+                        $run,
+                        $mftfResult['output'],
+                        $run->getOutputFilePath(),
+                    );
                     foreach ($mftfResults as $result) {
                         $run->addResult($result);
                         $this->entityManager->persist($result);
@@ -476,7 +480,11 @@ class TestRunnerService
                 $result = $this->mftfExecutor->executeSingleTest($run, $testName);
 
                 // Parse and create TestResult
-                $testResults = $this->mftfExecutor->parseResults($run, $result['output']);
+                $testResults = $this->mftfExecutor->parseResults(
+                    $run,
+                    $result['output'],
+                    $result['outputFilePath'] ?? null,
+                );
 
                 if (empty($testResults)) {
                     // Create a broken result if parsing failed

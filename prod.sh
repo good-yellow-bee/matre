@@ -80,6 +80,17 @@ case "${1:-help}" in
         docker exec -it ${PROJECT_NAME}_${SERVICE} sh
         ;;
 
+    recreate)
+        SERVICE="${2:-}"
+        if [ -z "$SERVICE" ]; then
+            log_error "Usage: ./prod.sh recreate <service>"
+            exit 1
+        fi
+        log_info "Recreating $SERVICE..."
+        docker compose $COMPOSE_FILES up -d --force-recreate "$SERVICE"
+        log_info "$SERVICE recreated."
+        ;;
+
     build)
         log_info "Building production images..."
         docker compose $COMPOSE_FILES build --no-cache
@@ -112,6 +123,7 @@ case "${1:-help}" in
         echo "  update         Pull, recreate, migrate, clear cache"
         echo "  build          Build images (no cache)"
         echo "  shell [svc]    Open shell (default: php)"
+        echo "  recreate <svc> Recreate single service"
         echo "  help           Show this help"
         ;;
 esac
