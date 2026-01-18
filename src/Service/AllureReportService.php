@@ -52,6 +52,9 @@ class AllureReportService
             $this->mergeResults($resultPaths, $allureResultsPath);
         }
 
+        // Copy attachments from root to per-run directory (allure-codeception bug workaround)
+        $this->copyAllAttachmentsForRun($runId);
+
         // Generate report via Allure service (uses environment name as project ID)
         $reportId = $this->triggerReportGeneration($run);
 
@@ -93,6 +96,7 @@ class AllureReportService
                 $this->logger->debug('Skipping self-copy for Allure results', [
                     'path' => $sourcePath,
                 ]);
+
                 continue;
             }
 
@@ -133,16 +137,16 @@ class AllureReportService
     }
 
     /**
-     * Verify Allure results exist for a specific test in the per-run directory.
+     * Copy attachments from root allure-results to per-run directory.
      *
-     * With per-run isolation via ALLURE_OUTPUT_PATH, results are written directly
-     * to the per-run directory. This method just verifies files exist for logging.
+     * Allure-codeception writes result/container JSONs to outputDirectory but
+     * attachments always go to root allure-results/. This method fixes that by
+     * parsing result JSONs and copying referenced attachments to per-run dir.
      */
     public function copyTestAllureResults(int $runId, string $testName): void
     {
-        // Results are already in per-run directory from MFTF (via ALLURE_OUTPUT_PATH)
-        // This method now just verifies the directory exists for incremental reports
         $runDir = $this->getAllureResultsPath($runId);
+        $rootDir = $this->projectDir . '/var/mftf-results/allure-results';
 
         if (!$this->filesystem->exists($runDir)) {
             $this->logger->debug('Per-run Allure directory not found yet', [
@@ -153,13 +157,68 @@ class AllureReportService
             return;
         }
 
-        // Log for debugging
+        // Find all result files in per-run directory
         $resultFiles = glob($runDir . '/*-result.json') ?: [];
-        $this->logger->debug('Allure results available for incremental report', [
-            'runId' => $runId,
-            'testName' => $testName,
-            'fileCount' => count($resultFiles),
-        ]);
+        $attachmentsCopied = 0;
+
+        foreach ($resultFiles as $resultFile) {
+            $content = file_get_contents($resultFile);
+            if (false === $content) {
+                $this->logger->warning('Failed to read Allure result file', [
+                    'file' => $resultFile,
+                    'runId' => $runId,
+                ]);
+
+                continue;
+            }
+            if ('' === $content) {
+                continue;
+            }
+
+            $data = json_decode($content, true);
+            if (null === $data && JSON_ERROR_NONE !== json_last_error()) {
+                $this->logger->warning('Failed to parse Allure result JSON', [
+                    'file' => $resultFile,
+                    'runId' => $runId,
+                    'jsonError' => json_last_error_msg(),
+                ]);
+
+                continue;
+            }
+            if (empty($data)) {
+                continue;
+            }
+
+            // Extract all attachment sources from result (including nested steps)
+            $attachmentSources = $this->extractAllAttachmentSources($data);
+
+            foreach ($attachmentSources as $source) {
+                $sourceFile = $rootDir . '/' . $source;
+                $targetFile = $runDir . '/' . $source;
+
+                if ($this->filesystem->exists($sourceFile) && !$this->filesystem->exists($targetFile)) {
+                    try {
+                        $this->filesystem->copy($sourceFile, $targetFile);
+                        ++$attachmentsCopied;
+                    } catch (\Symfony\Component\Filesystem\Exception\IOException $e) {
+                        $this->logger->warning('Failed to copy attachment', [
+                            'source' => $sourceFile,
+                            'target' => $targetFile,
+                            'runId' => $runId,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            }
+        }
+
+        if ($attachmentsCopied > 0) {
+            $this->logger->debug('Copied attachments to per-run directory', [
+                'runId' => $runId,
+                'testName' => $testName,
+                'attachmentsCopied' => $attachmentsCopied,
+            ]);
+        }
     }
 
     /**
@@ -267,6 +326,127 @@ class AllureReportService
             if (!empty($step['steps'])) {
                 $this->extractAttachmentsFromSteps($step['steps'], $attachments);
             }
+        }
+    }
+
+    /**
+     * Extract all attachment source filenames from a result data structure.
+     *
+     * @return string[] List of attachment source filenames
+     */
+    private function extractAllAttachmentSources(array $data): array
+    {
+        $sources = [];
+
+        // Direct attachments
+        foreach ($data['attachments'] ?? [] as $attachment) {
+            if (!empty($attachment['source'])) {
+                $sources[] = $attachment['source'];
+            }
+        }
+
+        // Attachments in steps (recursive)
+        $this->extractSourcesFromSteps($data['steps'] ?? [], $sources);
+
+        return array_unique($sources);
+    }
+
+    /**
+     * Recursively extract attachment sources from steps.
+     */
+    private function extractSourcesFromSteps(array $steps, array &$sources): void
+    {
+        foreach ($steps as $step) {
+            foreach ($step['attachments'] ?? [] as $attachment) {
+                if (!empty($attachment['source'])) {
+                    $sources[] = $attachment['source'];
+                }
+            }
+            if (!empty($step['steps'])) {
+                $this->extractSourcesFromSteps($step['steps'], $sources);
+            }
+        }
+    }
+
+    /**
+     * Copy all attachments for a run from root to per-run directory.
+     *
+     * Called before sending results to Allure to ensure screenshots are included.
+     */
+    private function copyAllAttachmentsForRun(int $runId): void
+    {
+        $runDir = $this->getAllureResultsPath($runId);
+        $rootDir = $this->projectDir . '/var/mftf-results/allure-results';
+
+        if (!$this->filesystem->exists($runDir)) {
+            $this->logger->debug('Per-run Allure directory not found, skipping attachment copy', [
+                'runId' => $runId,
+                'path' => $runDir,
+            ]);
+
+            return;
+        }
+
+        // Find all result files in per-run directory
+        $resultFiles = glob($runDir . '/*-result.json') ?: [];
+        $attachmentsCopied = 0;
+
+        foreach ($resultFiles as $resultFile) {
+            $content = file_get_contents($resultFile);
+            if (false === $content) {
+                $this->logger->warning('Failed to read Allure result file', [
+                    'file' => $resultFile,
+                    'runId' => $runId,
+                ]);
+
+                continue;
+            }
+            if ('' === $content) {
+                continue;
+            }
+
+            $data = json_decode($content, true);
+            if (null === $data && JSON_ERROR_NONE !== json_last_error()) {
+                $this->logger->warning('Failed to parse Allure result JSON', [
+                    'file' => $resultFile,
+                    'runId' => $runId,
+                    'jsonError' => json_last_error_msg(),
+                ]);
+
+                continue;
+            }
+            if (empty($data)) {
+                continue;
+            }
+
+            // Extract all attachment sources and copy them
+            $attachmentSources = $this->extractAllAttachmentSources($data);
+
+            foreach ($attachmentSources as $source) {
+                $sourceFile = $rootDir . '/' . $source;
+                $targetFile = $runDir . '/' . $source;
+
+                if ($this->filesystem->exists($sourceFile) && !$this->filesystem->exists($targetFile)) {
+                    try {
+                        $this->filesystem->copy($sourceFile, $targetFile);
+                        ++$attachmentsCopied;
+                    } catch (\Symfony\Component\Filesystem\Exception\IOException $e) {
+                        $this->logger->warning('Failed to copy attachment', [
+                            'source' => $sourceFile,
+                            'target' => $targetFile,
+                            'runId' => $runId,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            }
+        }
+
+        if ($attachmentsCopied > 0) {
+            $this->logger->info('Copied attachments to per-run directory before Allure report', [
+                'runId' => $runId,
+                'attachmentsCopied' => $attachmentsCopied,
+            ]);
         }
     }
 

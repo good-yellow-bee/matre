@@ -99,7 +99,7 @@ class ArtifactCollectorService
      * Associate collected screenshots with test results based on filename matching.
      *
      * @param TestResult[] $results
-     * @param string[]     $screenshotPaths
+     * @param string[] $screenshotPaths
      */
     public function associateScreenshotsWithResults(array $results, array $screenshotPaths): void
     {
@@ -240,6 +240,48 @@ class ArtifactCollectorService
 
         if ($removed > 0) {
             $this->logger->info('Cleaned up old run directories', ['count' => $removed]);
+        }
+    }
+
+    /**
+     * Clear root-level artifacts (screenshots, HTML) from mftf-results directory.
+     * Called before each test run to prevent artifact contamination from previous runs.
+     *
+     * Only clears files at root level, preserves run-* subdirectories.
+     */
+    public function clearRootLevelArtifacts(): void
+    {
+        $filesystem = new Filesystem();
+        $baseDir = $this->projectDir . '/' . $this->mftfResultsDir;
+
+        if (!$filesystem->exists($baseDir) || !is_dir($baseDir)) {
+            return;
+        }
+
+        $allExtensions = array_merge(self::SCREENSHOT_EXTENSIONS, self::HTML_EXTENSIONS);
+        $removed = 0;
+
+        $finder = new Finder();
+        $finder->files()->in($baseDir)->depth(0);
+
+        // Build pattern for all artifact extensions (array of patterns)
+        $patterns = array_map(fn ($ext) => '*.' . $ext, $allExtensions);
+        $finder->name($patterns);
+
+        foreach ($finder as $file) {
+            try {
+                $filesystem->remove($file->getRealPath());
+                ++$removed;
+            } catch (\Symfony\Component\Filesystem\Exception\IOException $e) {
+                $this->logger->warning('Failed to remove root-level artifact', [
+                    'file' => $file->getRealPath(),
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        if ($removed > 0) {
+            $this->logger->info('Cleared root-level artifacts before test run', ['count' => $removed]);
         }
     }
 

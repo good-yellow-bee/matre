@@ -75,6 +75,9 @@ class TestRunnerService
         $this->entityManager->flush();
 
         try {
+            // Clear root-level artifacts to prevent contamination from previous runs
+            $this->artifactCollector->clearRootLevelArtifacts();
+
             // Prepare shared module (with locking for concurrent access)
             $run->setStatus(TestRun::STATUS_CLONING);
             $this->entityManager->flush();
