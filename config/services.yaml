@@ -57,6 +57,7 @@ services:
             $devModulePath: '%env(DEV_MODULE_PATH)%'
 
     # Per-environment Magento container pool for parallel test execution
+    # Set USE_CONTAINER_POOL=false for local dev (uses main container instead)
     App\Service\MagentoContainerPoolService:
         arguments:
             $projectDir: '%kernel.project_dir%'
@@ -64,6 +65,8 @@ services:
             $magentoImage: '%env(MAGENTO_IMAGE)%'
             $networkName: '%env(DOCKER_NETWORK)%'
             $codeVolume: '%env(MAGENTO_CODE_VOLUME)%'
+            $mainContainer: '%env(MAGENTO_CONTAINER)%'
+            $useContainerPool: '%env(bool:USE_CONTAINER_POOL)%'
 
     App\Service\MftfExecutorService:
         arguments:
