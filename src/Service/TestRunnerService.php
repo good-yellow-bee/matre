@@ -507,6 +507,16 @@ class TestRunnerService
                     }
                 }
             } catch (\Throwable $e) {
+                // Check if this is a cancellation
+                if (str_contains($e->getMessage(), 'cancelled')) {
+                    $this->logger->info('Test run cancelled during execution', [
+                        'runId' => $run->getId(),
+                        'testName' => $testName,
+                    ]);
+                    $this->entityManager->flush();
+                    break; // Exit the loop
+                }
+
                 // Test crashed - create broken result and continue with next test
                 $this->logger->error('Test execution crashed, continuing with next test', [
                     'runId' => $run->getId(),

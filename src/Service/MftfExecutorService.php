@@ -8,6 +8,7 @@ use App\Entity\TestResult;
 use App\Entity\TestRun;
 use App\Repository\GlobalEnvVariableRepository;
 use App\Service\Security\ShellEscapeService;
+use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Process\Process;
 
@@ -21,12 +22,35 @@ class MftfExecutorService
         private readonly GlobalEnvVariableRepository $globalEnvVariableRepository,
         private readonly ShellEscapeService $shellEscapeService,
         private readonly MagentoContainerPoolService $containerPool,
+        private readonly EntityManagerInterface $entityManager,
         private readonly string $projectDir,
         private readonly string $seleniumHost,
         private readonly int $seleniumPort,
         private readonly string $magentoRoot,
         private readonly string $testModulePath = 'app/code/SiiPoland/Catalog',
     ) {
+    }
+
+    /**
+     * Check if run was cancelled and stop process if so.
+     *
+     * @throws \RuntimeException if cancelled
+     */
+    private function checkCancellation(TestRun $run, Process $process): void
+    {
+        // Refresh from DB to get latest status
+        $this->entityManager->refresh($run);
+
+        if (TestRun::STATUS_CANCELLED === $run->getStatus()) {
+            $this->logger->info('Test run cancelled, stopping MFTF process', [
+                'runId' => $run->getId(),
+                'pid' => $process->getPid(),
+            ]);
+
+            $process->stop(10); // Give 10 seconds for graceful shutdown
+
+            throw new \RuntimeException('Test run was cancelled');
+        }
     }
 
     /**
@@ -71,14 +95,20 @@ class MftfExecutorService
         ]);
         $process->setTimeout(3600); // 1 hour timeout
 
-        // Stream output to file and optionally to callback
+        // Stream output to file and optionally to callback with cancellation support
         $handle = fopen($outputFile, 'w');
-        $process->run(function ($type, $buffer) use ($handle, $outputCallback) {
+        $process->start(function ($type, $buffer) use ($handle, $outputCallback) {
             fwrite($handle, $buffer);
             if (null !== $outputCallback) {
                 $outputCallback($buffer);
             }
         });
+
+        // Poll for completion with cancellation check
+        while ($process->isRunning()) {
+            usleep(500000); // Check every 500ms
+            $this->checkCancellation($run, $process);
+        }
         fclose($handle);
 
         // Read final output (truncated for entity storage)
@@ -141,11 +171,19 @@ class MftfExecutorService
         ]);
         $process->setTimeout(3600); // 1 hour timeout per test
 
-        // Stream to per-test file
+        // Stream to per-test file with cancellation support
         $handle = fopen($outputFile, 'w');
-        $process->run(function ($type, $buffer) use ($handle) {
+        $process->start(function ($type, $buffer) use ($handle) {
             fwrite($handle, $buffer);
         });
+
+        // Poll for completion with cancellation check
+        while ($process->isRunning()) {
+            usleep(500000); // Check every 500ms
+
+            // Check if run was cancelled (refresh from DB)
+            $this->checkCancellation($run, $process);
+        }
         fclose($handle);
 
         $this->logger->info('Single test execution completed', [

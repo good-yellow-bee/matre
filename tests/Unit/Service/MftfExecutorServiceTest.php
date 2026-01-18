@@ -11,6 +11,7 @@ use App\Repository\GlobalEnvVariableRepository;
 use App\Service\MagentoContainerPoolService;
 use App\Service\MftfExecutorService;
 use App\Service\Security\ShellEscapeService;
+use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -30,6 +31,8 @@ class MftfExecutorServiceTest extends TestCase
 
     private MagentoContainerPoolService $containerPool;
 
+    private EntityManagerInterface $entityManager;
+
     private MftfExecutorService $service;
 
     protected function setUp(): void
@@ -38,6 +41,7 @@ class MftfExecutorServiceTest extends TestCase
         $this->envRepository = $this->createStub(GlobalEnvVariableRepository::class);
         $this->shellEscapeService = $this->createStub(ShellEscapeService::class);
         $this->containerPool = $this->createStub(MagentoContainerPoolService::class);
+        $this->entityManager = $this->createStub(EntityManagerInterface::class);
 
         // Mock container pool to return a fixed container name
         $this->containerPool->method('getContainerForEnvironment')
@@ -53,6 +57,7 @@ class MftfExecutorServiceTest extends TestCase
             $this->envRepository,
             $this->shellEscapeService,
             $this->containerPool,
+            $this->entityManager,
             '/app',
             'selenium-hub',
             4444,
