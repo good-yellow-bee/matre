@@ -100,7 +100,7 @@ class TestRunnerService
     /**
      * Execute the test run.
      */
-    public function executeRun(TestRun $run): void
+    public function executeRun(TestRun $run, ?\Closure $receiverLockRefreshCallback = null, ?\Closure $heartbeatCallback = null): void
     {
         $this->logger->info('Executing test run', ['id' => $run->getId()]);
 
@@ -116,8 +116,12 @@ class TestRunnerService
         $envLock->acquire(true); // blocking
 
         // Create lock refresh callback to prevent expiration during long-running tests
-        $lockRefreshCallback = static function () use ($envLock): void {
+        // Combines: receiver lock (from message queue) + execution lock (per-environment)
+        $lockRefreshCallback = static function () use ($envLock, $receiverLockRefreshCallback): void {
             $envLock->refresh();
+            if ($receiverLockRefreshCallback) {
+                $receiverLockRefreshCallback();
+            }
         };
 
         try {
@@ -141,7 +145,7 @@ class TestRunnerService
                 // Sequential execution - one test at a time
                 // Note: Report generation and notifications are handled by the message handler
                 // (PHASE_REPORT and PHASE_NOTIFY) after executeRun returns
-                $this->executeGroupRun($run, $lockRefreshCallback);
+                $this->executeGroupRun($run, $lockRefreshCallback, $heartbeatCallback);
 
                 return;
             }
@@ -155,7 +159,7 @@ class TestRunnerService
             try {
                 // Execute MFTF tests
                 if (TestRun::TYPE_MFTF === $type || TestRun::TYPE_BOTH === $type) {
-                    $mftfResult = $this->mftfExecutor->execute($run, $lockRefreshCallback);
+                    $mftfResult = $this->mftfExecutor->execute($run, $lockRefreshCallback, $heartbeatCallback);
                     $output .= "=== MFTF Output ===\n" . $mftfResult['output'] . "\n\n";
 
                     // Check for fatal errors that prevent test execution
@@ -197,7 +201,7 @@ class TestRunnerService
 
                 // Execute Playwright tests
                 if (TestRun::TYPE_PLAYWRIGHT === $type || TestRun::TYPE_BOTH === $type) {
-                    $playwrightResult = $this->playwrightExecutor->execute($run);
+                    $playwrightResult = $this->playwrightExecutor->execute($run, null, $heartbeatCallback);
                     $output .= "=== Playwright Output ===\n" . $playwrightResult['output'] . "\n\n";
 
                     // ALWAYS parse results (even on failure) to capture partial test data
@@ -407,7 +411,7 @@ class TestRunnerService
     /**
      * Execute a group test run sequentially (one test at a time).
      */
-    private function executeGroupRun(TestRun $run, callable $lockRefreshCallback): void
+    private function executeGroupRun(TestRun $run, callable $lockRefreshCallback, ?\Closure $heartbeatCallback = null): void
     {
         $groupName = $run->getTestFilter();
 
@@ -498,7 +502,7 @@ class TestRunnerService
 
             try {
                 // Execute single test
-                $result = $this->mftfExecutor->executeSingleTest($run, $testName, $lockRefreshCallback);
+                $result = $this->mftfExecutor->executeSingleTest($run, $testName, $lockRefreshCallback, $heartbeatCallback);
 
                 // Parse and create TestResult
                 $testResults = $this->mftfExecutor->parseResults(

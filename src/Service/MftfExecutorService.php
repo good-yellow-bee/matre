@@ -44,10 +44,11 @@ class MftfExecutorService
      * Output is streamed to a file to prevent memory bloat on long-running tests.
      *
      * @param callable|null $lockRefreshCallback Optional callback to refresh environment lock during execution
+     * @param callable|null $heartbeatCallback   Optional callback to extend message redelivery window
      *
      * @return array{output: string, exitCode: int}
      */
-    public function execute(TestRun $run, ?callable $lockRefreshCallback = null): array
+    public function execute(TestRun $run, ?callable $lockRefreshCallback = null, ?callable $heartbeatCallback = null): array
     {
         $this->logger->info('Executing MFTF tests', [
             'runId' => $run->getId(),
@@ -87,9 +88,13 @@ class MftfExecutorService
             fwrite($handle, $buffer);
         });
 
-        // Poll for completion with cancellation check and lock refresh
+        // Poll for completion with cancellation check, lock refresh, and heartbeat
         $lastRefresh = time();
+        $lastHeartbeat = time();
+        $lockRefreshFailures = 0;
+        $heartbeatFailures = 0;
         $refreshInterval = 30; // Refresh lock every 30 seconds
+        $heartbeatInterval = 300; // Heartbeat every 5 minutes
 
         while ($process->isRunning()) {
             usleep(500000); // Check every 500ms
@@ -100,8 +105,48 @@ class MftfExecutorService
                 try {
                     $lockRefreshCallback();
                     $lastRefresh = time();
+                    $lockRefreshFailures = 0;
                 } catch (\Throwable $e) {
-                    $this->logger->warning('Lock refresh failed', ['error' => $e->getMessage()]);
+                    ++$lockRefreshFailures;
+                    if ($lockRefreshFailures >= 2) {
+                        $this->logger->error('Aborting test run - lock refresh persistently failing', [
+                            'runId' => $run->getId(),
+                            'error' => $e->getMessage(),
+                            'consecutiveFailures' => $lockRefreshFailures,
+                        ]);
+                        $process->stop();
+                        fclose($handle);
+                        throw new \RuntimeException('Lock refresh failed - aborting to prevent parallel execution conflicts');
+                    }
+                    $this->logger->warning('Lock refresh failed', [
+                        'runId' => $run->getId(),
+                        'error' => $e->getMessage(),
+                        'consecutiveFailures' => $lockRefreshFailures,
+                    ]);
+                }
+            }
+
+            // Heartbeat: extend message redelivery window during long-running tests
+            if ($heartbeatCallback && (time() - $lastHeartbeat) >= $heartbeatInterval) {
+                try {
+                    $heartbeatCallback();
+                    $lastHeartbeat = time();
+                    $heartbeatFailures = 0;
+                } catch (\Throwable $e) {
+                    ++$heartbeatFailures;
+                    if ($heartbeatFailures >= 3) {
+                        $this->logger->error('Persistent heartbeat failure - message may be redelivered', [
+                            'runId' => $run->getId(),
+                            'error' => $e->getMessage(),
+                            'consecutiveFailures' => $heartbeatFailures,
+                        ]);
+                    } else {
+                        $this->logger->warning('Heartbeat failed', [
+                            'runId' => $run->getId(),
+                            'error' => $e->getMessage(),
+                            'consecutiveFailures' => $heartbeatFailures,
+                        ]);
+                    }
                 }
             }
         }
@@ -128,10 +173,11 @@ class MftfExecutorService
      * Used for sequential group execution where each test gets its own output.
      *
      * @param callable|null $lockRefreshCallback Optional callback to refresh environment lock during execution
+     * @param callable|null $heartbeatCallback   Optional callback to extend message redelivery window
      *
      * @return array{output: string, exitCode: int, outputFilePath: string}
      */
-    public function executeSingleTest(TestRun $run, string $testName, ?callable $lockRefreshCallback = null): array
+    public function executeSingleTest(TestRun $run, string $testName, ?callable $lockRefreshCallback = null, ?callable $heartbeatCallback = null): array
     {
         $this->logger->info('Executing single MFTF test', [
             'runId' => $run->getId(),
@@ -175,9 +221,13 @@ class MftfExecutorService
             fwrite($handle, $buffer);
         });
 
-        // Poll for completion with cancellation check and lock refresh
+        // Poll for completion with cancellation check, lock refresh, and heartbeat
         $lastRefresh = time();
+        $lastHeartbeat = time();
+        $lockRefreshFailures = 0;
+        $heartbeatFailures = 0;
         $refreshInterval = 30; // Refresh lock every 30 seconds
+        $heartbeatInterval = 300; // Heartbeat every 5 minutes
 
         while ($process->isRunning()) {
             usleep(500000); // Check every 500ms
@@ -188,8 +238,52 @@ class MftfExecutorService
                 try {
                     $lockRefreshCallback();
                     $lastRefresh = time();
+                    $lockRefreshFailures = 0;
                 } catch (\Throwable $e) {
-                    $this->logger->warning('Lock refresh failed', ['error' => $e->getMessage()]);
+                    ++$lockRefreshFailures;
+                    if ($lockRefreshFailures >= 2) {
+                        $this->logger->error('Aborting test run - lock refresh persistently failing', [
+                            'runId' => $run->getId(),
+                            'testName' => $testName,
+                            'error' => $e->getMessage(),
+                            'consecutiveFailures' => $lockRefreshFailures,
+                        ]);
+                        $process->stop();
+                        fclose($handle);
+                        throw new \RuntimeException('Lock refresh failed - aborting to prevent parallel execution conflicts');
+                    }
+                    $this->logger->warning('Lock refresh failed', [
+                        'runId' => $run->getId(),
+                        'testName' => $testName,
+                        'error' => $e->getMessage(),
+                        'consecutiveFailures' => $lockRefreshFailures,
+                    ]);
+                }
+            }
+
+            // Heartbeat: extend message redelivery window during long-running tests
+            if ($heartbeatCallback && (time() - $lastHeartbeat) >= $heartbeatInterval) {
+                try {
+                    $heartbeatCallback();
+                    $lastHeartbeat = time();
+                    $heartbeatFailures = 0;
+                } catch (\Throwable $e) {
+                    ++$heartbeatFailures;
+                    if ($heartbeatFailures >= 3) {
+                        $this->logger->error('Persistent heartbeat failure - message may be redelivered', [
+                            'runId' => $run->getId(),
+                            'testName' => $testName,
+                            'error' => $e->getMessage(),
+                            'consecutiveFailures' => $heartbeatFailures,
+                        ]);
+                    } else {
+                        $this->logger->warning('Heartbeat failed', [
+                            'runId' => $run->getId(),
+                            'testName' => $testName,
+                            'error' => $e->getMessage(),
+                            'consecutiveFailures' => $heartbeatFailures,
+                        ]);
+                    }
                 }
             }
         }

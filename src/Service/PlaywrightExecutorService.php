@@ -28,11 +28,12 @@ class PlaywrightExecutorService
      * Execute Playwright tests for a test run.
      * Output is streamed to a file to prevent memory bloat on long-running tests.
      *
-     * @param callable|null $outputCallback Optional callback for real-time output streaming
+     * @param callable|null $outputCallback   Optional callback for real-time output streaming
+     * @param callable|null $heartbeatCallback Optional callback to extend message redelivery window
      *
      * @return array{output: string, exitCode: int}
      */
-    public function execute(TestRun $run, ?callable $outputCallback = null): array
+    public function execute(TestRun $run, ?callable $outputCallback = null, ?callable $heartbeatCallback = null): array
     {
         $this->logger->info('Executing Playwright tests', [
             'runId' => $run->getId(),
@@ -60,12 +61,45 @@ class PlaywrightExecutorService
 
         // Stream output to file and optionally to callback
         $handle = fopen($outputFile, 'w');
-        $process->run(function ($type, $buffer) use ($handle, $outputCallback) {
+        $process->start(function ($type, $buffer) use ($handle, $outputCallback) {
             fwrite($handle, $buffer);
             if (null !== $outputCallback) {
                 $outputCallback($buffer);
             }
         });
+
+        // Poll for completion with heartbeat support
+        $lastHeartbeat = time();
+        $heartbeatFailures = 0;
+        $heartbeatInterval = 300; // Heartbeat every 5 minutes
+
+        while ($process->isRunning()) {
+            usleep(500000); // Check every 500ms
+
+            // Heartbeat: extend message redelivery window during long-running tests
+            if ($heartbeatCallback && (time() - $lastHeartbeat) >= $heartbeatInterval) {
+                try {
+                    $heartbeatCallback();
+                    $lastHeartbeat = time();
+                    $heartbeatFailures = 0;
+                } catch (\Throwable $e) {
+                    ++$heartbeatFailures;
+                    if ($heartbeatFailures >= 3) {
+                        $this->logger->error('Persistent heartbeat failure - message may be redelivered', [
+                            'runId' => $run->getId(),
+                            'error' => $e->getMessage(),
+                            'consecutiveFailures' => $heartbeatFailures,
+                        ]);
+                    } else {
+                        $this->logger->warning('Heartbeat failed', [
+                            'runId' => $run->getId(),
+                            'error' => $e->getMessage(),
+                            'consecutiveFailures' => $heartbeatFailures,
+                        ]);
+                    }
+                }
+            }
+        }
         fclose($handle);
 
         // Read final output (truncated for entity storage)

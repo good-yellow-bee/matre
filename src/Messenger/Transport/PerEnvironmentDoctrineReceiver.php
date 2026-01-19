@@ -22,7 +22,7 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
 {
     private const QUEUE_PREFIX = 'test_runner_env_';
     private const LOCK_TTL = 1800; // 30 minutes - with refresh every 30s, safe for long-running tests
-    private const REDELIVER_AFTER_SECONDS = 14400; // 4 hours (43 tests × 5min = ~3.5 hours)
+    private const REDELIVER_AFTER_SECONDS = 5400; // 90 min (worker timeout + buffer, heartbeat keeps it alive)
 
     /** @var array<int, LockInterface> */
     private array $activeLocks = [];
@@ -120,6 +120,38 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
     }
 
     /**
+     * Update message heartbeat (delivered_at) to extend redelivery window.
+     * Called periodically during long-running test execution.
+     */
+    public function updateHeartbeat(int $messageId): void
+    {
+        try {
+            $affectedRows = $this->connection->update(
+                $this->tableName,
+                ['delivered_at' => new \DateTimeImmutable()],
+                ['id' => $messageId],
+                ['delivered_at' => 'datetime_immutable'],
+            );
+
+            if (0 === $affectedRows) {
+                $this->logger->warning('Heartbeat update affected no rows - message may have been deleted', [
+                    'messageId' => $messageId,
+                ]);
+
+                return;
+            }
+
+            $this->logger->debug('Message heartbeat updated', ['messageId' => $messageId]);
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to update message heartbeat', [
+                'messageId' => $messageId,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
      * Get lock key for an environment ID (for external lock management).
      */
     public static function getLockKeyForEnv(int $envId): string
@@ -211,9 +243,14 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
                 $lock->refresh();
             };
 
+            // Create heartbeat callback to extend redelivery window during long-running tests
+            $heartbeatCallback = function () use ($row): void {
+                $this->updateHeartbeat($row['id']);
+            };
+
             return $envelope
                 ->with(new DoctrineReceivedStamp($row['id']))
-                ->with(new LockRefreshStamp($refreshCallback));
+                ->with(new LockRefreshStamp($refreshCallback, $heartbeatCallback));
         } catch (\Throwable $e) {
             $lock->release();
             $this->logger->error('Error fetching message', [

@@ -13,7 +13,9 @@ use App\Service\NotificationService;
 use App\Service\TestRunnerService;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Lock\LockFactory;
+use App\Messenger\Stamp\LockRefreshStamp;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
+use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 #[AsMessageHandler]
@@ -30,7 +32,7 @@ class TestRunMessageHandler
     ) {
     }
 
-    public function __invoke(TestRunMessage $message): void
+    public function __invoke(TestRunMessage $message, Envelope $envelope): void
     {
         $runId = $message->testRunId;
         $phase = $message->phase;
@@ -45,6 +47,20 @@ class TestRunMessageHandler
             $this->logger->error('Test run not found', ['runId' => $runId]);
 
             return;
+        }
+
+        // Extract callbacks from stamp (receiver lock refresh + heartbeat)
+        $receiverLockRefreshCallback = null;
+        $heartbeatCallback = null;
+        $lockRefreshStamp = $envelope->last(LockRefreshStamp::class);
+        if ($lockRefreshStamp) {
+            $receiverLockRefreshCallback = fn () => $lockRefreshStamp->refresh();
+            $heartbeatCallback = $lockRefreshStamp->getHeartbeatCallback();
+        } else {
+            $this->logger->debug('No LockRefreshStamp found, lock refresh and heartbeat disabled', [
+                'runId' => $runId,
+                'phase' => $phase,
+            ]);
         }
 
         // Skip only early phases for failed/cancelled runs (REPORT must run to dispatch NOTIFY)
@@ -82,7 +98,7 @@ class TestRunMessageHandler
         try {
             match ($phase) {
                 TestRunMessage::PHASE_PREPARE => $this->handlePrepare($run),
-                TestRunMessage::PHASE_EXECUTE => $this->handleExecute($run),
+                TestRunMessage::PHASE_EXECUTE => $this->handleExecute($run, $receiverLockRefreshCallback, $heartbeatCallback),
                 TestRunMessage::PHASE_REPORT => $this->handleReport($run),
                 TestRunMessage::PHASE_NOTIFY => $this->handleNotify($run),
                 TestRunMessage::PHASE_CLEANUP => $this->handleCleanup($run),
@@ -122,10 +138,10 @@ class TestRunMessageHandler
         ));
     }
 
-    private function handleExecute(TestRun $run): void
+    private function handleExecute(TestRun $run, ?\Closure $receiverLockRefreshCallback = null, ?\Closure $heartbeatCallback = null): void
     {
         try {
-            $this->testRunnerService->executeRun($run);
+            $this->testRunnerService->executeRun($run, $receiverLockRefreshCallback, $heartbeatCallback);
         } catch (\Throwable $e) {
             $this->logger->error('Execute phase failed, continuing to REPORT', [
                 'runId' => $run->getId(),
