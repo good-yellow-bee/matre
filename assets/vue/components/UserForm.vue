@@ -238,17 +238,6 @@
                   <i class="bi bi-envelope me-1"></i> Email
                 </label>
               </div>
-              <div class="form-check">
-                <input
-                  id="notify-slack"
-                  v-model="form.notifyBySlack"
-                  type="checkbox"
-                  class="form-check-input"
-                />
-                <label for="notify-slack" class="form-check-label">
-                  <i class="bi bi-slack me-1"></i> Slack
-                </label>
-              </div>
             </div>
           </div>
 
@@ -378,7 +367,6 @@ const hasChanges = computed(() => {
     form.notificationsEnabled !== originalData.value.notificationsEnabled ||
     form.notificationTrigger !== originalData.value.notificationTrigger ||
     form.notifyByEmail !== originalData.value.notifyByEmail ||
-    form.notifyBySlack !== originalData.value.notifyBySlack ||
     JSON.stringify(form.notificationEnvironments) !== JSON.stringify(originalData.value.notificationEnvironments)
   );
 });
@@ -492,7 +480,6 @@ const resetToOriginal = () => {
     form.notificationsEnabled = originalData.value.notificationsEnabled;
     form.notificationTrigger = originalData.value.notificationTrigger;
     form.notifyByEmail = originalData.value.notifyByEmail;
-    form.notifyBySlack = originalData.value.notifyBySlack;
     form.notificationEnvironments = [...originalData.value.notificationEnvironments];
     form.password = '';
     form.passwordConfirm = '';
@@ -576,7 +563,6 @@ onMounted(async () => {
         notificationsEnabled: form.notificationsEnabled,
         notificationTrigger: form.notificationTrigger,
         notifyByEmail: form.notifyByEmail,
-        notifyBySlack: form.notifyBySlack,
         notificationEnvironments: [...form.notificationEnvironments],
       };
 

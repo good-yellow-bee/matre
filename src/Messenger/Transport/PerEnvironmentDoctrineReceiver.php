@@ -147,6 +147,7 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
                 'messageId' => $messageId,
                 'error' => $e->getMessage(),
             ]);
+
             throw $e;
         }
     }
