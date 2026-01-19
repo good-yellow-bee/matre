@@ -142,12 +142,7 @@ class TestRunCommand extends Command
                 $io->info('Module cloned, executing tests...');
                 $io->newLine();
 
-                // Stream output in real-time to console
-                $outputCallback = static function (string $buffer) use ($output): void {
-                    $output->write($buffer);
-                };
-
-                $this->testRunnerService->executeRun($run, $outputCallback);
+                $this->testRunnerService->executeRun($run);
                 $io->newLine();
                 $io->info('Tests completed, generating reports...');
 

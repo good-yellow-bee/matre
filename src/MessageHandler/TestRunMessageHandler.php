@@ -124,10 +124,8 @@ class TestRunMessageHandler
 
     private function handleExecute(TestRun $run): void
     {
-        // Note: Lock refresh callback removed - envelope access not supported with AsMessageHandler attribute
-        // For long-running tests, the per-environment lock ttl should be sufficient (30 min default)
         try {
-            $this->testRunnerService->executeRun($run, null);
+            $this->testRunnerService->executeRun($run);
         } catch (\Throwable $e) {
             $this->logger->error('Execute phase failed, continuing to REPORT', [
                 'runId' => $run->getId(),
