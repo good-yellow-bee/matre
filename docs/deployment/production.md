@@ -220,6 +220,85 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 ---
 
+## Docker Deployment Commands
+
+When deploying code changes in Docker production, you need to **rebuild images** because code is baked into the container (not mounted as volumes).
+
+### Deployment Decision Table
+
+| Change Type | Action | Why |
+|-------------|--------|-----|
+| PHP only | Build + recreate app containers | Code baked into image |
+| Vue/JS/CSS | Build + recreate app containers | Frontend built into PHP image via multi-stage |
+| Composer deps | Build + recreate app containers | `vendor/` baked into image |
+| Docker config | Full `update` via `./prod.sh` | Container configuration changed |
+| DB schema | Run migrations after deploy | Schema changes only |
+
+### Multi-Stage Build Process
+
+The Dockerfile uses multi-stage builds for frontend assets:
+
+```
+┌─────────────────────────────┐
+│  Stage: frontend_build      │
+│  - npm install              │
+│  - npm run build            │
+│  - Output: public/build/    │
+└──────────────┬──────────────┘
+               │ COPY --from=frontend_build
+               ▼
+┌─────────────────────────────┐
+│  Stage: app_prod            │
+│  - composer install         │
+│  - COPY app code            │
+│  - COPY built frontend      │
+└─────────────────────────────┘
+```
+
+This means **any Vue/JS/CSS change requires rebuilding the PHP image** to trigger the frontend build stage.
+
+### Standard Deployment Workflow
+
+```bash
+# 1. Pull latest code
+git pull origin master
+
+# 2. Rebuild app images (triggers frontend build)
+docker compose -f docker-compose.yml -f docker-compose.prod.yml build php scheduler test-worker
+
+# 3. Deploy with recreate
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate php scheduler test-worker
+
+# 4. Run migrations (if any)
+docker exec matre_php php bin/console doctrine:migrations:migrate --no-interaction
+
+# 5. Clear cache
+docker exec matre_php php bin/console cache:clear --env=prod
+```
+
+### Key Points
+
+- **Production uses `volumes: []`** — code is baked into image, not mounted
+- **`./prod.sh update` does `pull` not `build`** — it's for pulling pre-built images from a registry. Without a registry, you must `build` locally
+- **Only rebuild app containers** — `nginx`, `traefik`, `chrome-node`, `db` rarely need rebuilding
+- **Cache warmup** — always clear cache after deployment to pick up new services/routes
+
+### Quick Reference
+
+```bash
+# Rebuild and deploy (most common)
+docker compose -f docker-compose.yml -f docker-compose.prod.yml build php scheduler test-worker && \
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate php scheduler test-worker
+
+# View build output
+docker compose -f docker-compose.yml -f docker-compose.prod.yml build --progress=plain php
+
+# Check what changed
+docker compose -f docker-compose.yml -f docker-compose.prod.yml config --services
+```
+
+---
+
 ## Docker with Auto SSL (Recommended)
 
 MATRE includes an embedded Traefik reverse proxy with automatic Let's Encrypt SSL.
