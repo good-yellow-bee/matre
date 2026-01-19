@@ -111,7 +111,7 @@ class TestRunnerService
         // Different-env runs can still be parallel (per-run dirs isolate artifacts)
         $envLock = $this->lockFactory->createLock(
             'mftf_execution_env_' . $run->getEnvironment()->getId(),
-            3600, // 1 hour timeout
+            1800, // 30 min timeout
         );
         $envLock->acquire(true); // blocking
 
