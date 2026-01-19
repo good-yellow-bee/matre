@@ -229,7 +229,7 @@ When deploying code changes in Docker production, you need to **rebuild images**
 | Change Type | Action | Why |
 |-------------|--------|-----|
 | PHP only | Build + recreate app containers | Code baked into image |
-| Vue/JS/CSS | Build app images + sync `public/build` + recreate app containers | PHP reads manifest from image, nginx serves host `public/` |
+| Vue/JS/CSS | Build app images + sync `public/build` + recreate app containers | PHP + nginx read host `public/build` (bind-mounted in php) |
 | Composer deps | Build + recreate app containers | `vendor/` baked into image |
 | Docker config | Full `update` via `./prod.sh` | Container configuration changed |
 | DB schema | Run migrations after deploy | Schema changes only |
@@ -255,11 +255,11 @@ The Dockerfile uses multi-stage builds for frontend assets:
 └─────────────────────────────┘
 ```
 
-This means **any Vue/JS/CSS change requires rebuilding the app images** to regenerate the Vite manifest, then syncing `public/build` to the host for nginx.
+This means **any Vue/JS/CSS change requires rebuilding the app images** to regenerate the Vite manifest, then syncing `public/build` to the host for PHP + nginx.
 
 ### Frontend assets in docker-compose.prod.yml
 
-In production, the app containers run from images (no bind mounts), but nginx serves `./public` from the host. Twig reads the Vite manifest from the PHP image, so the host `public/build` must match the image output.
+In production, app code/vendor come from images, but `./public/build` is bind-mounted into the PHP container so Twig reads the Vite manifest from the host. Nginx also serves `./public` from the host, so keep `public/build` in sync with the latest build output.
 
 Use this workflow for Vue/JS/CSS changes:
 
@@ -286,7 +286,7 @@ git pull origin master
 # 2. Rebuild app images (triggers frontend build)
 docker compose -f docker-compose.yml -f docker-compose.prod.yml build php scheduler test-worker
 
-# 3. Sync public/build for nginx (skip if no frontend changes)
+# 3. Sync public/build for PHP + nginx (skip if no frontend changes)
 PHP_IMAGE=$(docker compose -f docker-compose.yml -f docker-compose.prod.yml images -q php)
 docker run --rm -v "$(pwd)/public/build:/host" "$PHP_IMAGE" sh -c 'rm -rf /host/* && cp -r /app/public/build/* /host/'
 
@@ -302,9 +302,9 @@ docker exec matre_php php bin/console cache:clear --env=prod
 
 ### Key Points
 
-- **Production uses `volumes: []`** — code is baked into image, not mounted
+- **App code/vendor are baked into the image** — only `public/build` is bind-mounted read-only
 - **`./prod.sh update` does `pull` not `build`** — it's for pulling pre-built images from a registry. Without a registry, you must `build` locally
-- **Nginx serves host `./public`** — keep `public/build` in sync with the PHP image manifest
+- **PHP + nginx read host `./public/build`** — keep it in sync with the latest build output
 - **Only rebuild app containers** — `nginx`, `traefik`, `chrome-node`, `db` rarely need rebuilding
 - **Cache warmup** — always clear cache after deployment to pick up new services/routes
 

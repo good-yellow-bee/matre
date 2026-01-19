@@ -151,7 +151,7 @@ shell [svc]    # Open shell
 | Change Type | Command | Why |
 |-------------|---------|-----|
 | PHP/Composer | Build + recreate app containers | Code baked into image |
-| Vue/JS/CSS | Build app images + sync `public/build` + recreate app containers | PHP uses image manifest, nginx serves host `public/build` |
+| Vue/JS/CSS | Build app images + sync `public/build` + recreate app containers | PHP + nginx read host `public/build` (bind-mounted in php) |
 | Docker/config | `./prod.sh update` | Full recreate needed |
 | Migrations | `doctrine:migrations:migrate` | Run after code deployment |
 
