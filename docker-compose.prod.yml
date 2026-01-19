@@ -17,6 +17,11 @@ services:
     profiles:
       - disabled
 
+  # Disable frontend-build in production (assets are built in app image)
+  frontend-build:
+    profiles:
+      - disabled
+
   # Enable production Traefik (remove profile requirement)
   traefik:
     profiles: []
