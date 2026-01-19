@@ -41,6 +41,22 @@ case "${1:-help}" in
         log_info "Restarting local environment..."
         docker compose $COMPOSE_FILES down
         docker compose $COMPOSE_FILES up -d
+
+        # Wait for Selenium Grid to be ready (hub + chrome-node registration)
+        log_info "Waiting for Selenium Grid..."
+        for i in {1..30}; do
+            if curl -s http://localhost:4444/status 2>/dev/null | grep -q '"ready":true'; then
+                log_info "Selenium Grid ready."
+                break
+            fi
+            if [ $i -eq 30 ]; then
+                log_warn "Selenium Grid not ready, recreating..."
+                docker compose $COMPOSE_FILES up -d --force-recreate selenium-hub chrome-node
+                sleep 10
+            fi
+            sleep 2
+        done
+
         log_info "Local environment restarted."
         docker compose $COMPOSE_FILES ps
         ;;
