@@ -21,7 +21,7 @@ services:
   traefik:
     profiles: []
 
-  # Production optimizations - use image vendor, no bind mounts
+  # Production optimizations - use image vendor; bind mount build output for manifest sync
   php:
     environment:
       APP_ENV: prod
@@ -30,7 +30,8 @@ services:
       MAIL_FROM: ${MAIL_FROM:-abbmagento.mftf.tests@gmail.com}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
       ALLURE_PUBLIC_URL: https://${APP_DOMAIN:-matre.local}/allure
-    volumes: []  # No volume mounts - use image vendor
+    volumes:
+      - ./public/build:/app/public/build:ro
 
   # Test workers - 4 replicas for parallel execution across environments
   # Each worker handles different environment (per-env locking prevents conflicts)
