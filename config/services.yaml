@@ -96,6 +96,14 @@ services:
             $artifactsDir: 'var/test-artifacts'
             $mftfResultsDir: 'var/mftf-results'
 
+    App\Service\NotificationTemplateService:
+        arguments:
+            $allurePublicUrl: '%env(ALLURE_PUBLIC_URL)%'
+
+    App\Controller\Api\NotificationTemplateApiController:
+        arguments:
+            $mailFrom: '%env(MAIL_FROM)%'
+
     App\Service\NotificationService:
         arguments:
             $slackWebhookUrl: '%env(SLACK_WEBHOOK_URL)%'

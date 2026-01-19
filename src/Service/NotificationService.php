@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Entity\NotificationTemplate;
 use App\Entity\TestRun;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Mailer\MailerInterface;
@@ -25,6 +26,7 @@ class NotificationService
         private readonly string $slackWebhookUrl,
         private readonly string $mailFrom = 'noreply@matre.local',
         private readonly string $allurePublicUrl = '',
+        private readonly ?NotificationTemplateService $templateService = null,
     ) {
     }
 
@@ -41,7 +43,7 @@ class NotificationService
 
         $this->logger->info('Sending Slack notification', ['runId' => $run->getId()]);
 
-        $message = $this->buildSlackMessage($run);
+        $message = $this->buildSlackMessageWithTemplate($run);
 
         try {
             $this->executeWithRetry(
@@ -74,8 +76,7 @@ class NotificationService
             'recipients' => $recipients,
         ]);
 
-        $subject = $this->buildEmailSubject($run);
-        $body = $this->buildEmailBody($run);
+        [$subject, $body] = $this->buildEmailWithTemplate($run);
 
         try {
             $email = (new Email())
@@ -95,6 +96,80 @@ class NotificationService
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Build Slack message, preferring custom template if available.
+     */
+    private function buildSlackMessageWithTemplate(TestRun $run): array
+    {
+        if ($this->templateService) {
+            $eventName = $this->templateService->getEventName($run);
+            $rendered = $this->templateService->render($run, NotificationTemplate::CHANNEL_SLACK, $eventName);
+
+            if ($rendered['body']) {
+                $this->logger->debug('Using custom Slack template', ['event' => $eventName]);
+
+                return $this->buildSlackMessageFromText($run, $rendered['body']);
+            }
+
+            $this->logger->debug('Custom Slack template empty, using default', ['event' => $eventName]);
+        }
+
+        return $this->buildSlackMessage($run);
+    }
+
+    /**
+     * Build Slack message from rendered template text.
+     */
+    private function buildSlackMessageFromText(TestRun $run, string $text): array
+    {
+        $status = $run->getStatus();
+        $counts = $run->getResultCounts();
+
+        $color = match ($status) {
+            TestRun::STATUS_COMPLETED => ($counts['failed'] ?? 0) > 0 ? 'warning' : 'good',
+            TestRun::STATUS_FAILED => 'danger',
+            default => '#808080',
+        };
+
+        return [
+            'attachments' => [
+                [
+                    'color' => $color,
+                    'text' => $text,
+                    'mrkdwn_in' => ['text'],
+                    'footer' => 'ATR - Automation Test Runner',
+                    'ts' => time(),
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * Build email subject and body, preferring custom template if available.
+     *
+     * @return array{0: string, 1: string} [subject, body]
+     */
+    private function buildEmailWithTemplate(TestRun $run): array
+    {
+        if ($this->templateService) {
+            $eventName = $this->templateService->getEventName($run);
+            $rendered = $this->templateService->render($run, NotificationTemplate::CHANNEL_EMAIL, $eventName);
+
+            if ($rendered['body']) {
+                $this->logger->debug('Using custom email template', ['event' => $eventName]);
+
+                return [
+                    $rendered['subject'] ?? $this->buildEmailSubject($run),
+                    $rendered['body'],
+                ];
+            }
+
+            $this->logger->debug('Custom email template empty, using default', ['event' => $eventName]);
+        }
+
+        return [$this->buildEmailSubject($run), $this->buildEmailBody($run)];
     }
 
     /**
@@ -219,7 +294,7 @@ class NotificationService
         }
 
         // Add Allure report link
-        $allureUrl = $this->getAllureReportUrl($env->getName());
+        $allureUrl = $this->getAllureReportUrl($env->getCode());
         if ($allureUrl) {
             $fields[] = [
                 'title' => 'Report',
@@ -301,7 +376,7 @@ class NotificationService
         }
 
         // Add Allure report link
-        $allureUrl = $this->getAllureReportUrl($env->getName());
+        $allureUrl = $this->getAllureReportUrl($env->getCode());
         if ($allureUrl) {
             $html .= '<p><a href="' . htmlspecialchars($allureUrl) . '">View Allure Report</a></p>';
         }

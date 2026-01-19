@@ -494,8 +494,8 @@ class AllureReportService
      */
     private function triggerReportGeneration(TestRun $run): string
     {
-        // Use environment name as project ID for per-environment reports
-        $projectId = $run->getEnvironment()->getName();
+        // Use environment code as project ID for per-environment reports
+        $projectId = $run->getEnvironment()->getCode();
         $runId = $run->getId();
 
         try {
@@ -568,6 +568,7 @@ class AllureReportService
             $size = @filesize($file);
             if (false !== $size && $size > 0) {
                 $hasResultFiles = true;
+
                 break;
             }
         }
