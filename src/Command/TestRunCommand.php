@@ -79,14 +79,14 @@ class TestRunCommand extends Command
             return Command::FAILURE;
         }
 
-        // Find environment
-        $environment = $this->environmentRepository->findOneBy(['name' => $envName]);
+        // Find environment by code (e.g., "dev-es", "stage-us")
+        $environment = $this->environmentRepository->findOneBy(['code' => $envName]);
         if (!$environment) {
-            $io->error(sprintf('Environment not found: %s', $envName));
+            $io->error(sprintf('Environment "%s" not found.', $envName));
 
             $available = $this->environmentRepository->findAllOrdered();
             if ($available) {
-                $io->note('Available environments: ' . implode(', ', array_map(fn ($e) => $e->getName(), $available)));
+                $io->note('Available: ' . implode(', ', array_map(fn ($e) => $e->getCode(), $available)));
             }
 
             return Command::FAILURE;
