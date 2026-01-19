@@ -350,6 +350,10 @@ class NotificationTemplateService
             {% if has_filter %}
             *Filter:* {{ test_filter }}
             {% endif %}
+
+            {% if total_count > 0 %}
+            *Results:* {{ passed_count }} passed | {{ failed_count }} failed | {{ broken_count }} broken | {{ skipped_count }} skipped
+            {% endif %}
             SLACK;
     }
 
@@ -365,6 +369,10 @@ class NotificationTemplateService
 
             {% if has_filter %}
             *Filter:* {{ test_filter }}
+            {% endif %}
+
+            {% if total_count > 0 %}
+            *Partial Results:* {{ passed_count }} passed | {{ failed_count }} failed | {{ broken_count }} broken | {{ skipped_count }} skipped
             {% endif %}
             SLACK;
     }
@@ -470,6 +478,16 @@ class NotificationTemplateService
             <pre style="background-color: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto;">{{ error_message }}</pre>
             {% endif %}
 
+            {% if total_count > 0 %}
+            <h3>Results</h3>
+            <ul style="list-style: none; padding: 0;">
+              <li>✅ Passed: {{ passed_count }}</li>
+              <li style="color: #dc3545;">❌ <strong>Failed: {{ failed_count }}</strong></li>
+              <li>⏭️ Skipped: {{ skipped_count }}</li>
+              <li>💔 Broken: {{ broken_count }}</li>
+            </ul>
+            {% endif %}
+
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
             <p style="color: #666; font-size: 12px;">{{ site_name }} - Automation Test Runner</p>
             </body>
@@ -494,6 +512,16 @@ class NotificationTemplateService
               <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Triggered By</td><td style="padding: 8px; border-bottom: 1px solid #eee;">{{ triggered_by }}</td></tr>
               {% if has_filter %}<tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Filter</td><td style="padding: 8px; border-bottom: 1px solid #eee;">{{ test_filter }}</td></tr>{% endif %}
             </table>
+
+            {% if total_count > 0 %}
+            <h3>Partial Results</h3>
+            <ul style="list-style: none; padding: 0;">
+              <li>✅ Passed: {{ passed_count }}</li>
+              <li>❌ Failed: {{ failed_count }}</li>
+              <li>⏭️ Skipped: {{ skipped_count }}</li>
+              <li>💔 Broken: {{ broken_count }}</li>
+            </ul>
+            {% endif %}
 
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
             <p style="color: #666; font-size: 12px;">{{ site_name }} - Automation Test Runner</p>

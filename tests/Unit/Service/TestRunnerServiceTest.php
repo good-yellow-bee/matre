@@ -289,7 +289,9 @@ class TestRunnerServiceTest extends TestCase
 
         $this->service->executeRun($run);
 
-        $this->assertEquals(TestRun::STATUS_RUNNING, $run->getStatus());
+        // No results returned = FAILED (no test results collected)
+        $this->assertEquals(TestRun::STATUS_FAILED, $run->getStatus());
+        $this->assertStringContainsString('No test results collected', $run->getErrorMessage());
         $this->assertStringContainsString('MFTF test output', $run->getOutput());
         $this->assertEquals('/var/test-output/run-1.txt', $run->getOutputFilePath());
     }
@@ -371,8 +373,8 @@ class TestRunnerServiceTest extends TestCase
 
         $this->service->executeRun($run);
 
-        $this->assertEquals(TestRun::STATUS_FAILED, $run->getStatus());
-        $this->assertStringContainsString('1 test(s) failed', $run->getErrorMessage());
+        // 1 passed + 1 failed = COMPLETED (some tests passed)
+        $this->assertEquals(TestRun::STATUS_COMPLETED, $run->getStatus());
     }
 
     public function testExecuteRunMftfGenerationFailure(): void
@@ -611,8 +613,8 @@ class TestRunnerServiceTest extends TestCase
 
         $this->service->executeRun($run);
 
-        $this->assertEquals(TestRun::STATUS_FAILED, $run->getStatus());
-        $this->assertStringContainsString('1 test(s) failed', $run->getErrorMessage());
+        // 1 failed (MFTF) + 1 passed (PW) = COMPLETED (some tests passed)
+        $this->assertEquals(TestRun::STATUS_COMPLETED, $run->getStatus());
     }
 
     public function testExecuteRunBothTypesBothFail(): void
@@ -662,10 +664,9 @@ class TestRunnerServiceTest extends TestCase
 
         $this->service->executeRun($run);
 
+        // 2 failed tests, 0 passed = FAILED (all tests failed)
         $this->assertEquals(TestRun::STATUS_FAILED, $run->getStatus());
-        // Both failure reasons should be concatenated
-        $this->assertStringContainsString('1 test(s) failed', $run->getErrorMessage());
-        $this->assertStringContainsString('; ', $run->getErrorMessage());
+        $this->assertStringContainsString('All 2 test(s) failed', $run->getErrorMessage());
     }
 
     // =====================
