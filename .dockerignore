@@ -21,10 +21,18 @@ vendor/
 var/cache/
 var/log/
 var/test/
+var/allure-results/
+var/allure-reports/
+var/allure-projects/
+var/mftf-results/
+var/playwright-results/
+var/test-artifacts/
+var/test-modules/
 tests/
 
 # Build artifacts from other tools
 build/
+public/build/
 node_modules/
 
 # IDE and OS files
