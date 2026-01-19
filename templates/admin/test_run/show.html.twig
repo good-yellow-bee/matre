@@ -46,7 +46,7 @@
                     <tr>
                         <th style="width: 150px">Environment</th>
                         <td>
-                            <a href="{{ path('admin_test_environment_show', {id: run.environment.id}) }}">
+                            <a href="{{ path('admin_test_environment_show', {id: run.environment.id}) }}" class="text-primary">
                                 {{ run.environment.name }}
                             </a>
                         </td>
@@ -59,7 +59,7 @@
                     <tr>
                         <th>Suite</th>
                         <td>
-                            <a href="{{ path('admin_test_suite_show', {id: run.suite.id}) }}">
+                            <a href="{{ path('admin_test_suite_show', {id: run.suite.id}) }}" class="text-primary">
                                 {{ run.suite.name }}
                             </a>
                         </td>

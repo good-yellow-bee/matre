@@ -511,20 +511,6 @@ class AllureReportService
             $this->logger->debug('Project creation response', ['error' => $e->getMessage()]);
         }
 
-        // Clean previous results for this project so "latest" shows only current run
-        try {
-            $response = $this->httpClient->request(
-                'GET',
-                $this->allureUrl . '/allure-docker-service/clean-results',
-                ['query' => ['project_id' => $projectId]],
-            );
-            $response->getContent(false); // Consume to free memory
-            $this->logger->debug('Cleaned previous Allure results', ['projectId' => $projectId]);
-        } catch (\Throwable $e) {
-            // Project may not exist yet or cleaning failed, that's ok
-            $this->logger->debug('Could not clean Allure results', ['error' => $e->getMessage()]);
-        }
-
         // Send results to Allure service
         $resultsPath = $this->getAllureResultsPath($runId);
         $hasResults = false;

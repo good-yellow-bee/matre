@@ -679,7 +679,7 @@ class TestRunnerServiceTest extends TestCase
 
         $this->lockFactory->expects($this->once())
             ->method('createLock')
-            ->with('mftf_execution_env_42', 3600)
+            ->with('mftf_execution_env_42', 1800)
             ->willReturn($this->lock);
 
         $this->lock->expects($this->once())
