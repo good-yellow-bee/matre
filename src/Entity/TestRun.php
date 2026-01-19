@@ -106,6 +106,9 @@ class TestRun
     #[Assert\Choice(choices: [self::TRIGGERED_BY_SCHEDULER, self::TRIGGERED_BY_MANUAL, self::TRIGGERED_BY_API])]
     private string $triggeredBy = self::TRIGGERED_BY_MANUAL;
 
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
+    private bool $sendNotifications = true;
+
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $errorMessage = null;
 
@@ -282,6 +285,18 @@ class TestRun
     public function setTriggeredBy(string $triggeredBy): static
     {
         $this->triggeredBy = $triggeredBy;
+
+        return $this;
+    }
+
+    public function isSendNotifications(): bool
+    {
+        return $this->sendNotifications;
+    }
+
+    public function setSendNotifications(bool $sendNotifications): static
+    {
+        $this->sendNotifications = $sendNotifications;
 
         return $this;
     }

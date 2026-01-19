@@ -26,6 +26,20 @@ class TestEnvironmentApiController extends AbstractController
     ) {
     }
 
+    /** List all active test environments. */
+    #[Route('', name: 'api_test_environment_list', methods: ['GET'])]
+    public function list(): JsonResponse
+    {
+        $environments = $this->entityManager
+            ->getRepository(TestEnvironment::class)
+            ->findBy(['isActive' => true], ['name' => 'ASC']);
+
+        return $this->json(array_map(fn (TestEnvironment $e) => [
+            'id' => $e->getId(),
+            'name' => $e->getName(),
+        ], $environments));
+    }
+
     /**
      * Get env variables for a specific environment.
      * Returns both global (inherited) and environment-specific variables.

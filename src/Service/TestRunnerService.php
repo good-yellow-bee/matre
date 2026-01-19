@@ -43,6 +43,7 @@ class TestRunnerService
         ?string $testFilter = null,
         ?TestSuite $suite = null,
         string $triggeredBy = TestRun::TRIGGER_MANUAL,
+        bool $sendNotifications = true,
     ): TestRun {
         $run = new TestRun();
         $run->setEnvironment($environment);
@@ -50,6 +51,7 @@ class TestRunnerService
         $run->setTestFilter($testFilter);
         $run->setSuite($suite);
         $run->setTriggeredBy($triggeredBy);
+        $run->setSendNotifications($sendNotifications);
         $run->setStatus(TestRun::STATUS_PENDING);
 
         $this->entityManager->persist($run);

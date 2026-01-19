@@ -32,7 +32,7 @@ class TestRunMessageHandler
     ) {
     }
 
-    public function __invoke(TestRunMessage $message, Envelope $envelope): void
+    public function __invoke(TestRunMessage $message, ?Envelope $envelope = null): void
     {
         $runId = $message->testRunId;
         $phase = $message->phase;
@@ -52,7 +52,7 @@ class TestRunMessageHandler
         // Extract callbacks from stamp (receiver lock refresh + heartbeat)
         $receiverLockRefreshCallback = null;
         $heartbeatCallback = null;
-        $lockRefreshStamp = $envelope->last(LockRefreshStamp::class);
+        $lockRefreshStamp = $envelope?->last(LockRefreshStamp::class);
         if ($lockRefreshStamp) {
             $receiverLockRefreshCallback = fn () => $lockRefreshStamp->refresh();
             $heartbeatCallback = $lockRefreshStamp->getHeartbeatCallback();
@@ -185,6 +185,19 @@ class TestRunMessageHandler
 
     private function handleNotify(TestRun $run): void
     {
+        // Skip notifications if disabled for this run
+        if (!$run->isSendNotifications()) {
+            $this->logger->info('Notifications disabled for this run', ['runId' => $run->getId()]);
+            // Still dispatch CLEANUP
+            $this->messageBus->dispatch(new TestRunMessage(
+                $run->getId(),
+                $run->getEnvironment()->getId(),
+                TestRunMessage::PHASE_CLEANUP,
+            ));
+
+            return;
+        }
+
         try {
             // Slack: send if ANY subscribed user has Slack enabled
             if ($this->userRepository->shouldSendSlackNotification($run)) {

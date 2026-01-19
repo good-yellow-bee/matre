@@ -3,6 +3,7 @@
     <input type="hidden" name="test_run[_token]" :value="csrfToken" />
     <input type="hidden" name="test_run[suite]" :value="selectedSuiteId || ''" />
     <input type="hidden" name="test_run[environment]" :value="selectedEnvironmentId || ''" />
+    <input type="hidden" name="test_run[sendNotifications]" :value="sendNotifications ? '1' : '0'" />
 
     <div class="form-section">
       <h3 class="form-section-title">Run Configuration</h3>
@@ -52,6 +53,14 @@
           </div>
         </div>
       </div>
+
+      <!-- Send Notifications Checkbox -->
+      <div class="col-span-2 mt-2">
+        <label class="inline-flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" v-model="sendNotifications" class="form-check-input" />
+          <span class="text-sm text-slate-700">Send notifications when complete</span>
+        </label>
+      </div>
     </div>
 
     <div v-if="error" class="alert alert-danger mt-3">{{ error }}</div>
@@ -70,7 +79,7 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useTestRunForm } from '../composables/useTestRunForm';
 
 const props = defineProps({
@@ -94,6 +103,8 @@ const {
   fetchSuites,
   onSuiteChange,
 } = useTestRunForm(props.suitesUrl);
+
+const sendNotifications = ref(true);
 
 const onSubmit = () => {
   if (!canSubmit.value) return;
