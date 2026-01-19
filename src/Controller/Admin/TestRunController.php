@@ -78,6 +78,7 @@ class TestRunController extends AbstractController
                 $suite->getTestPattern(),
                 $suite,
                 TestRun::TRIGGER_MANUAL,
+                filter_var($request->request->all('test_run')['sendNotifications'] ?? '1', FILTER_VALIDATE_BOOLEAN),
             );
 
             // Dispatch async execution

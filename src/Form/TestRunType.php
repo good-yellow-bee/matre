@@ -42,7 +42,8 @@ class TestRunType extends AbstractType
                 'placeholder' => 'Select test suite',
                 'attr' => ['class' => 'form-control'],
                 'constraints' => [new NotBlank()],
-            ]);
+            ])
+        ;
     }
 
     public function configureOptions(OptionsResolver $resolver): void
