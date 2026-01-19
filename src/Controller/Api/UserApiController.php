@@ -191,13 +191,6 @@ class UserApiController extends AbstractController
             return $this->json(['error' => 'User not found'], 404);
         }
 
-        // Prevent self-modification via API
-        /** @var User|null $currentUser */
-        $currentUser = $this->getUser();
-        if ($currentUser && $currentUser->getId() === $user->getId()) {
-            return $this->json(['error' => 'You cannot modify your own account via API'], 400);
-        }
-
         $data = json_decode($request->getContent(), true);
 
         // Validate input
@@ -206,14 +199,27 @@ class UserApiController extends AbstractController
             return $this->json(['errors' => $errors], 422);
         }
 
+        /** @var User|null $currentUser */
+        $currentUser = $this->getUser();
+        $isSelf = $currentUser && $currentUser->getId() === $user->getId();
+
+        // Prevent deactivating own account
+        $isActive = $data['isActive'] ?? true;
+        if ($isSelf && !$isActive) {
+            return $this->json(['error' => 'You cannot deactivate your own account'], 400);
+        }
+
+        // Prevent removing admin role from own account
+        $roles = $this->sanitizeRoles($data['roles'] ?? ['ROLE_USER']);
+        if ($isSelf && in_array('ROLE_ADMIN', $user->getRoles(), true) && !in_array('ROLE_ADMIN', $roles, true)) {
+            return $this->json(['error' => 'You cannot remove admin role from your own account'], 400);
+        }
+
         // Update user
         $user->setUsername($data['username']);
         $user->setEmail($data['email']);
-
-        // Sanitize roles - only allow whitelisted roles (prevents privilege escalation)
-        $roles = $this->sanitizeRoles($data['roles'] ?? ['ROLE_USER']);
         $user->setRoles($roles);
-        $user->setIsActive($data['isActive'] ?? true);
+        $user->setIsActive($isActive);
 
         // Notification settings
         $user->setNotificationsEnabled($data['notificationsEnabled'] ?? false);

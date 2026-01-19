@@ -283,7 +283,7 @@ class UserApiControllerTest extends WebTestCase
         $this->assertNotEquals($oldHash, $user->getPassword());
     }
 
-    public function testUpdateUserPreventsSelfModification(): void
+    public function testUpdateUserPreventsSelfDeactivation(): void
     {
         $client = self::createClient();
         $admin = $this->loginAsAdmin($client);
@@ -291,10 +291,42 @@ class UserApiControllerTest extends WebTestCase
         $response = $this->jsonRequest($client, 'PUT', self::BASE_URL . '/' . $admin->getId(), [
             'username' => $admin->getUsername(),
             'email' => $admin->getEmail(),
+            'roles' => $admin->getRoles(),
             'isActive' => false,
         ]);
 
-        $this->assertJsonError($response, 400, 'cannot modify your own');
+        $this->assertJsonError($response, 400, 'cannot deactivate your own account');
+    }
+
+    public function testUpdateUserPreventsSelfAdminRoleRemoval(): void
+    {
+        $client = self::createClient();
+        $admin = $this->loginAsAdmin($client);
+
+        $response = $this->jsonRequest($client, 'PUT', self::BASE_URL . '/' . $admin->getId(), [
+            'username' => $admin->getUsername(),
+            'email' => $admin->getEmail(),
+            'roles' => ['ROLE_USER'],
+            'isActive' => true,
+        ]);
+
+        $this->assertJsonError($response, 400, 'cannot remove admin role from your own account');
+    }
+
+    public function testUpdateUserAllowsSelfEditForSafeChanges(): void
+    {
+        $client = self::createClient();
+        $admin = $this->loginAsAdmin($client);
+
+        $response = $this->jsonRequest($client, 'PUT', self::BASE_URL . '/' . $admin->getId(), [
+            'username' => $admin->getUsername(),
+            'email' => 'self-edit-test-' . uniqid() . '@example.com',
+            'roles' => $admin->getRoles(),
+            'isActive' => true,
+        ]);
+
+        $data = $this->assertJsonResponse($response, 200);
+        $this->assertTrue($data['success']);
     }
 
     // =====================
