@@ -266,7 +266,7 @@ class TestRunnerServiceTest extends TestCase
 
         $this->mftfExecutor->expects($this->once())
             ->method('execute')
-            ->with($run, null)
+            ->with($run, $this->isType('callable'))
             ->willReturn(['output' => 'MFTF test output', 'exitCode' => 0]);
 
         $this->mftfExecutor->expects($this->once())
@@ -459,7 +459,7 @@ class TestRunnerServiceTest extends TestCase
 
         $this->playwrightExecutor->expects($this->once())
             ->method('execute')
-            ->with($run, null)
+            ->with($run)
             ->willReturn(['output' => 'Playwright test output', 'exitCode' => 0]);
 
         $this->playwrightExecutor->expects($this->once())
@@ -739,20 +739,19 @@ class TestRunnerServiceTest extends TestCase
     // executeRun() Tests - Output Callback
     // =====================
 
-    public function testExecuteRunPassesOutputCallback(): void
+    public function testExecuteRunCreatesLockRefreshCallback(): void
     {
         $run = $this->createTestRun(TestRun::TYPE_MFTF);
         $this->setupLockMock();
-
-        $callback = function (string $output): void {};
 
         $this->mftfExecutor->expects($this->once())
             ->method('getOutputFilePath')
             ->willReturn('/var/output.txt');
 
+        // Verify that a callable (lock refresh callback) is passed to the executor
         $this->mftfExecutor->expects($this->once())
             ->method('execute')
-            ->with($run, $callback)
+            ->with($run, $this->isType('callable'))
             ->willReturn(['output' => 'test', 'exitCode' => 0]);
 
         $this->mftfExecutor->expects($this->once())
@@ -767,7 +766,7 @@ class TestRunnerServiceTest extends TestCase
             ->method('collectArtifacts')
             ->willReturn(['screenshots' => [], 'html' => []]);
 
-        $this->service->executeRun($run, $callback);
+        $this->service->executeRun($run);
     }
 
     // =====================

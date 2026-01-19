@@ -79,14 +79,14 @@ class TestRunCommand extends Command
             return Command::FAILURE;
         }
 
-        // Find environment
-        $environment = $this->environmentRepository->findOneBy(['name' => $envName]);
+        // Find environment by code (e.g., "dev-es", "stage-us")
+        $environment = $this->environmentRepository->findOneBy(['code' => $envName]);
         if (!$environment) {
-            $io->error(sprintf('Environment not found: %s', $envName));
+            $io->error(sprintf('Environment "%s" not found.', $envName));
 
             $available = $this->environmentRepository->findAllOrdered();
             if ($available) {
-                $io->note('Available environments: ' . implode(', ', array_map(fn ($e) => $e->getName(), $available)));
+                $io->note('Available: ' . implode(', ', array_map(fn ($e) => $e->getCode(), $available)));
             }
 
             return Command::FAILURE;
@@ -142,12 +142,7 @@ class TestRunCommand extends Command
                 $io->info('Module cloned, executing tests...');
                 $io->newLine();
 
-                // Stream output in real-time to console
-                $outputCallback = static function (string $buffer) use ($output): void {
-                    $output->write($buffer);
-                };
-
-                $this->testRunnerService->executeRun($run, $outputCallback);
+                $this->testRunnerService->executeRun($run);
                 $io->newLine();
                 $io->info('Tests completed, generating reports...');
 

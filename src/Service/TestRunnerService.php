@@ -99,10 +99,8 @@ class TestRunnerService
 
     /**
      * Execute the test run.
-     *
-     * @param callable|null $lockRefreshCallback Optional callback to refresh environment lock during long-running execution
      */
-    public function executeRun(TestRun $run, ?callable $lockRefreshCallback = null): void
+    public function executeRun(TestRun $run): void
     {
         $this->logger->info('Executing test run', ['id' => $run->getId()]);
 
@@ -113,9 +111,14 @@ class TestRunnerService
         // Different-env runs can still be parallel (per-run dirs isolate artifacts)
         $envLock = $this->lockFactory->createLock(
             'mftf_execution_env_' . $run->getEnvironment()->getId(),
-            3600, // 1 hour timeout
+            1800, // 30 min timeout
         );
         $envLock->acquire(true); // blocking
+
+        // Create lock refresh callback to prevent expiration during long-running tests
+        $lockRefreshCallback = static function () use ($envLock): void {
+            $envLock->refresh();
+        };
 
         try {
             // Set status to RUNNING and output file path before test execution
@@ -404,7 +407,7 @@ class TestRunnerService
     /**
      * Execute a group test run sequentially (one test at a time).
      */
-    private function executeGroupRun(TestRun $run, ?callable $lockRefreshCallback = null): void
+    private function executeGroupRun(TestRun $run, callable $lockRefreshCallback): void
     {
         $groupName = $run->getTestFilter();
 
