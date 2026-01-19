@@ -538,6 +538,7 @@ class MftfExecutorServiceTest extends TestCase
     {
         $env = new TestEnvironment();
         $env->setName($name);
+        $env->setCode($name);
 
         return $env;
     }
