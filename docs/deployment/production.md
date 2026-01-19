@@ -229,7 +229,7 @@ When deploying code changes in Docker production, you need to **rebuild images**
 | Change Type | Action | Why |
 |-------------|--------|-----|
 | PHP only | Build + recreate app containers | Code baked into image |
-| Vue/JS/CSS | Build + recreate app containers | Frontend built into PHP image via multi-stage |
+| Vue/JS/CSS | Build app images + sync `public/build` + recreate app containers | PHP + nginx read host `public/build` (bind-mounted in php) |
 | Composer deps | Build + recreate app containers | `vendor/` baked into image |
 | Docker config | Full `update` via `./prod.sh` | Container configuration changed |
 | DB schema | Run migrations after deploy | Schema changes only |
@@ -255,7 +255,27 @@ The Dockerfile uses multi-stage builds for frontend assets:
 └─────────────────────────────┘
 ```
 
-This means **any Vue/JS/CSS change requires rebuilding the PHP image** to trigger the frontend build stage.
+This means **any Vue/JS/CSS change requires rebuilding the app images** to regenerate the Vite manifest, then syncing `public/build` to the host for PHP + nginx.
+
+### Frontend assets in docker-compose.prod.yml
+
+In production, app code/vendor come from images, but `./public/build` is bind-mounted into the PHP container so Twig reads the Vite manifest from the host. Nginx also serves `./public` from the host, so keep `public/build` in sync with the latest build output.
+
+Use this workflow for Vue/JS/CSS changes:
+
+```bash
+# 1) Build app images (includes Vite build)
+docker compose -f docker-compose.yml -f docker-compose.prod.yml build php scheduler test-worker
+
+# 2) Sync public/build from the freshly built PHP image (includes manifest.json)
+PHP_IMAGE=$(docker compose -f docker-compose.yml -f docker-compose.prod.yml images -q php)
+docker run --rm -v "$(pwd)/public/build:/host" "$PHP_IMAGE" sh -c 'rm -rf /host/* && cp -r /app/public/build/* /host/'
+
+# 3) Recreate app containers
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate php scheduler test-worker
+```
+
+Do not copy only `public/build/assets` or `public/build/.vite`. The `manifest.json` in `public/build/` must match the hashed files or admin pages will 404.
 
 ### Standard Deployment Workflow
 
@@ -266,20 +286,25 @@ git pull origin master
 # 2. Rebuild app images (triggers frontend build)
 docker compose -f docker-compose.yml -f docker-compose.prod.yml build php scheduler test-worker
 
-# 3. Deploy with recreate
+# 3. Sync public/build for PHP + nginx (skip if no frontend changes)
+PHP_IMAGE=$(docker compose -f docker-compose.yml -f docker-compose.prod.yml images -q php)
+docker run --rm -v "$(pwd)/public/build:/host" "$PHP_IMAGE" sh -c 'rm -rf /host/* && cp -r /app/public/build/* /host/'
+
+# 4. Deploy with recreate
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate php scheduler test-worker
 
-# 4. Run migrations (if any)
+# 5. Run migrations (if any)
 docker exec matre_php php bin/console doctrine:migrations:migrate --no-interaction
 
-# 5. Clear cache
+# 6. Clear cache
 docker exec matre_php php bin/console cache:clear --env=prod
 ```
 
 ### Key Points
 
-- **Production uses `volumes: []`** — code is baked into image, not mounted
+- **App code/vendor are baked into the image** — only `public/build` is bind-mounted read-only
 - **`./prod.sh update` does `pull` not `build`** — it's for pulling pre-built images from a registry. Without a registry, you must `build` locally
+- **PHP + nginx read host `./public/build`** — keep it in sync with the latest build output
 - **Only rebuild app containers** — `nginx`, `traefik`, `chrome-node`, `db` rarely need rebuilding
 - **Cache warmup** — always clear cache after deployment to pick up new services/routes
 

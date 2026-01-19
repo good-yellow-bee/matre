@@ -150,12 +150,29 @@ shell [svc]    # Open shell
 
 | Change Type | Command | Why |
 |-------------|---------|-----|
-| Code only (PHP) | `git pull && cache:clear && restart` | No container rebuild needed |
-| Dependencies | `git pull && composer install && restart` | Must install new packages |
+| PHP/Composer | Build + recreate app containers | Code baked into image |
+| Vue/JS/CSS | Build app images + sync `public/build` + recreate app containers | PHP + nginx read host `public/build` (bind-mounted in php) |
 | Docker/config | `./prod.sh update` | Full recreate needed |
 | Migrations | `doctrine:migrations:migrate` | Run after code deployment |
 
-**NEVER use `./prod.sh update` for code-only changes** - it recreates all containers, causes downtime, and may expose timing issues (like services not ready).
+**NEVER use `./prod.sh update` for code/asset changes** unless you are pulling prebuilt images. It does `pull`, not `build`.
+
+### Frontend assets (production docker-compose)
+
+```bash
+# Build app images (includes Vite build)
+docker compose -f docker-compose.yml -f docker-compose.prod.yml build php scheduler test-worker
+
+# Sync public/build from the PHP image (includes manifest.json)
+PHP_IMAGE=$(docker compose -f docker-compose.yml -f docker-compose.prod.yml images -q php)
+docker run --rm -v "$(pwd)/public/build:/host" "$PHP_IMAGE" sh -c 'rm -rf /host/* && cp -r /app/public/build/* /host/'
+
+# Recreate app containers
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate php scheduler test-worker
+docker exec matre_php php bin/console cache:clear --env=prod
+```
+
+Do not copy only `public/build/assets` or `public/build/.vite`. The `manifest.json` in `public/build/` must match the hashed files.
 
 ## Redis Lock (Production)
 
