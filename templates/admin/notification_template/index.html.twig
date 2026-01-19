@@ -1,0 +1,121 @@
+{% extends 'admin/base.html.twig' %}
+{% block title %}Notification Templates{% endblock %}
+{% block body %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Notification Templates</h1>
+    <form action="{{ path('admin_notification_template_reset_defaults') }}" method="post" class="d-inline" onsubmit="return confirm('Reset all templates to defaults? This will overwrite any customizations.');">
+        <input type="hidden" name="_token" value="{{ csrf_token('reset-defaults') }}">
+        <button type="submit" class="btn btn-outline-warning">
+            <i class="bi bi-arrow-counterclockwise"></i> Reset All to Defaults
+        </button>
+    </form>
+</div>
+
+<p class="text-slate-600 mb-4">
+    Customize notification messages sent via Slack and Email when test runs complete.
+    Use template variables to include dynamic content like test results and environment info.
+</p>
+
+{% for channel, channelTemplates in templates %}
+<div class="card mb-4">
+    <div class="card-header bg-{{ channel == 'slack' ? 'purple' : 'blue' }}-50 border-{{ channel == 'slack' ? 'purple' : 'blue' }}-200">
+        <h5 class="mb-0">
+            <i class="bi bi-{{ channel == 'slack' ? 'slack' : 'envelope' }} me-2"></i>
+            {{ channel|capitalize }} Templates
+        </h5>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th style="width: 40%">Event</th>
+                    <th style="width: 20%">Status</th>
+                    <th style="width: 20%">Last Modified</th>
+                    <th style="width: 20%" class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for template in channelTemplates %}
+                <tr>
+                    <td>
+                        <span class="fw-medium">{{ template.nameLabel }}</span>
+                        {% if template.isDefault %}
+                        <span class="badge bg-secondary ms-2" title="System default template">Default</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if template.isActive %}
+                        <span class="badge bg-success">Active</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-slate-500">
+                        {{ template.updatedAt ? template.updatedAt|date('M j, Y g:i A') : template.createdAt|date('M j, Y g:i A') }}
+                    </td>
+                    <td class="text-end">
+                        <a href="{{ path('admin_notification_template_edit', {id: template.id}) }}" class="btn btn-sm btn-outline-primary" title="Edit template">
+                            <i class="bi bi-pencil"></i> Edit
+                        </a>
+                        <form action="{{ path('admin_notification_template_toggle_active', {id: template.id}) }}" method="post" class="d-inline">
+                            <input type="hidden" name="_token" value="{{ csrf_token('toggle-active-' ~ template.id) }}">
+                            <button type="submit" class="btn btn-sm btn-outline-{{ template.isActive ? 'warning' : 'success' }}" title="{{ template.isActive ? 'Deactivate' : 'Activate' }} template">
+                                <i class="bi bi-{{ template.isActive ? 'pause' : 'play' }}"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center text-slate-500 py-4">
+                        No templates configured for this channel.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endfor %}
+
+<div class="card bg-slate-50 border-slate-200">
+    <div class="card-body">
+        <h6 class="card-title">
+            <i class="bi bi-info-circle me-2"></i>
+            Template Variables
+        </h6>
+        <p class="text-slate-600 small mb-2">
+            Use these variables in your templates with the <code>{{ '{{ variable_name }}' }}</code> syntax:
+        </p>
+        <div class="row">
+            <div class="col-md-4">
+                <ul class="list-unstyled small mb-0">
+                    <li><code>run_id</code> - Test run ID</li>
+                    <li><code>run_status</code> - Status (Completed, Failed)</li>
+                    <li><code>environment_name</code> - Target environment</li>
+                    <li><code>test_type</code> - Test type (MFTF, Playwright)</li>
+                    <li><code>duration</code> - Formatted duration</li>
+                </ul>
+            </div>
+            <div class="col-md-4">
+                <ul class="list-unstyled small mb-0">
+                    <li><code>triggered_by</code> - Trigger source</li>
+                    <li><code>passed_count</code> - Passed tests</li>
+                    <li><code>failed_count</code> - Failed tests</li>
+                    <li><code>broken_count</code> - Broken tests</li>
+                    <li><code>skipped_count</code> - Skipped tests</li>
+                </ul>
+            </div>
+            <div class="col-md-4">
+                <ul class="list-unstyled small mb-0">
+                    <li><code>total_count</code> - Total test count</li>
+                    <li><code>error_message</code> - Error details</li>
+                    <li><code>allure_report_url</code> - Report link</li>
+                    <li><code>site_name</code> - Site name</li>
+                    <li><code>status_emoji</code> - Status emoji (Slack)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

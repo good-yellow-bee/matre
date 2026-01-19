@@ -494,8 +494,8 @@ class AllureReportService
      */
     private function triggerReportGeneration(TestRun $run): string
     {
-        // Use environment name as project ID for per-environment reports
-        $projectId = $run->getEnvironment()->getName();
+        // Use environment code as project ID for per-environment reports
+        $projectId = $run->getEnvironment()->getCode();
         $runId = $run->getId();
 
         try {
@@ -521,7 +521,7 @@ class AllureReportService
 
         // Only generate report if we actually sent result files
         if (!$hasResults) {
-            $this->logger->warning('No Allure result files to generate report from', [
+            $this->logger->warning('No Allure result files sent; skipping report generation', [
                 'runId' => $runId,
                 'resultsPath' => $resultsPath,
             ]);
@@ -558,14 +558,29 @@ class AllureReportService
      */
     private function sendResultsToAllure(string $projectId, string $resultsPath): bool
     {
-        $hasResultFiles = false;
-
         // Collect all file paths (without loading content yet)
         $resultFiles = glob($resultsPath . '/*-result.json') ?: [];
         $containerFiles = glob($resultsPath . '/*-container.json') ?: [];
         $attachmentFiles = glob($resultsPath . '/*-attachment') ?: [];
 
-        $hasResultFiles = !empty($resultFiles) || !empty($containerFiles);
+        $hasResultFiles = false;
+        foreach (array_merge($resultFiles, $containerFiles) as $file) {
+            $size = @filesize($file);
+            if (false !== $size && $size > 0) {
+                $hasResultFiles = true;
+
+                break;
+            }
+        }
+
+        if (!$hasResultFiles) {
+            $this->logger->warning('No non-empty Allure result files found', [
+                'projectId' => $projectId,
+                'resultsPath' => $resultsPath,
+            ]);
+
+            return false;
+        }
 
         // Batch size: ~20 files per batch to stay well under memory limit
         $batchSize = 20;
