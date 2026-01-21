@@ -1,9 +1,9 @@
 {% extends 'admin/base.html.twig' %}
-{% form_theme form 'form/bootstrap_5_custom.html.twig' %}
 
 {% block title %}Edit Suite: {{ suite.name }}{% endblock %}
 
 {% block body %}
+{# Page Header #}
 <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm mb-6">
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
@@ -22,88 +22,21 @@
     </div>
 </div>
 
-<div class="card">
-    <div class="card-body">
-        {{ form_start(form, {'attr': {'novalidate': 'novalidate', 'data-turbo': 'false'}}) }}
-
-            <div class="form-section">
-                <h3 class="form-section-title">Suite Configuration</h3>
-
-                <div class="form-grid">
-                    <div>{{ form_row(form.name) }}</div>
-                    <div>{{ form_row(form.type) }}</div>
-                </div>
-
-                {# Hidden field for form submission #}
-                <div style="display: none;">
-                    {{ form_widget(form.testPattern) }}
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Test/Group</label>
-                    <div data-vue-island="test-pattern-selector"
-                         data-type-field-id="test_suite_type"
-                         data-pattern-field-id="test_suite_testPattern"
-                         data-api-url="{{ path('api_test_discovery') }}"
-                         data-csrf-token="{{ csrf_token('test_discovery') }}"
-                         data-initial-value="{{ suite.testPattern }}">
-                    </div>
-                </div>
-
-                {{ form_row(form.description) }}
-            </div>
-
-            <div class="form-section">
-                <h3 class="form-section-title">Schedule</h3>
-
-                {{ form_row(form.cronExpression) }}
-
-                <div class="mb-3">
-                    {{ form_label(form.environments) }}
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mt-2 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                        {% for child in form.environments %}
-                            <div class="flex items-center gap-2">
-                                {{ form_widget(child, {'attr': {'class': 'form-check-input m-0'}}) }}
-                                {{ form_label(child, null, {'label_attr': {'class': 'text-sm cursor-pointer m-0'}}) }}
-                            </div>
-                        {% else %}
-                            <p class="text-slate-500 text-sm col-span-full">No active environments available</p>
-                        {% endfor %}
-                    </div>
-                    {{ form_help(form.environments) }}
-                    {{ form_errors(form.environments) }}
-                </div>
-            </div>
-
-            <div class="form-section">
-                <h3 class="form-section-title">Status</h3>
-
-                <div class="form-check mb-3">
-                    {{ form_widget(form.isActive) }}
-                    {{ form_label(form.isActive) }}
-                </div>
-            </div>
-
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-check-circle"></i> Save Changes
-                </button>
-                <a href="{{ path('admin_test_suite_index') }}" class="btn btn-secondary">
-                    <i class="bi bi-x-circle"></i> Cancel
-                </a>
-            </div>
-        {{ form_rest(form) }}
-        {{ form_end(form) }}
-    </div>
+<div data-vue-island="test-suite-form"
+     data-suite-id="{{ suite.id }}"
+     data-api-url="/api/test-suites"
+     data-cancel-url="{{ path('admin_test_suite_index') }}"
+     data-test-discovery-url="{{ path('api_test_discovery') }}"
+     data-csrf-token="{{ csrf_token('test_discovery') }}">
 </div>
 {% endblock %}
 
 {% block stylesheets %}
     {{ parent() }}
-    {{ vite_entry_link_tags('test-pattern-selector-app') }}
+    {{ vite_entry_link_tags('test-suite-form-app') }}
 {% endblock %}
 
 {% block javascripts %}
     {{ parent() }}
-    {{ vite_entry_script_tags('test-pattern-selector-app') }}
+    {{ vite_entry_script_tags('test-suite-form-app') }}
 {% endblock %}
