@@ -1,5 +1,4 @@
 {% extends 'admin/base.html.twig' %}
-{% form_theme form 'form/bootstrap_5_custom.html.twig' %}
 
 {% block title %}Create Cron Job{% endblock %}
 
@@ -23,42 +22,9 @@
     </div>
 </div>
 
-<div class="card">
-    <div class="card-body">
-        {{ form_start(form, {'attr': {'novalidate': 'novalidate'}}) }}
-
-            <div class="form-section">
-                <h3 class="form-section-title">Job Configuration</h3>
-
-                <div class="form-grid">
-                    <div>{{ form_row(form.name) }}</div>
-                    <div>{{ form_row(form.cronExpression) }}</div>
-                </div>
-
-                {{ form_row(form.command) }}
-                {{ form_row(form.description) }}
-            </div>
-
-            <div class="form-section">
-                <h3 class="form-section-title">Status</h3>
-
-                <div class="form-check mb-3">
-                    {{ form_widget(form.isActive) }}
-                    {{ form_label(form.isActive) }}
-                    {{ form_help(form.isActive) }}
-                </div>
-            </div>
-
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-check-circle"></i> Create Cron Job
-                </button>
-                <a href="{{ path('admin_cron_job_index') }}" class="btn btn-secondary">
-                    <i class="bi bi-x-circle"></i> Cancel
-                </a>
-            </div>
-        {{ form_end(form) }}
-    </div>
+<div data-vue-island="cron-job-form"
+     data-api-url="/api/cron-jobs"
+     data-cancel-url="{{ path('admin_cron_job_index') }}">
 </div>
 
 <div class="mt-4">
@@ -73,4 +39,14 @@
         </ul>
     </div>
 </div>
+{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    {{ vite_entry_link_tags('cron-job-form-app') }}
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {{ vite_entry_script_tags('cron-job-form-app') }}
 {% endblock %}
