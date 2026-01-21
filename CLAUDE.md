@@ -134,45 +134,51 @@ fix         # PHP-CS-Fixer
 
 **Production (`./prod.sh`):**
 ```bash
-start          # Start + migrations + cache warmup
-stop           # Stop containers
-restart        # Quick restart
-update         # Full update (pull, recreate, migrate, cache)
-recreate <svc> # Recreate single service
-status         # Container status
-logs [svc]     # Follow logs
-shell [svc]    # Open shell
+start              # Start + migrations + cache warmup
+stop               # Stop containers
+restart            # Quick restart
+update             # Full update (pull, recreate, migrate, cache)
+recreate <svc>     # Recreate single service
+status             # Container status
+logs [svc]         # Follow logs
+shell [svc]        # Open shell
+frontend [--no-cache]  # Build + deploy frontend assets
+frontend-rollback  # Restore previous frontend build
 ```
 
 ## Production Deployment Rules
 
-⚠️ **Choose the right deployment command:**
-
 | Change Type | Command | Why |
 |-------------|---------|-----|
 | PHP/Composer | Build + recreate app containers | Code baked into image |
-| Vue/JS/CSS | Build app images + sync `public/build` + recreate app containers | PHP + nginx read host `public/build` (bind-mounted in php) |
+| Vue/JS/CSS | `./prod.sh frontend` | One-command frontend deploy |
 | Docker/config | `./prod.sh update` | Full recreate needed |
 | Migrations | `doctrine:migrations:migrate` | Run after code deployment |
 
-**NEVER use `./prod.sh update` for code/asset changes** unless you are pulling prebuilt images. It does `pull`, not `build`.
+**NEVER use `./prod.sh update` for code/asset changes** unless pulling prebuilt images.
 
-### Frontend assets (production docker-compose)
+### Frontend Deployment
 
 ```bash
-# Build app images (includes Vite build)
-docker compose -f docker-compose.yml -f docker-compose.prod.yml build php scheduler test-worker
+# Standard frontend deploy (uses Docker layer cache)
+./prod.sh frontend
 
-# Sync public/build from the PHP image (includes manifest.json)
-PHP_IMAGE=$(docker compose -f docker-compose.yml -f docker-compose.prod.yml images -q php)
-docker run --rm -v "$(pwd)/public/build:/host" "$PHP_IMAGE" sh -c 'rm -rf /host/* && cp -r /app/public/build/* /host/'
+# Force fresh build (if cached layers cause issues)
+./prod.sh frontend --no-cache
 
-# Recreate app containers
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate php scheduler test-worker
-docker exec matre_php php bin/console cache:clear --env=prod
+# Rollback if something breaks
+./prod.sh frontend-rollback
 ```
 
-Do not copy only `public/build/assets` or `public/build/.vite`. The `manifest.json` in `public/build/` must match the hashed files.
+**When to use `--no-cache`:**
+- After modifying `package.json`, `vite.config.mjs`, `tailwind.config.js`, or `postcss.config.js`
+- If styles appear broken after normal deploy
+
+**What it does:**
+1. Builds frontend using Docker `frontend_build` stage
+2. Validates build (checks manifest.json + Tailwind CSS size >10KB)
+3. Atomic swap with rollback support (`public/build.old`)
+4. Clears Symfony cache
 
 ## Redis Lock (Production)
 
