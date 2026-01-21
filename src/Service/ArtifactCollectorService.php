@@ -180,8 +180,18 @@ class ArtifactCollectorService
                     continue;
                 }
 
+                $realPath = $file->getRealPath();
+                if (false === $realPath) {
+                    $this->logger->debug('Skipping file with unresolvable path', [
+                        'filename' => $filename,
+                        'test' => $testName,
+                    ]);
+
+                    continue;
+                }
+
                 $targetFile = $targetPath . '/' . $filename;
-                $filesystem->copy($file->getRealPath(), $targetFile, true);
+                $filesystem->copy($realPath, $targetFile, true);
 
                 // Set screenshot path for first matching screenshot
                 $ext = strtolower($file->getExtension());
@@ -269,12 +279,21 @@ class ArtifactCollectorService
         $finder->name($patterns);
 
         foreach ($finder as $file) {
+            $realPath = $file->getRealPath();
+            if (false === $realPath) {
+                $this->logger->debug('Skipping artifact with unresolvable path during cleanup', [
+                    'filename' => $file->getFilename(),
+                ]);
+
+                continue;
+            }
+
             try {
-                $filesystem->remove($file->getRealPath());
+                $filesystem->remove($realPath);
                 ++$removed;
             } catch (\Symfony\Component\Filesystem\Exception\IOException $e) {
                 $this->logger->warning('Failed to remove root-level artifact', [
-                    'file' => $file->getRealPath(),
+                    'file' => $realPath,
                     'error' => $e->getMessage(),
                 ]);
             }
@@ -400,7 +419,16 @@ class ArtifactCollectorService
 
         foreach ($finder as $dir) {
             if ($dir->getMTime() < $cutoff->getTimestamp()) {
-                $filesystem->remove($dir->getRealPath());
+                $realPath = $dir->getRealPath();
+                if (false === $realPath) {
+                    $this->logger->debug('Skipping directory with unresolvable path during cleanup', [
+                        'pathname' => $dir->getPathname(),
+                    ]);
+
+                    continue;
+                }
+
+                $filesystem->remove($realPath);
                 ++$removed;
             }
         }
@@ -470,8 +498,17 @@ class ArtifactCollectorService
                 continue;
             }
 
+            $realPath = $file->getRealPath();
+            if (false === $realPath) {
+                $this->logger->debug('Skipping artifact with unresolvable path', [
+                    'filename' => $file->getFilename(),
+                ]);
+
+                continue;
+            }
+
             $targetFile = $targetPath . '/' . $file->getFilename();
-            $filesystem->copy($file->getRealPath(), $targetFile, true);
+            $filesystem->copy($realPath, $targetFile, true);
             $collected[] = $file->getFilename();
         }
 

@@ -170,20 +170,20 @@
 
       <!-- Active Toggle -->
       <div class="mb-4">
-        <div class="form-check form-switch">
-          <input
-            id="user-active"
-            v-model="form.isActive"
-            type="checkbox"
-            class="form-check-input"
-            role="switch"
-          />
-          <label for="user-active" class="form-check-label">
+        <div class="toggle-row">
+          <div class="form-check form-switch mb-0">
+            <input
+              id="user-active"
+              v-model="form.isActive"
+              type="checkbox"
+              class="form-check-input"
+              role="switch"
+            />
+          </div>
+          <div class="toggle-content">
             <strong>Active Account</strong>
-            <span class="text-muted ms-2">
-              {{ form.isActive ? 'User can log in' : 'User cannot log in' }}
-            </span>
-          </label>
+            <span class="text-muted d-block small">{{ form.isActive ? 'User can log in' : 'User cannot log in' }}</span>
+          </div>
         </div>
       </div>
 
@@ -193,18 +193,20 @@
 
         <!-- Master Toggle -->
         <div class="mb-3">
-          <div class="form-check form-switch">
-            <input
-              id="notifications-enabled"
-              v-model="form.notificationsEnabled"
-              type="checkbox"
-              class="form-check-input"
-              role="switch"
-            />
-            <label for="notifications-enabled" class="form-check-label">
+          <div class="toggle-row">
+            <div class="form-check form-switch mb-0">
+              <input
+                id="notifications-enabled"
+                v-model="form.notificationsEnabled"
+                type="checkbox"
+                class="form-check-input"
+                role="switch"
+              />
+            </div>
+            <div class="toggle-content">
               <strong>Enable Notifications</strong>
               <span class="text-muted d-block small">Master toggle for all notifications</span>
-            </label>
+            </div>
           </div>
         </div>
 
@@ -522,12 +524,9 @@ const handleSubmit = async () => {
   }
 
   if (result.success) {
-    showToast(result.message, 'success');
-
-    // Redirect after short delay
-    setTimeout(() => {
-      window.location.href = props.cancelUrl;
-    }, 1000);
+    // Persist toast for display after redirect
+    showToast(result.message, 'success', true);
+    window.location.href = props.cancelUrl;
   } else {
     showToast(result.message || 'An error occurred', 'error');
   }
@@ -597,9 +596,6 @@ onMounted(async () => {
   --slate-600: #475569;
   --slate-700: #334155;
   --slate-900: #0f172a;
-
-  max-width: 800px;
-  margin: 0 auto;
 }
 
 /* Main Form Container */
@@ -809,6 +805,33 @@ onMounted(async () => {
   font-weight: 500;
 }
 
+/* Toggle Row - Switch left, label right */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid var(--slate-200);
+}
+
+.toggle-row:hover {
+  border-color: var(--primary);
+  background: rgba(59, 130, 246, 0.02);
+}
+
+.toggle-content strong {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--slate-900);
+  font-weight: 500;
+}
+
+.toggle-row .form-check {
+  padding-left: 0;
+}
+
 /* Toggle Switch */
 .user-form :deep(.form-switch .form-check-input) {
   width: 2.75rem;
@@ -816,6 +839,7 @@ onMounted(async () => {
   border-radius: 1rem;
   background-color: var(--slate-200);
   border: none;
+  margin-left: 0;
 }
 
 .user-form :deep(.form-switch .form-check-input:checked) {

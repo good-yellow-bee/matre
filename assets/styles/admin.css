@@ -652,13 +652,32 @@ small.form-text,
     padding-left: 0;
 }
 
+/* Override Bootstrap's .form-check .form-check-input */
+.form-check .form-check-input {
+    float: none;
+    margin-left: 0;
+}
+
+/* Reset form-check when inside inline-flex label wrappers (environment checkboxes) */
+label.inline-flex > .form-check {
+    display: contents;
+    padding: 0;
+    margin: 0;
+}
+
+label.inline-flex > .form-check > .form-check-label {
+    display: none;
+}
+
 .form-check-input,
 input[type="checkbox"],
 input[type="radio"] {
     width: 20px;
     height: 20px;
     margin-top: 2px;
+    margin-left: 0;
     margin-right: var(--space-sm);
+    float: none;
     flex-shrink: 0;
     border: 1px solid var(--neutral-300);
     border-radius: 4px;
@@ -1142,3 +1161,67 @@ input:-webkit-autofill:active {
 
 .w-100 { width: 100%; }
 .small { font-size: 13px; }
+
+/* ============================================
+   14. Global Toast Notifications
+   ============================================ */
+.toast-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
+    z-index: 10000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    animation: toast-slide-in 0.3s ease-out;
+}
+
+.toast-success {
+    background: #10b981;
+    color: white;
+}
+
+.toast-error {
+    background: #ef4444;
+    color: white;
+}
+
+.toast-warning {
+    background: #f59e0b;
+    color: white;
+}
+
+.toast-info {
+    background: #3b82f6;
+    color: white;
+}
+
+.toast-fade-out {
+    animation: toast-slide-out 0.3s ease-in forwards;
+}
+
+@keyframes toast-slide-in {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes toast-slide-out {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
