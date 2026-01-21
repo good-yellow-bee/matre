@@ -4,7 +4,7 @@
 FROM node:20-alpine AS frontend_build
 WORKDIR /app
 # Install frontend dependencies and build assets
-COPY package*.json vite.config.mjs tailwind.config.js postcss.config.cjs ./
+COPY package*.json vite.config.mjs tailwind.config.js postcss.config.js ./
 COPY assets ./assets
 RUN npm install
 RUN npm run build
