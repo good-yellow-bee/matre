@@ -44,20 +44,24 @@
             <div class="form-section">
                 <h3 class="form-section-title">Mode</h3>
 
-                <div class="form-check mb-3">
-                    {{ form_widget(form.headlessMode) }}
-                    {{ form_label(form.headlessMode) }}
-                    {{ form_help(form.headlessMode) }}
+                <div class="mb-3">
+                    <div class="form-check">
+                        {{ form_widget(form.headlessMode) }}
+                        {{ form_label(form.headlessMode) }}
+                    </div>
+                    <div class="form-text text-muted" style="margin-left: 1.5em;">{{ form.headlessMode.vars.help }}</div>
                 </div>
             </div>
 
             <div class="form-section">
                 <h3 class="form-section-title">Security</h3>
 
-                <div class="form-check mb-3">
-                    {{ form_widget(form.enforce2fa) }}
-                    {{ form_label(form.enforce2fa) }}
-                    {{ form_help(form.enforce2fa) }}
+                <div class="mb-3">
+                    <div class="form-check">
+                        {{ form_widget(form.enforce2fa) }}
+                        {{ form_label(form.enforce2fa) }}
+                    </div>
+                    <div class="form-text text-muted" style="margin-left: 1.5em;">{{ form.enforce2fa.vars.help }}</div>
                 </div>
 
                 <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">

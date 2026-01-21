@@ -24,10 +24,10 @@
             <div class="form-section">
                 <h3 class="form-section-title">Enable Notifications</h3>
 
-                <div class="form-check mb-3">
-                    {{ form_widget(form.notificationsEnabled) }}
-                    {{ form_label(form.notificationsEnabled) }}
-                </div>
+                <label class="flex items-center gap-2 cursor-pointer mb-3">
+                    {{ form_widget(form.notificationsEnabled, {'label': false, 'attr': {'class': 'h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500'}}) }}
+                    <span class="text-sm font-medium text-slate-700">Enable Notifications</span>
+                </label>
                 <div class="text-sm text-slate-500 mb-4">
                     {{ form_help(form.notificationsEnabled) }}
                 </div>
@@ -36,17 +36,28 @@
             <div class="form-section">
                 <h3 class="form-section-title">Notification Trigger</h3>
 
-                {{ form_row(form.notificationTrigger) }}
+                <div class="mb-3">
+                    <label class="form-label">Notify When</label>
+                    <div class="flex gap-6">
+                        {% for child in form.notificationTrigger %}
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                {{ form_widget(child, {'label': false, 'attr': {'class': 'h-4 w-4 border-slate-300 text-indigo-600 focus:ring-indigo-500'}}) }}
+                                <span class="text-sm text-slate-700">{{ child.vars.label }}</span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                    {{ form_help(form.notificationTrigger) }}
+                </div>
             </div>
 
             <div class="form-section">
                 <h3 class="form-section-title">Email Notifications</h3>
 
                 <div class="p-4 border border-slate-200 rounded-lg max-w-md">
-                    <div class="form-check mb-2">
-                        {{ form_widget(form.notifyByEmail) }}
-                        {{ form_label(form.notifyByEmail) }}
-                    </div>
+                    <label class="flex items-center gap-2 cursor-pointer mb-2">
+                        {{ form_widget(form.notifyByEmail, {'label': false, 'attr': {'class': 'h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500'}}) }}
+                        <span class="text-sm font-medium text-slate-700">Email</span>
+                    </label>
                     <div class="text-sm text-slate-500">
                         Receive email notifications to <strong>{{ app.user.email }}</strong>
                     </div>
@@ -57,10 +68,10 @@
                 <h3 class="form-section-title">Environments</h3>
                 <p class="text-sm text-slate-500 mb-4">Select which test environments you want to receive notifications for</p>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                <div class="flex flex-wrap gap-3">
                     {% for child in form.notificationEnvironments %}
-                        <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
-                            {{ form_widget(child, {'attr': {'class': 'h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500'}}) }}
+                        <label class="inline-flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
+                            {{ form_widget(child, {'label': false, 'attr': {'class': 'h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500'}}) }}
                             <span class="text-sm font-medium text-slate-700">{{ child.vars.label }}</span>
                         </label>
                     {% else %}

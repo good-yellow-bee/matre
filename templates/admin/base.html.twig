@@ -23,14 +23,21 @@
         /* Ensure Bootstrap components render inside Tailwind layout */
         .admin-content .table { margin-bottom: 0; }
         .admin-content .btn { font-family: 'Inter', sans-serif; }
+
+        /* Sidebar collapse */
+        .sidebar-transition { transition: width 0.2s ease, margin-left 0.2s ease, opacity 0.2s ease; }
+        .sidebar-collapsed #admin-sidebar { width: 0; overflow: hidden; border-right: none; opacity: 0; }
+        .sidebar-collapsed #admin-sidebar * { visibility: hidden; }
+        #sidebar-toggle i { transition: transform 0.2s ease; }
+        .sidebar-collapsed #sidebar-toggle i { transform: rotate(180deg); }
     </style>
 
     {% block stylesheets %}{% endblock %}
 </head>
-<body class="bg-slate-50 text-slate-900 antialiased flex h-screen overflow-hidden text-sm">
+<body class="bg-slate-50 text-slate-900 antialiased flex h-screen overflow-hidden text-sm" id="admin-body">
 
     {# Sidebar #}
-    <aside class="w-64 border-r border-slate-200 flex flex-col bg-white shrink-0">
+    <aside id="admin-sidebar" class="w-64 border-r border-slate-200 flex flex-col bg-white shrink-0 sidebar-transition">
         <div class="h-14 flex items-center px-6 border-b border-slate-200">
             <a href="{{ path('admin_dashboard') }}" class="font-bold text-lg tracking-tight text-slate-900 no-underline">
                 <i class="bi bi-speedometer2 mr-2 text-blue-600"></i>
@@ -134,6 +141,11 @@
     <main class="flex-1 flex flex-col overflow-hidden">
         {# Header #}
         <header class="h-14 flex items-center justify-between px-8 border-b border-slate-200 bg-white shrink-0">
+            <div class="flex items-center gap-4 text-sm text-slate-500">
+                <button id="sidebar-toggle" class="p-1.5 -ml-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors" title="Toggle sidebar">
+                    <i class="bi bi-layout-sidebar text-lg"></i>
+                </button>
+            </div>
             <div class="flex items-center text-sm text-slate-500">
                 <span>Admin</span>
                 <span class="mx-2 text-slate-300">/</span>
@@ -179,6 +191,57 @@
 
     {# Admin JavaScript #}
     {{ vite_entry_script_tags('admin') }}
+
+    {# Global Toast Handler - checks sessionStorage for pending toasts #}
+    <script>
+    (function() {
+        const TOAST_KEY = 'matre_pending_toast';
+        const pending = sessionStorage.getItem(TOAST_KEY);
+        if (pending) {
+            sessionStorage.removeItem(TOAST_KEY);
+            try {
+                const { message, type } = JSON.parse(pending);
+                const icons = {
+                    success: 'bi-check-circle-fill',
+                    error: 'bi-exclamation-circle-fill',
+                    warning: 'bi-exclamation-triangle-fill',
+                    info: 'bi-info-circle-fill'
+                };
+                const toast = document.createElement('div');
+                toast.className = 'toast-notification toast-' + type;
+                const icon = document.createElement('i');
+                icon.className = 'bi ' + (icons[type] || icons.info);
+                const span = document.createElement('span');
+                span.textContent = message;
+                toast.appendChild(icon);
+                toast.appendChild(span);
+                document.body.appendChild(toast);
+                setTimeout(function() { toast.classList.add('toast-fade-out'); }, type === 'error' ? 5000 : 3000);
+                setTimeout(function() { toast.remove(); }, type === 'error' ? 5300 : 3300);
+            } catch (e) { console.error('Toast parse error:', e); }
+        }
+    })();
+    </script>
+
+    {# Sidebar Toggle #}
+    <script>
+    (function() {
+        const SIDEBAR_KEY = 'matre_sidebar_collapsed';
+        const body = document.getElementById('admin-body');
+        const toggle = document.getElementById('sidebar-toggle');
+
+        if (!body || !toggle) return;
+
+        if (localStorage.getItem(SIDEBAR_KEY) === 'true') {
+            body.classList.add('sidebar-collapsed');
+        }
+
+        toggle.addEventListener('click', function() {
+            body.classList.toggle('sidebar-collapsed');
+            localStorage.setItem(SIDEBAR_KEY, body.classList.contains('sidebar-collapsed'));
+        });
+    })();
+    </script>
 
     {% block javascripts %}{% endblock %}
 </body>

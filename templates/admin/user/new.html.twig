@@ -30,6 +30,10 @@
 ></div>
 {% endblock %}
 
+{% block stylesheets %}
+    {{ vite_entry_link_tags('user-form-app') }}
+{% endblock %}
+
 {% block javascripts %}
     {{ parent() }}
     {{ vite_entry_script_tags('user-form-app') }}
