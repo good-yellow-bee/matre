@@ -45,11 +45,13 @@ class TestRun
     public const STATUS_COMPLETED = 'completed';
     public const STATUS_FAILED = 'failed';
     public const STATUS_CANCELLED = 'cancelled';
+    public const STATUS_WAITING = 'waiting';
 
     public const STATUSES = [
         self::STATUS_PENDING => 'Pending',
         self::STATUS_PREPARING => 'Preparing',
         self::STATUS_CLONING => 'Cloning Module',
+        self::STATUS_WAITING => 'Waiting for Lock',
         self::STATUS_RUNNING => 'Running Tests',
         self::STATUS_REPORTING => 'Generating Report',
         self::STATUS_COMPLETED => 'Completed',
@@ -437,9 +439,9 @@ class TestRun
     }
 
     #[ORM\PreUpdate]
-    public function setUpdatedAt(): void
+    public function setUpdatedAt(?\DateTimeImmutable $updatedAt = null): void
     {
-        $this->updatedAt = new \DateTimeImmutable();
+        $this->updatedAt = $updatedAt ?? new \DateTimeImmutable();
     }
 
     /**
@@ -462,6 +464,7 @@ class TestRun
         return \in_array($this->status, [
             self::STATUS_PREPARING,
             self::STATUS_CLONING,
+            self::STATUS_WAITING,
             self::STATUS_RUNNING,
             self::STATUS_REPORTING,
         ], true);
@@ -541,12 +544,12 @@ class TestRun
     }
 
     /**
-     * Mark run as started.
+     * Mark run as execution started (sets RUNNING status).
      */
-    public function markStarted(): static
+    public function markExecutionStarted(): static
     {
         $this->startedAt = new \DateTimeImmutable();
-        $this->status = self::STATUS_PREPARING;
+        $this->status = self::STATUS_RUNNING;
 
         return $this;
     }

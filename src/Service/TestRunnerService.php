@@ -106,7 +106,8 @@ class TestRunnerService
     {
         $this->logger->info('Executing test run', ['id' => $run->getId()]);
 
-        $run->markStarted();
+        // Set WAITING status before blocking lock acquisition
+        $run->setStatus(TestRun::STATUS_WAITING);
         $this->entityManager->flush();
 
         // Per-env lock - serializes same-env runs to prevent artifact contamination
@@ -127,8 +128,8 @@ class TestRunnerService
         };
 
         try {
-            // Set status to RUNNING and output file path before test execution
-            $run->setStatus(TestRun::STATUS_RUNNING);
+            // Mark execution started (sets RUNNING status and startedAt timestamp)
+            $run->markExecutionStarted();
             $type = $run->getType();
 
             // Set output file path so live streaming can find it
@@ -491,9 +492,10 @@ class TestRunnerService
                 break;
             }
 
-            // Update progress - mark current test
+            // Update progress - mark current test (heartbeat to prove liveness)
             $run->setCurrentTestName($testName);
             $run->setProgress($completedTests, $totalTests);
+            $run->setUpdatedAt(new \DateTimeImmutable());
             $this->entityManager->flush();
 
             $this->logger->info('Executing test in group', [

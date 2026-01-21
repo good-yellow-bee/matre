@@ -117,6 +117,7 @@ class TestRunRepository extends ServiceEntityRepository
             ->setParameter('statuses', [
                 TestRun::STATUS_PREPARING,
                 TestRun::STATUS_CLONING,
+                TestRun::STATUS_WAITING,
                 TestRun::STATUS_RUNNING,
                 TestRun::STATUS_REPORTING,
             ])
@@ -241,6 +242,7 @@ class TestRunRepository extends ServiceEntityRepository
             ->setParameter('statuses', [
                 TestRun::STATUS_PREPARING,
                 TestRun::STATUS_CLONING,
+                TestRun::STATUS_WAITING,
                 TestRun::STATUS_RUNNING,
                 TestRun::STATUS_REPORTING,
             ])
@@ -248,6 +250,27 @@ class TestRunRepository extends ServiceEntityRepository
             ->getSingleScalarResult();
 
         return $count > 0;
+    }
+
+    /**
+     * Find test runs stuck in active statuses with no recent updates.
+     * Includes runs where updatedAt is NULL (never received heartbeat).
+     *
+     * @param string[] $statuses
+     *
+     * @return TestRun[]
+     */
+    public function findStuckRuns(array $statuses, int $staleMinutes): array
+    {
+        $staleTime = new \DateTimeImmutable("-{$staleMinutes} minutes");
+
+        return $this->createQueryBuilder('r')
+            ->andWhere('r.status IN (:statuses)')
+            ->andWhere('(r.updatedAt IS NULL AND r.createdAt < :staleTime) OR r.updatedAt < :staleTime')
+            ->setParameter('statuses', $statuses)
+            ->setParameter('staleTime', $staleTime)
+            ->getQuery()
+            ->getResult();
     }
 
     /**

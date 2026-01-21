@@ -232,6 +232,9 @@ class TestRunTest extends TestCase
         $run->setStatus(TestRun::STATUS_CLONING);
         $this->assertTrue($run->isRunning());
 
+        $run->setStatus(TestRun::STATUS_WAITING);
+        $this->assertTrue($run->isRunning());
+
         $run->setStatus(TestRun::STATUS_RUNNING);
         $this->assertTrue($run->isRunning());
 
@@ -319,13 +322,13 @@ class TestRunTest extends TestCase
         $this->assertEquals(4, $counts['total']);
     }
 
-    public function testMarkStarted(): void
+    public function testMarkExecutionStarted(): void
     {
         $run = new TestRun();
 
-        $run->markStarted();
+        $run->markExecutionStarted();
 
-        $this->assertEquals(TestRun::STATUS_PREPARING, $run->getStatus());
+        $this->assertEquals(TestRun::STATUS_RUNNING, $run->getStatus());
         $this->assertNotNull($run->getStartedAt());
     }
 
