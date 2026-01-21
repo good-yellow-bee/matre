@@ -155,8 +155,8 @@ class TestRunnerService
             $allResults = [];
             $allurePaths = [];
             $output = '';
-            $executionFailed = false;
-            $failureReason = '';
+            $fatalError = false;
+            $fatalErrorReason = '';
 
             try {
                 // Execute MFTF tests
@@ -182,21 +182,13 @@ class TestRunnerService
 
                     $allurePaths[] = $this->mftfExecutor->getAllureResultsPath($run->getId());
 
-                    // Track failure but don't exit early - continue to collect artifacts
-                    if (0 !== $mftfResult['exitCode']) {
-                        $executionFailed = true;
-                        if ($isFatalError) {
-                            if (preg_match('/ERROR: \d+ Test\(s\) failed to generate/i', $mftfResult['output'])) {
-                                $failureReason = 'MFTF test generation failed - see output log';
-                            } else {
-                                $failureReason = 'Generated test file not found - see output log';
-                            }
+                    // Track fatal errors only - normal test failures handled in final status
+                    if (0 !== $mftfResult['exitCode'] && $isFatalError) {
+                        $fatalError = true;
+                        if (preg_match('/ERROR: \d+ Test\(s\) failed to generate/i', $mftfResult['output'])) {
+                            $fatalErrorReason = 'MFTF test generation failed - see output log';
                         } else {
-                            // Normal test failure (tests ran but some failed)
-                            $failedCount = count(array_filter($mftfResults, fn ($r) => $r->isFailed()));
-                            $failureReason = $failedCount > 0
-                                ? sprintf('%d test(s) failed', $failedCount)
-                                : 'MFTF execution failed with exit code ' . $mftfResult['exitCode'];
+                            $fatalErrorReason = 'Generated test file not found - see output log';
                         }
                     }
                 }
@@ -215,16 +207,7 @@ class TestRunnerService
                     }
 
                     $allurePaths[] = $this->playwrightExecutor->getAllureResultsPath();
-
-                    // Track failure but don't exit early
-                    if (0 !== $playwrightResult['exitCode']) {
-                        $executionFailed = true;
-                        $failedCount = count(array_filter($playwrightResults, fn ($r) => $r->isFailed()));
-                        $pwReason = $failedCount > 0
-                            ? sprintf('%d test(s) failed', $failedCount)
-                            : 'Playwright execution failed with exit code ' . $playwrightResult['exitCode'];
-                        $failureReason = $failureReason ? $failureReason . '; ' . $pwReason : $pwReason;
-                    }
+                    // Note: Normal test failures handled in final status logic
                 }
 
                 $run->setOutput($output);
@@ -237,16 +220,33 @@ class TestRunnerService
 
                 $this->entityManager->flush();
 
-                // Mark failed AFTER collecting all data
-                if ($executionFailed) {
-                    $run->markFailed($failureReason);
-                    $this->entityManager->flush();
+                // Determine final status - FAILED only for fatal errors or complete failure
+                $totalCount = count($allResults);
+                $brokenCount = count(array_filter($allResults, fn ($r) => $r->isBroken()));
+                $passedCount = count(array_filter($allResults, fn ($r) => $r->isPassed()));
+                $failedTestCount = count(array_filter($allResults, fn ($r) => $r->isFailed() || $r->isBroken()));
+
+                if ($fatalError) {
+                    // Fatal execution error (generation failed, file not found)
+                    $run->markFailed($fatalErrorReason);
+                } elseif (0 === $totalCount) {
+                    $run->markFailed('No test results collected');
+                } elseif ($brokenCount === $totalCount) {
+                    $run->markFailed('All tests broken - possible infrastructure error');
+                } elseif (0 === $passedCount && $failedTestCount > 0) {
+                    $run->markFailed(sprintf('All %d test(s) failed', $failedTestCount));
+                } else {
+                    // Some tests passed - mark completed (even with failures)
+                    $run->markCompleted();
                 }
+                $this->entityManager->flush();
 
                 $this->logger->info('Test execution completed', [
                     'id' => $run->getId(),
-                    'resultCount' => count($allResults),
-                    'failed' => $executionFailed,
+                    'resultCount' => $totalCount,
+                    'passedCount' => $passedCount,
+                    'failedCount' => $failedTestCount,
+                    'status' => $run->getStatus(),
                     'artifacts' => [
                         'screenshots' => count($artifacts['screenshots']),
                         'html' => count($artifacts['html']),
@@ -603,16 +603,20 @@ class TestRunnerService
         // Determine overall run status (only if not cancelled)
         $this->entityManager->refresh($run);
         if (TestRun::STATUS_CANCELLED !== $run->getStatus()) {
-            $failedCount = 0;
-            foreach ($allResults as $testResult) {
-                if ($testResult->isFailed() || $testResult->isBroken()) {
-                    ++$failedCount;
-                }
-            }
+            $totalCount = count($allResults);
+            $brokenCount = count(array_filter($allResults, fn ($r) => $r->isBroken()));
+            $passedCount = count(array_filter($allResults, fn ($r) => $r->isPassed()));
+            $failedCount = count(array_filter($allResults, fn ($r) => $r->isFailed() || $r->isBroken()));
 
-            if ($failedCount > 0) {
-                $run->markFailed(sprintf('%d test(s) failed', $failedCount));
+            // FAILED only if: no results, all broken, or all failed (0 passed)
+            if (0 === $totalCount) {
+                $run->markFailed('No test results collected');
+            } elseif ($brokenCount === $totalCount) {
+                $run->markFailed('All tests broken - possible infrastructure error');
+            } elseif (0 === $passedCount && $failedCount > 0) {
+                $run->markFailed(sprintf('All %d test(s) failed', $failedCount));
             } else {
+                // Some tests passed - mark completed (even with failures)
                 $run->markCompleted();
             }
         } else {
