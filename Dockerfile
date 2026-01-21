@@ -6,6 +6,7 @@ WORKDIR /app
 # Install frontend dependencies and build assets
 COPY package*.json vite.config.mjs tailwind.config.js postcss.config.js ./
 COPY assets ./assets
+COPY templates ./templates
 RUN npm install
 RUN npm run build
 
