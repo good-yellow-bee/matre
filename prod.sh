@@ -204,7 +204,8 @@ case "${1:-help}" in
         fi
 
         TAILWIND_SIZE=$(wc -c < "$TAILWIND_FILE")
-        RULE_COUNT=$(grep -c '{' "$TAILWIND_FILE" 2>/dev/null || echo 0)
+        # Use grep -o to count actual braces (minified CSS is one line)
+        RULE_COUNT=$(grep -o '{' "$TAILWIND_FILE" 2>/dev/null | wc -l)
 
         if [ "$TAILWIND_SIZE" -lt 10000 ]; then
             log_error "Build failed - Tailwind CSS too small (${TAILWIND_SIZE} bytes)"
@@ -329,19 +330,21 @@ case "${1:-help}" in
         echo "Usage: ./prod.sh [command]"
         echo ""
         echo "Commands:"
-        echo "  start          Start production (with migrations + cache warmup)"
+        echo "  start          Start containers (reuses existing - fast, no config changes)"
         echo "  stop           Stop production"
-        echo "  restart        Restart production"
+        echo "  restart        Restart (down + up, applies config changes)"
+        echo "  update         Full update after git pull (recreate + migrate + cache)"
+        echo "  recreate <svc> Recreate single service (applies config/label changes)"
         echo "  status         Show container status"
         echo "  logs [svc]     Follow logs (all or specific service)"
         echo "  worker-logs    Follow test worker logs"
         echo "  scheduler-logs Follow scheduler logs"
-        echo "  update         Pull, recreate, migrate, clear cache"
         echo "  build          Build images (no cache)"
         echo "  shell [svc]    Open shell (default: php)"
-        echo "  recreate <svc> Recreate single service"
         echo "  frontend [--no-cache]  Build and deploy frontend assets"
         echo "  frontend-rollback      Restore previous frontend build"
         echo "  help           Show this help"
+        echo ""
+        echo "After git pull with docker-compose changes: use 'update' or 'recreate <svc>'"
         ;;
 esac
