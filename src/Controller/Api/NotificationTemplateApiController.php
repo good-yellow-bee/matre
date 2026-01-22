@@ -53,7 +53,7 @@ class NotificationTemplateApiController extends AbstractController
     {
         $data = json_decode($request->getContent(), true);
 
-        if (json_last_error() !== JSON_ERROR_NONE) {
+        if (JSON_ERROR_NONE !== json_last_error()) {
             return $this->json(['error' => 'Invalid JSON: ' . json_last_error_msg()], 400);
         }
 
@@ -81,7 +81,7 @@ class NotificationTemplateApiController extends AbstractController
     {
         $data = json_decode($request->getContent(), true);
 
-        if (json_last_error() !== JSON_ERROR_NONE) {
+        if (JSON_ERROR_NONE !== json_last_error()) {
             return $this->json(['error' => 'Invalid JSON: ' . json_last_error_msg()], 400);
         }
 
@@ -92,7 +92,7 @@ class NotificationTemplateApiController extends AbstractController
 
         // For email templates, return both subject and body
         // For Slack templates, format as Slack markdown preview
-        if ($template->getChannel() === NotificationTemplate::CHANNEL_EMAIL) {
+        if (NotificationTemplate::CHANNEL_EMAIL === $template->getChannel()) {
             return $this->json([
                 'subject' => $rendered['subject'],
                 'html' => $rendered['body'],
@@ -111,7 +111,7 @@ class NotificationTemplateApiController extends AbstractController
     {
         $data = json_decode($request->getContent(), true);
 
-        if (json_last_error() !== JSON_ERROR_NONE) {
+        if (JSON_ERROR_NONE !== json_last_error()) {
             return $this->json(['error' => 'Invalid JSON: ' . json_last_error_msg()], 400);
         }
 
@@ -123,7 +123,7 @@ class NotificationTemplateApiController extends AbstractController
         /** @var User $user */
         $user = $this->getUser();
 
-        if ($template->getChannel() === NotificationTemplate::CHANNEL_EMAIL) {
+        if (NotificationTemplate::CHANNEL_EMAIL === $template->getChannel()) {
             if (!$user->getEmail()) {
                 return $this->json(['error' => 'No email address configured for your account.'], 400);
             }

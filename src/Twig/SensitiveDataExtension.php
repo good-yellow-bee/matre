@@ -64,7 +64,7 @@ class SensitiveDataExtension extends AbstractExtension
      * Mask a value only if the variable name indicates it's sensitive.
      *
      * @param string|null $value The value to potentially mask
-     * @param string $name The variable name
+     * @param string      $name  The variable name
      */
     public function maskIfSensitive(?string $value, string $name): string
     {
