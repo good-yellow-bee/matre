@@ -439,9 +439,16 @@ class TestRun
     }
 
     #[ORM\PreUpdate]
-    public function setUpdatedAt(?\DateTimeImmutable $updatedAt = null): void
+    public function onPreUpdate(): void
     {
-        $this->updatedAt = $updatedAt ?? new \DateTimeImmutable();
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function setUpdatedAt(?\DateTimeImmutable $updatedAt): static
+    {
+        $this->updatedAt = $updatedAt;
+
+        return $this;
     }
 
     /**
