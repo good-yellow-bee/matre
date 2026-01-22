@@ -111,6 +111,9 @@ class TestRun
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
     private bool $sendNotifications = true;
 
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $notificationSentAt = null;
+
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $errorMessage = null;
 
@@ -301,6 +304,23 @@ class TestRun
         $this->sendNotifications = $sendNotifications;
 
         return $this;
+    }
+
+    public function getNotificationSentAt(): ?\DateTimeImmutable
+    {
+        return $this->notificationSentAt;
+    }
+
+    public function markNotificationSent(): static
+    {
+        $this->notificationSentAt = new \DateTimeImmutable();
+
+        return $this;
+    }
+
+    public function wasNotificationSent(): bool
+    {
+        return null !== $this->notificationSentAt;
     }
 
     public function getErrorMessage(): ?string

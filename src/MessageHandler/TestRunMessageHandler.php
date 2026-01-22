@@ -12,7 +12,10 @@ use App\Repository\TestRunRepository;
 use App\Repository\UserRepository;
 use App\Service\NotificationService;
 use App\Service\TestRunnerService;
+use Doctrine\DBAL\Connection;
+use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\Lock\Exception\LockAcquiringException;
 use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\Envelope;
@@ -28,6 +31,8 @@ class TestRunMessageHandler
         private readonly NotificationService $notificationService,
         private readonly MessageBusInterface $messageBus,
         private readonly LockFactory $lockFactory,
+        private readonly EntityManagerInterface $entityManager,
+        private readonly Connection $connection,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -142,15 +147,22 @@ class TestRunMessageHandler
     {
         try {
             $this->testRunnerService->executeRun($run, $receiverLockRefreshCallback, $heartbeatCallback);
+        } catch (LockAcquiringException $e) {
+            // Environment lock timeout (another worker is executing this environment)
+            // Still proceed to REPORT - idempotency guards in NOTIFY prevent duplicates
+            $this->logger->warning('Execute phase lock timeout - another worker may be running', [
+                'runId' => $run->getId(),
+                'error' => $e->getMessage(),
+            ]);
         } catch (\Throwable $e) {
             $this->logger->error('Execute phase failed, continuing to REPORT', [
                 'runId' => $run->getId(),
                 'error' => $e->getMessage(),
             ]);
-            // Continue to REPORT regardless - service should have marked run as failed
+            // Continue to REPORT - service should have marked run as failed
         }
 
-        // Always dispatch REPORT (handles both success and failure)
+        // Always dispatch REPORT (idempotency in NOTIFY prevents duplicate notifications)
         $this->messageBus->dispatch(new TestRunMessage(
             $run->getId(),
             $run->getEnvironment()->getId(),
@@ -188,7 +200,6 @@ class TestRunMessageHandler
         // Skip notifications if disabled for this run
         if (!$run->isSendNotifications()) {
             $this->logger->info('Notifications disabled for this run', ['runId' => $run->getId()]);
-            // Still dispatch CLEANUP
             $this->messageBus->dispatch(new TestRunMessage(
                 $run->getId(),
                 $run->getEnvironment()->getId(),
@@ -197,6 +208,38 @@ class TestRunMessageHandler
 
             return;
         }
+
+        // Atomic idempotency guard - UPDATE only if notification_sent_at IS NULL
+        // This prevents race conditions between concurrent NOTIFY messages
+        try {
+            $affectedRows = $this->connection->executeStatement(
+                'UPDATE matre_test_runs SET notification_sent_at = NOW() WHERE id = ? AND notification_sent_at IS NULL',
+                [$run->getId()],
+            );
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to set notification flag atomically, aborting to prevent duplicates', [
+                'runId' => $run->getId(),
+                'error' => $e->getMessage(),
+            ]);
+
+            // Don't send - safer to miss than duplicate. Retry will attempt again.
+            throw $e;
+        }
+
+        if (0 === $affectedRows) {
+            // Another worker already sent notifications
+            $this->logger->info('Notification already sent by another worker, skipping', ['runId' => $run->getId()]);
+            $this->messageBus->dispatch(new TestRunMessage(
+                $run->getId(),
+                $run->getEnvironment()->getId(),
+                TestRunMessage::PHASE_CLEANUP,
+            ));
+
+            return;
+        }
+
+        // Refresh entity to reflect the DB change
+        $this->entityManager->refresh($run);
 
         try {
             // Slack: send if ANY subscribed user has Slack enabled
@@ -216,7 +259,7 @@ class TestRunMessageHandler
                 'runId' => $run->getId(),
                 'error' => $e->getMessage(),
             ]);
-            // Continue to CLEANUP regardless
+            // Flag already set - better to miss than duplicate
         }
 
         // Always dispatch CLEANUP
