@@ -99,7 +99,7 @@ class ArtifactCollectorService
      * Associate collected screenshots with test results based on filename matching.
      *
      * @param TestResult[] $results
-     * @param string[] $screenshotPaths
+     * @param string[]     $screenshotPaths
      */
     public function associateScreenshotsWithResults(array $results, array $screenshotPaths): void
     {
