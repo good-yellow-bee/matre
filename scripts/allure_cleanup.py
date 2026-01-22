@@ -70,7 +70,8 @@ def generate_cleanup_script(
     test_ids: list[str],
     in_suites: Optional[list[str]] = None,
     not_in_suites: Optional[list[str]] = None,
-    dry_run: bool = False
+    dry_run: bool = False,
+    strict: bool = False
 ) -> str:
     """Generate Python cleanup script to run on remote."""
 
@@ -95,10 +96,24 @@ def generate_cleanup_script(
     script = f'''
 import json
 import os
+import re
 import sys
 import xml.etree.ElementTree as ET
 
-def cleanup_source_results(base_path, test_ids, in_suites, not_in_suites, dry_run=False):
+def matches_test_id(name, test_ids, strict=False):
+    """Check if name matches any test ID. If strict, use word boundary matching."""
+    for tid in test_ids:
+        if strict:
+            # Word boundary match - tid must be a complete word in name
+            if re.search(rf'\\b{{re.escape(tid)}}\\b', name):
+                return True
+        else:
+            # Substring match
+            if tid in name:
+                return True
+    return False
+
+def cleanup_source_results(base_path, test_ids, in_suites, not_in_suites, strict=False, dry_run=False):
     """Clean source results (XML testsuite files) to prevent re-appearance after report regeneration."""
     # Derive source path from report path
     # /home/ubuntu/ABBTests/src/pub/allure-report-stage-us → /home/ubuntu/ABBTests/src/dev/tests/acceptance/_output/allure-results-stage-us
@@ -147,12 +162,9 @@ def cleanup_source_results(base_path, test_ids, in_suites, not_in_suites, dry_ru
                 name = name_el.text or ""
 
                 # Check if test ID matches
-                for tid in test_ids:
-                    if tid in name:
-                        should_delete = True
-                        matched_name = name
-                        break
-                if should_delete:
+                if matches_test_id(name, test_ids, strict):
+                    should_delete = True
+                    matched_name = name
                     break
 
             if should_delete:
@@ -169,7 +181,7 @@ def cleanup_source_results(base_path, test_ids, in_suites, not_in_suites, dry_ru
         "source_more": len(source_removed) - 5 if len(source_removed) > 5 else 0
     }}
 
-def cleanup_environment(base_path, test_ids, in_suites, not_in_suites, dry_run=False):
+def cleanup_environment(base_path, test_ids, in_suites, not_in_suites, strict=False, dry_run=False):
     """Clean up test entries from a single environment."""
     tc_dir = f"{{base_path}}/data/test-cases"
 
@@ -196,13 +208,7 @@ def cleanup_environment(base_path, test_ids, in_suites, not_in_suites, dry_run=F
         suite = next((l.get("value", "") for l in labels if l.get("name") == "suite"), "")
 
         # Check if test ID matches
-        matches_id = False
-        for tid in test_ids:
-            if tid in name:
-                matches_id = True
-                break
-
-        if not matches_id:
+        if not matches_test_id(name, test_ids, strict):
             continue
 
         # Apply suite filter
@@ -286,7 +292,7 @@ def cleanup_environment(base_path, test_ids, in_suites, not_in_suites, dry_run=F
             pass
 
     # Also clean source results (XML testsuite files)
-    source_result = cleanup_source_results(base_path, test_ids, in_suites, not_in_suites, dry_run)
+    source_result = cleanup_source_results(base_path, test_ids, in_suites, not_in_suites, strict, dry_run)
 
     return {{
         "removed": len(removed),
@@ -301,6 +307,7 @@ test_ids = [{test_ids_str}]
 in_suites = [{in_suites_str}]
 not_in_suites = [{not_in_suites_str}]
 dry_run = {str(dry_run)}
+strict = {str(strict)}
 environments = {{}}  # Will be populated by caller
 
 base_path_template = os.environ.get("BASE_PATH", "{DEFAULT_BASE_PATH}")
@@ -316,7 +323,7 @@ for env in envs_str.split(","):
     if not env:
         continue
     base_path = base_path_template.replace("{{env}}", env)
-    results[env] = cleanup_environment(base_path, test_ids, in_suites, not_in_suites, dry_run)
+    results[env] = cleanup_environment(base_path, test_ids, in_suites, not_in_suites, strict, dry_run)
 
 print(json.dumps(results, indent=2))
 '''
@@ -331,11 +338,12 @@ def run_remote_cleanup(
     in_suites: Optional[list[str]] = None,
     not_in_suites: Optional[list[str]] = None,
     dry_run: bool = False,
+    strict: bool = False,
     use_sudo: bool = False
 ) -> dict:
     """Run cleanup script on remote host."""
 
-    script = generate_cleanup_script(test_ids, in_suites, not_in_suites, dry_run)
+    script = generate_cleanup_script(test_ids, in_suites, not_in_suites, dry_run, strict)
 
     # Create temp file with script
     with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
@@ -378,11 +386,12 @@ def run_local_cleanup(
     base_path: str,
     in_suites: Optional[list[str]] = None,
     not_in_suites: Optional[list[str]] = None,
-    dry_run: bool = False
+    dry_run: bool = False,
+    strict: bool = False
 ) -> dict:
     """Run cleanup locally."""
 
-    script = generate_cleanup_script(test_ids, in_suites, not_in_suites, dry_run)
+    script = generate_cleanup_script(test_ids, in_suites, not_in_suites, dry_run, strict)
 
     # Set environment variables and run
     env = os.environ.copy()
@@ -500,6 +509,12 @@ def main():
         help='Use sudo for file operations'
     )
 
+    parser.add_argument(
+        '--strict',
+        action='store_true',
+        help='Use strict (word boundary) matching for test IDs instead of substring matching'
+    )
+
     args = parser.parse_args()
 
     # Expand environments
@@ -519,6 +534,7 @@ def main():
 
     print(f"SSH host: {args.ssh}")
     print(f"Dry run: {args.dry_run}")
+    print(f"Strict matching: {args.strict}")
     print(f"Use sudo: {args.sudo}")
 
     # Run cleanup
@@ -529,7 +545,8 @@ def main():
             base_path=args.base_path,
             in_suites=args.in_suite,
             not_in_suites=args.not_in_suite,
-            dry_run=args.dry_run
+            dry_run=args.dry_run,
+            strict=args.strict
         )
     else:
         results = run_remote_cleanup(
@@ -540,6 +557,7 @@ def main():
             in_suites=args.in_suite,
             not_in_suites=args.not_in_suite,
             dry_run=args.dry_run,
+            strict=args.strict,
             use_sudo=args.sudo
         )
 

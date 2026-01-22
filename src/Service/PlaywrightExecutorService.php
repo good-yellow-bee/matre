@@ -28,7 +28,7 @@ class PlaywrightExecutorService
      * Execute Playwright tests for a test run.
      * Output is streamed to a file to prevent memory bloat on long-running tests.
      *
-     * @param callable|null $outputCallback    Optional callback for real-time output streaming
+     * @param callable|null $outputCallback Optional callback for real-time output streaming
      * @param callable|null $heartbeatCallback Optional callback to extend message redelivery window
      *
      * @return array{output: string, exitCode: int}

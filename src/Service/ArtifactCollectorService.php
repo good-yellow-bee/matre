@@ -99,7 +99,7 @@ class ArtifactCollectorService
      * Associate collected screenshots with test results based on filename matching.
      *
      * @param TestResult[] $results
-     * @param string[]     $screenshotPaths
+     * @param string[] $screenshotPaths
      */
     public function associateScreenshotsWithResults(array $results, array $screenshotPaths): void
     {
@@ -110,11 +110,8 @@ class ArtifactCollectorService
             foreach ($screenshotPaths as $path) {
                 $filename = basename($path);
 
-                // Match by test name or test ID in filename
-                if (
-                    ($testName && false !== stripos($filename, $testName))
-                    || ($testId && false !== stripos($filename, $testId))
-                ) {
+                // Match by test name or test ID with word boundaries
+                if ($this->filenameMatchesTest($filename, $testId, $testName)) {
                     $result->setScreenshotPath($filename);
                     $this->logger->debug('Screenshot associated', [
                         'test' => $testName,
@@ -171,11 +168,8 @@ class ArtifactCollectorService
         foreach ($finder as $file) {
             $filename = $file->getFilename();
 
-            // Match by test ID or test name
-            if (
-                ($testId && false !== stripos($filename, $testId))
-                || ($testName && false !== stripos($filename, $testName))
-            ) {
+            // Match by test ID or test name with word boundaries
+            if ($this->filenameMatchesTest($filename, $testId, $testName)) {
                 if ($file->getSize() > self::MAX_ARTIFACT_SIZE) {
                     continue;
                 }
@@ -434,6 +428,21 @@ class ArtifactCollectorService
         }
 
         return $removed;
+    }
+
+    /**
+     * Check if filename contains test identifier with word boundaries.
+     * Prevents MOEC2609 from matching MOEC2609ES.
+     */
+    private function filenameMatchesTest(string $filename, ?string $testId, ?string $testName): bool
+    {
+        if ($testId && preg_match('/\b' . preg_quote($testId, '/') . '\b/i', $filename)) {
+            return true;
+        }
+
+        return (bool) ($testName && preg_match('/\b' . preg_quote($testName, '/') . '\b/i', $filename))
+
+        ;
     }
 
     /**

@@ -25,11 +25,11 @@ class SlugGenerator
     /**
      * Generate a unique slug from a given string.
      *
-     * @param string   $text        The text to slugify
-     * @param string   $entityClass The entity class to check uniqueness against
-     * @param int|null $excludeId   Optional entity ID to exclude from uniqueness check (for updates)
-     * @param string   $slugField   The field name that stores the slug (default: 'slug')
-     * @param int      $maxLength   Maximum length of the generated slug (default: 255)
+     * @param string $text The text to slugify
+     * @param string $entityClass The entity class to check uniqueness against
+     * @param int|null $excludeId Optional entity ID to exclude from uniqueness check (for updates)
+     * @param string $slugField The field name that stores the slug (default: 'slug')
+     * @param int $maxLength Maximum length of the generated slug (default: 255)
      *
      * @return string The generated unique slug
      */
@@ -76,8 +76,8 @@ class SlugGenerator
      * Useful for generating slugs that will be checked manually
      * or for non-unique fields.
      *
-     * @param string $text      The text to slugify
-     * @param int    $maxLength Maximum length of the generated slug
+     * @param string $text The text to slugify
+     * @param int $maxLength Maximum length of the generated slug
      *
      * @return string The generated slug
      */
@@ -109,8 +109,8 @@ class SlugGenerator
      *
      * Useful for creating slugs from multiple fields (e.g., category + title).
      *
-     * @param array<string> $parts     The parts to combine
-     * @param string        $separator The separator to use between parts
+     * @param array<string> $parts The parts to combine
+     * @param string $separator The separator to use between parts
      *
      * @return string The generated slug
      */
@@ -125,10 +125,10 @@ class SlugGenerator
     /**
      * Check if a slug already exists in the database.
      *
-     * @param string   $slug        The slug to check
-     * @param string   $entityClass The entity class to check against
-     * @param int|null $excludeId   Optional entity ID to exclude from the check
-     * @param string   $slugField   The field name that stores the slug
+     * @param string $slug The slug to check
+     * @param string $entityClass The entity class to check against
+     * @param int|null $excludeId Optional entity ID to exclude from the check
+     * @param string $slugField The field name that stores the slug
      *
      * @return bool True if the slug exists, false otherwise
      */

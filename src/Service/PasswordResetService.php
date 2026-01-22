@@ -39,7 +39,7 @@ class PasswordResetService
     /**
      * Create a password reset request for a user.
      *
-     * @param string      $email     The user's email address
+     * @param string $email The user's email address
      * @param string|null $ipAddress The requester's IP address
      *
      * @return bool True if reset request was created and email sent
@@ -114,7 +114,7 @@ class PasswordResetService
     /**
      * Reset a user's password using a valid token.
      *
-     * @param string $token       The reset token
+     * @param string $token The reset token
      * @param string $newPassword The new password
      *
      * @return bool True if password was reset successfully
