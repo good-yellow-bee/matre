@@ -71,6 +71,7 @@ class TestRunWatchdogCommand extends Command
         $dryRun = $input->getOption('dry-run');
 
         $activeStatuses = [
+            TestRun::STATUS_PENDING,
             TestRun::STATUS_PREPARING,
             TestRun::STATUS_CLONING,
             TestRun::STATUS_WAITING,
