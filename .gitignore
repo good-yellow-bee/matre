@@ -58,6 +58,10 @@ outdated-deps.json
 security-report.json
 ###< Build/Reports ###
 
+###> Planning/Specs ###
+/docs/specs/
+###< Planning/Specs ###
+
 ###> OS ###
 .DS_Store
 Thumbs.db
