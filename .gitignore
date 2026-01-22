@@ -94,3 +94,7 @@ docker/traefik/certs/*.pem
 docker/ssh/id_*
 docker/ssh/config
 docker/ssh/known_hosts
+
+# Python cache
+__pycache__/
+*.pyc
