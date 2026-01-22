@@ -516,7 +516,8 @@ class AllureReportService
         $hasResults = false;
 
         if ($this->filesystem->exists($resultsPath)) {
-            $hasResults = $this->sendResultsToAllure($projectId, $resultsPath);
+            $region = $run->getEnvironment()->getRegion() ?: 'US';
+            $hasResults = $this->sendResultsToAllure($projectId, $resultsPath, $region);
         }
 
         // Only generate report if we actually sent result files
@@ -552,16 +553,121 @@ class AllureReportService
     }
 
     /**
+     * Extract region group (ES/US) from test name.
+     * Returns 'US' for tests without explicit region suffix (legacy compatibility).
+     */
+    private function extractTestRegionGroup(string $testName): string
+    {
+        // Pattern: MOEC + optional dash + digits + optional variant chars + ES or US
+        // Examples: MOEC2609ES, MOEC-2609ES, MOEC7223US, MOEC7223CUS
+        if (preg_match('/\bMOEC[-]?\d+[A-Z]{0,2}?(ES|US)\b/i', $testName, $matches)) {
+            return strtoupper($matches[1]);
+        }
+
+        // Default to US for tests without region suffix
+        return 'US';
+    }
+
+    /**
+     * Filter result files to only include tests from the target region group.
+     *
+     * @return array{files: string[], skipped: int}
+     */
+    private function filterResultsByRegionGroup(array $resultFiles, string $targetRegion): array
+    {
+        $filtered = [];
+        $skipped = 0;
+        $targetRegion = strtoupper($targetRegion);
+
+        foreach ($resultFiles as $file) {
+            $content = @file_get_contents($file);
+            if (!$content) {
+                continue;
+            }
+
+            $data = json_decode($content, true);
+            if (!$data || !isset($data['name'])) {
+                continue;
+            }
+
+            $testRegion = $this->extractTestRegionGroup($data['name']);
+
+            if ($testRegion === $targetRegion) {
+                $filtered[] = $file;
+            } else {
+                ++$skipped;
+                $this->logger->debug('Filtered out test - wrong region group', [
+                    'testName' => $data['name'],
+                    'testRegion' => $testRegion,
+                    'targetRegion' => $targetRegion,
+                ]);
+            }
+        }
+
+        return ['files' => $filtered, 'skipped' => $skipped];
+    }
+
+    /**
+     * Filter containers to only include those referencing filtered results.
+     */
+    private function filterContainersByResults(array $containerFiles, array $filteredResultUuids): array
+    {
+        $filtered = [];
+
+        foreach ($containerFiles as $file) {
+            $content = @file_get_contents($file);
+            if (!$content) {
+                continue;
+            }
+
+            $data = json_decode($content, true);
+            if (!$data || !isset($data['children'])) {
+                continue;
+            }
+
+            foreach ($data['children'] as $childUuid) {
+                if (in_array($childUuid, $filteredResultUuids, true)) {
+                    $filtered[] = $file;
+
+                    break;
+                }
+            }
+        }
+
+        return $filtered;
+    }
+
+    /**
      * Send results files to Allure service in batches to avoid memory exhaustion.
      *
      * @return bool True if result/container files were sent, false if only attachments or nothing
      */
-    private function sendResultsToAllure(string $projectId, string $resultsPath): bool
+    private function sendResultsToAllure(string $projectId, string $resultsPath, string $region): bool
     {
         // Collect all file paths (without loading content yet)
         $resultFiles = glob($resultsPath . '/*-result.json') ?: [];
         $containerFiles = glob($resultsPath . '/*-container.json') ?: [];
         $attachmentFiles = glob($resultsPath . '/*-attachment') ?: [];
+
+        // Filter results by region group
+        $filterResult = $this->filterResultsByRegionGroup($resultFiles, $region);
+        $resultFiles = $filterResult['files'];
+
+        $this->logger->info('Filtered results by region group', [
+            'projectId' => $projectId,
+            'region' => $region,
+            'kept' => count($resultFiles),
+            'skipped' => $filterResult['skipped'],
+        ]);
+
+        // Extract UUIDs from filtered results for container filtering
+        $filteredUuids = array_map(
+            fn ($file) => basename($file, '-result.json'),
+            $resultFiles,
+        );
+
+        // Filter containers to match
+        $containerFiles = $this->filterContainersByResults($containerFiles, $filteredUuids);
 
         $hasResultFiles = false;
         foreach (array_merge($resultFiles, $containerFiles) as $file) {
@@ -574,8 +680,9 @@ class AllureReportService
         }
 
         if (!$hasResultFiles) {
-            $this->logger->warning('No non-empty Allure result files found', [
+            $this->logger->warning('No Allure result files found after region filtering', [
                 'projectId' => $projectId,
+                'region' => $region,
                 'resultsPath' => $resultsPath,
             ]);
 

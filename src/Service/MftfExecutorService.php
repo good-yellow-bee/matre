@@ -44,7 +44,7 @@ class MftfExecutorService
      * Output is streamed to a file to prevent memory bloat on long-running tests.
      *
      * @param callable|null $lockRefreshCallback Optional callback to refresh environment lock during execution
-     * @param callable|null $heartbeatCallback   Optional callback to extend message redelivery window
+     * @param callable|null $heartbeatCallback Optional callback to extend message redelivery window
      *
      * @return array{output: string, exitCode: int}
      */
@@ -174,7 +174,7 @@ class MftfExecutorService
      * Used for sequential group execution where each test gets its own output.
      *
      * @param callable|null $lockRefreshCallback Optional callback to refresh environment lock during execution
-     * @param callable|null $heartbeatCallback   Optional callback to extend message redelivery window
+     * @param callable|null $heartbeatCallback Optional callback to extend message redelivery window
      *
      * @return array{output: string, exitCode: int, outputFilePath: string}
      */
