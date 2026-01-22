@@ -148,14 +148,25 @@ frontend-rollback  # Restore previous frontend build
 
 ## Production Deployment Rules
 
-| Change Type | Command | Why |
-|-------------|---------|-----|
-| PHP/Composer | Build + recreate app containers | Code baked into image |
-| Vue/JS/CSS | `./prod.sh frontend` | One-command frontend deploy |
-| Docker/config | `./prod.sh update` | Full recreate needed |
-| Migrations | `doctrine:migrations:migrate` | Run after code deployment |
+| Change Type | Command |
+|-------------|---------|
+| PHP code only | `git pull` + restart workers |
+| PHP + migration | `git pull` + migrate + restart workers |
+| Composer deps | `./prod.sh update` (rebuild needed) |
+| Vue/JS/CSS | `./prod.sh frontend` |
+| Docker/config | `./prod.sh update` |
 
-**NEVER use `./prod.sh update` for code/asset changes** unless pulling prebuilt images.
+### Quick PHP-Only Deploy (ABB)
+
+For PHP code changes (with or without migrations):
+
+```bash
+ssh abb "cd ~/matre && git pull origin master && \
+  docker compose exec -T php php bin/console doctrine:migrations:migrate --no-interaction && \
+  docker compose restart test-worker"
+```
+
+Skip migration command if no new migrations. Code is volume-mounted, so `git pull` + worker restart is sufficient.
 
 ### Frontend Deployment
 
