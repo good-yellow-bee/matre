@@ -186,7 +186,7 @@ services:
     image: selenium/node-chromium:4.40.0-20260120
     shm_size: 2gb
     ports:
-      - "7900:7900"  # noVNC web viewer for live test preview
+      - "7900"  # noVNC web viewer (dynamic host port for replica support)
     depends_on:
       - selenium-hub
     environment:

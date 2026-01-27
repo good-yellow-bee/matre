@@ -90,7 +90,6 @@ services:
   # noVNC uses absolute paths (/app/*, /core/*, /vendor/*) for assets,
   # so we need additional routers to catch these requests
   chrome-node:
-    ports: []
     environment:
       SE_VNC_NO_PASSWORD: "false"
       SE_NODE_MAX_SESSIONS: 2
