@@ -36,6 +36,7 @@ export default defineConfig({
         'cron-job-form-app': './assets/vue/cron-job-form-app.js',
         'test-environment-form-app': './assets/vue/test-environment-form-app.js',
         'test-suite-form-app': './assets/vue/test-suite-form-app.js',
+        'audit-log-grid-app': './assets/vue/audit-log-grid-app.js',
       },
     },
   },

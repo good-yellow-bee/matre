@@ -116,9 +116,9 @@ class ImportEnvironmentsCommand extends Command
                 continue;
             }
 
-            // Extract code and region from name (e.g., dev-us -> code=dev, region=us)
+            // Extract region from name (e.g., dev-us -> code=dev-us, region=us)
             $parts = explode('-', $envName, 2);
-            $code = $parts[0];
+            $code = $envName;
             $region = $parts[1] ?? 'default';
 
             $environment = $existing ?? new TestEnvironment();

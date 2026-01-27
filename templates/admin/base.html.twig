@@ -115,6 +115,12 @@
                 <i class="bi bi-clock-history text-base"></i>
                 Cron Jobs
             </a>
+
+            <a href="{{ path('admin_audit_log_index') }}"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.get('_route') starts with 'admin_audit_log' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
+                <i class="bi bi-journal-text text-base"></i>
+                Audit Logs
+            </a>
         </div>
 
         {# User section at bottom #}
@@ -159,6 +165,7 @@
                     {% elseif app.request.get('_route') starts with 'admin_env_variable' %}Env Variables
                     {% elseif app.request.get('_route') starts with 'admin_profile' %}Profile
                     {% elseif app.request.get('_route') starts with 'admin_notification_template' %}Notification Templates
+                    {% elseif app.request.get('_route') starts with 'admin_audit_log' %}Audit Logs
                     {% else %}Overview{% endif %}
                 </span>
             </div>
