@@ -38,9 +38,8 @@ services:
     volumes:
       - ./public/build:/app/public/build:ro
 
-  # Test workers - 4 replicas for parallel execution across environments
+  # Test workers - 4 replicas (2 nodes × 2 sessions = 4 concurrent browser sessions)
   # Each worker handles different environment (per-env locking prevents conflicts)
-  # Match SE_NODE_MAX_SESSIONS in chrome-node for optimal parallelism
   test-worker:
     deploy:
       replicas: 4
@@ -87,13 +86,16 @@ services:
       - "traefik.http.routers.matre-http.middlewares=redirect-https"
       - "traefik.http.middlewares.redirect-https.redirectscheme.scheme=https"
 
-  # noVNC with password + Traefik routing
-  # Note: noVNC uses absolute paths (/app/*, /core/*, /vendor/*) for assets,
+  # Chrome nodes - 2 replicas for parallel test execution
+  # noVNC uses absolute paths (/app/*, /core/*, /vendor/*) for assets,
   # so we need additional routers to catch these requests
   chrome-node:
+    ports: []
     environment:
       SE_VNC_NO_PASSWORD: "false"
-      SE_NODE_MAX_SESSIONS: 4  # Parallel browser sessions (match test-worker scale)
+      SE_NODE_MAX_SESSIONS: 2
+    deploy:
+      replicas: 2
     networks:
       - matre_network
       - traefik

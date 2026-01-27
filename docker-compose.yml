@@ -168,23 +168,22 @@ services:
 
   # Selenium Hub - Grid coordinator
   selenium-hub:
-    image: selenium/hub:latest
+    image: selenium/hub:4.40.0-20260120
     container_name: matre_selenium_hub
     ports:
       - "4442:4442"
       - "4443:4443"
       - "4444:4444"
     environment:
-      SE_NODE_MAX_SESSIONS: 4
-      SE_SESSION_REQUEST_TIMEOUT: 300
+      SE_SESSION_REQUEST_TIMEOUT: 600
+      SE_SESSION_RETRY_INTERVAL: 5
     networks:
       - matre_network
 
   # Chromium Node - Browser for MFTF tests (ARM64 compatible)
   # noVNC live preview available at https://{APP_DOMAIN}:7900
   chrome-node:
-    image: selenium/node-chromium:latest
-    container_name: matre_chrome_node
+    image: selenium/node-chromium:4.40.0-20260120
     shm_size: 2gb
     ports:
       - "7900:7900"  # noVNC web viewer for live test preview
@@ -194,10 +193,28 @@ services:
       SE_EVENT_BUS_HOST: selenium-hub
       SE_EVENT_BUS_PUBLISH_PORT: 4442
       SE_EVENT_BUS_SUBSCRIBE_PORT: 4443
-      SE_NODE_MAX_SESSIONS: ${SE_NODE_MAX_SESSIONS:-2}
-      SE_NODE_SESSION_TIMEOUT: 300
+      SE_NODE_MAX_SESSIONS: ${SE_NODE_MAX_SESSIONS:-1}
+      SE_NODE_SESSION_TIMEOUT: 900
       SE_VNC_NO_PASSWORD: ${SE_VNC_NO_PASSWORD:-true}
-      # Chromium anti-bot detection flags (hides navigator.webdriver)
+      # Screen resolution
+      SE_SCREEN_WIDTH: 1920
+      SE_SCREEN_HEIGHT: 1080
+      SE_SCREEN_DEPTH: 24
+      # Zombie process cleanup (7200s = 2h, safely above 1h MFTF timeout)
+      SE_ENABLE_BROWSER_LEFTOVERS_CLEANUP: "true"
+      SE_BROWSER_LEFTOVERS_PROCESSES_SECS: 7200
+      # Chrome stability flags for Docker
+      SE_BROWSER_ARGS_DISABLE_GPU: "--disable-gpu"
+      SE_BROWSER_ARGS_DISABLE_DSHM: "--disable-dev-shm-usage"
+      SE_BROWSER_ARGS_DISABLE_RASTERIZER: "--disable-software-rasterizer"
+      SE_BROWSER_ARGS_DISABLE_EXTENSIONS: "--disable-extensions"
+      SE_BROWSER_ARGS_WINDOW_SIZE: "--window-size=1920,1080"
+      # Prevent background throttling (fixes timeouts + fields not loading)
+      SE_BROWSER_ARGS_DISABLE_BG_THROTTLE: "--disable-background-timer-throttling"
+      SE_BROWSER_ARGS_DISABLE_BG_OCCLUDED: "--disable-backgrounding-occluded-windows"
+      SE_BROWSER_ARGS_DISABLE_RENDERER_BG: "--disable-renderer-backgrounding"
+      SE_BROWSER_ARGS_DISABLE_HANG: "--disable-hang-monitor"
+      # Anti-bot detection (hides navigator.webdriver)
       SE_BROWSER_ARGS_DISABLE_BLINK: "--disable-blink-features=AutomationControlled"
       SE_BROWSER_ARGS_DISABLE_INFOBARS: "--disable-infobars"
     networks:
