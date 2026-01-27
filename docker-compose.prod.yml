@@ -86,6 +86,13 @@ services:
       - "traefik.http.routers.matre-http.middlewares=redirect-https"
       - "traefik.http.middlewares.redirect-https.redirectscheme.scheme=https"
 
+  # Selenium Hub - add traefik network so it can reach chrome-node replicas
+  # that advertise their traefik network IP (multi-network IP resolution)
+  selenium-hub:
+    networks:
+      - matre_network
+      - traefik
+
   # Chrome nodes - 2 replicas for parallel test execution
   # noVNC uses absolute paths (/app/*, /core/*, /vendor/*) for assets,
   # so we need additional routers to catch these requests
