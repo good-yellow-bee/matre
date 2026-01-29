@@ -472,8 +472,8 @@ class AllureStepParserService
     private function extractTestId(string $name): ?string
     {
         // Match patterns like MOEC2417, MOEC-2417, TEST123
-        if (preg_match('/\b(MOEC[-]?\d+|[A-Z]{2,10}[-]?\d{2,6})\b/i', $name, $matches)) {
-            return strtoupper(str_replace('-', '', $matches[1]));
+        if (preg_match('/\b([A-Z]{2,10}-?\d{2,6}[A-Z]{0,3})\b/i', $name, $matches)) {
+            return strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $matches[1]));
         }
 
         return null;
