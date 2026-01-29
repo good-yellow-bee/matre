@@ -484,8 +484,9 @@ class MftfExecutorService
                 $result->setStatus($this->mapStatus($match[3]));
 
                 // Extract test ID from Cest name (e.g., MOEC5157Cest -> MOEC5157)
-                if (preg_match('/^([A-Z]+\d+)/', $match[1], $idMatch)) {
-                    $result->setTestId($idMatch[1]);
+                $testId = $this->extractStrictTestIdFromCest($match[1]);
+                if ($testId) {
+                    $result->setTestId($testId);
                 }
 
                 $results[] = $result;
@@ -502,14 +503,11 @@ class MftfExecutorService
             $testId = null;
 
             // Extract test ID from output or use filter
-            if (preg_match('/([A-Z]+\d+)Cest/', $cleanOutput, $idMatch)) {
-                $testId = $idMatch[1];
-            } elseif ($filter = $run->getTestFilter()) {
-                if (preg_match('/^([A-Z]+\d+)/', $filter, $idMatch)) {
-                    $testId = $idMatch[1];
-                }
-                // Don't use raw filter as testId - it could be a group name like "us"
+            $testId = $this->extractStrictTestIdFromCest($cleanOutput);
+            if (!$testId && ($filter = $run->getTestFilter())) {
+                $testId = $this->extractStrictTestId($filter);
             }
+            // Don't use raw filter as testId - it could be a group name like "us"
 
             // Check for errors FIRST - errors take priority over individual "PASSED" lines
             // because "PASSED" can appear for steps even when overall test fails
@@ -561,6 +559,46 @@ class MftfExecutorService
     public function getAllureResultsPath(int $runId): string
     {
         return $this->projectDir . '/var/mftf-results/allure-results/run-' . $runId;
+    }
+
+    /**
+     * Extract strict testId token from arbitrary text.
+     */
+    private function extractStrictTestId(string $text): ?string
+    {
+        if (preg_match('/\b([A-Z]{2,10}-?\d{2,6}[A-Z]{0,3})\b/i', $text, $matches)) {
+            return $this->normalizeTestId($matches[1]);
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract strict testId from a Cest class name or text containing "Cest".
+     */
+    private function extractStrictTestIdFromCest(string $text): ?string
+    {
+        if (preg_match('/([A-Z]{2,10}-?\d{2,6}[A-Z]{0,3})Cest/i', $text, $matches)) {
+            return $this->normalizeTestId($matches[1]);
+        }
+
+        $trimmed = preg_replace('/Cest$/i', '', $text);
+        if ($trimmed && $trimmed !== $text) {
+            $fromTrimmed = $this->extractStrictTestId($trimmed);
+            if ($fromTrimmed) {
+                return $fromTrimmed;
+            }
+        }
+
+        return $this->extractStrictTestId($text);
+    }
+
+    /**
+     * Normalize testId for strict matching (preserves suffix like US/ES).
+     */
+    private function normalizeTestId(string $testId): string
+    {
+        return strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $testId));
     }
 
     /**
@@ -790,8 +828,9 @@ class MftfExecutorService
             $status = ($i < $passedCount) ? TestResult::STATUS_PASSED : TestResult::STATUS_FAILED;
             $result->setStatus($status);
 
-            if (preg_match('/^([A-Z]+\d+)/', $test['cest'], $idMatch)) {
-                $result->setTestId($idMatch[1]);
+            $testId = $this->extractStrictTestIdFromCest($test['cest']);
+            if ($testId) {
+                $result->setTestId($testId);
             }
 
             $results[] = $result;

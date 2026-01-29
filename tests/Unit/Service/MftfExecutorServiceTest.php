@@ -264,6 +264,45 @@ class MftfExecutorServiceTest extends TestCase
         $this->assertEquals('MOEC5157', $results[0]->getTestId());
     }
 
+    public function testParseResultsExtractsTestIdWithSuffix(): void
+    {
+        $run = $this->createTestRun();
+
+        $output = <<<'OUTPUT'
+            MOEC7212USCest: Moec7212US
+            PASSED
+
+            Time: 00:01.000
+            OUTPUT;
+
+        $results = $this->service->parseResults($run, $output);
+
+        $this->assertCount(1, $results);
+        $this->assertEquals('MOEC7212US', $results[0]->getTestId());
+    }
+
+    public function testParseResultsKeepsSuffixDistinct(): void
+    {
+        $run = $this->createTestRun();
+
+        $output = <<<'OUTPUT'
+            MOEC7212Cest: Moec7212
+            PASSED
+
+            MOEC7212USCest: Moec7212US
+            PASSED
+
+            Time: 00:02.000
+            OUTPUT;
+
+        $results = $this->service->parseResults($run, $output);
+
+        $this->assertCount(2, $results);
+        $this->assertEquals('MOEC7212', $results[0]->getTestId());
+        $this->assertEquals('MOEC7212US', $results[1]->getTestId());
+        $this->assertNotEquals($results[0]->getTestId(), $results[1]->getTestId());
+    }
+
     public function testParseResultsExtractsFailedTest(): void
     {
         $run = $this->createTestRun();

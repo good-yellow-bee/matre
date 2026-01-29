@@ -516,8 +516,7 @@ class AllureReportService
         $hasResults = false;
 
         if ($this->filesystem->exists($resultsPath)) {
-            $region = $run->getEnvironment()->getRegion() ?: 'US';
-            $hasResults = $this->sendResultsToAllure($projectId, $resultsPath, $region);
+            $hasResults = $this->sendResultsToAllure($projectId, $resultsPath, $run);
         }
 
         // Only generate report if we actually sent result files
@@ -553,31 +552,85 @@ class AllureReportService
     }
 
     /**
-     * Extract region group (ES/US) from test name.
-     * Returns 'US' for tests without explicit region suffix (legacy compatibility).
+     * Build allowlist of testIds from a TestRun's results.
+     *
+     * @return array<string, bool>
      */
-    private function extractTestRegionGroup(string $testName): string
+    private function buildAllowedTestIdSet(TestRun $run): array
     {
-        // Pattern: MOEC + optional dash + digits + optional variant chars + ES or US
-        // Examples: MOEC2609ES, MOEC-2609ES, MOEC7223US, MOEC7223CUS
-        if (preg_match('/\bMOEC[-]?\d+[A-Z]{0,2}?(ES|US)\b/i', $testName, $matches)) {
-            return strtoupper($matches[1]);
+        $allowed = [];
+
+        foreach ($run->getResults() as $result) {
+            $testId = $result->getTestId();
+            if (!$testId) {
+                continue;
+            }
+            $normalized = $this->normalizeTestId($testId);
+            if ('' === $normalized) {
+                continue;
+            }
+            $allowed[$normalized] = true;
         }
 
-        // Default to US for tests without region suffix
-        return 'US';
+        return $allowed;
     }
 
     /**
-     * Filter result files to only include tests from the target region group.
-     *
-     * @return array{files: string[], skipped: int}
+     * Normalize testId for strict matching (preserves suffix like US/ES).
      */
-    private function filterResultsByRegionGroup(array $resultFiles, string $targetRegion): array
+    private function normalizeTestId(string $testId): string
     {
+        return strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $testId));
+    }
+
+    /**
+     * Extract strict testId from Allure result data.
+     */
+    private function extractAllureTestId(array $data): ?string
+    {
+        $name = (string) ($data['name'] ?? '');
+        $fullName = (string) ($data['fullName'] ?? '');
+
+        $testId = $this->extractStrictTestId($name);
+        if (null === $testId && '' !== $fullName) {
+            $testId = $this->extractStrictTestId($fullName);
+        }
+
+        return $testId;
+    }
+
+    /**
+     * Extract strict testId token from arbitrary text.
+     */
+    private function extractStrictTestId(string $text): ?string
+    {
+        if (preg_match('/\b([A-Z]{2,10}-?\d{2,6}[A-Z]{0,3})\b/i', $text, $matches)) {
+            return $this->normalizeTestId($matches[1]);
+        }
+
+        return null;
+    }
+
+    /**
+     * Filter result files to only include tests from the allowlist.
+     *
+     * @param array<string, bool> $allowedTestIds
+     *
+     * @return array{files: string[], skipped: int, skippedMissingId: int}
+     */
+    private function filterResultsByAllowedTestIds(array $resultFiles, array $allowedTestIds, TestRun $run): array
+    {
+        if (empty($resultFiles)) {
+            return ['files' => [], 'skipped' => 0, 'skippedMissingId' => 0];
+        }
+
+        if (empty($allowedTestIds)) {
+            return ['files' => [], 'skipped' => count($resultFiles), 'skippedMissingId' => 0];
+        }
+
         $filtered = [];
         $skipped = 0;
-        $targetRegion = strtoupper($targetRegion);
+        $skippedMissingId = 0;
 
         foreach ($resultFiles as $file) {
             $content = @file_get_contents($file);
@@ -586,25 +639,36 @@ class AllureReportService
             }
 
             $data = json_decode($content, true);
-            if (!$data || !isset($data['name'])) {
+            if (!$data) {
                 continue;
             }
 
-            $testRegion = $this->extractTestRegionGroup($data['name']);
+            $testId = $this->extractAllureTestId($data);
+            if (null === $testId) {
+                ++$skipped;
+                ++$skippedMissingId;
+                $this->logger->debug('Filtered out test - missing testId', [
+                    'runId' => $run->getId(),
+                    'testName' => $data['name'] ?? null,
+                ]);
 
-            if ($testRegion === $targetRegion) {
+                continue;
+            }
+
+            $normalized = $this->normalizeTestId($testId);
+            if (isset($allowedTestIds[$normalized])) {
                 $filtered[] = $file;
             } else {
                 ++$skipped;
-                $this->logger->debug('Filtered out test - wrong region group', [
-                    'testName' => $data['name'],
-                    'testRegion' => $testRegion,
-                    'targetRegion' => $targetRegion,
+                $this->logger->debug('Filtered out test - not in allowlist', [
+                    'runId' => $run->getId(),
+                    'testName' => $data['name'] ?? null,
+                    'testId' => $testId,
                 ]);
             }
         }
 
-        return ['files' => $filtered, 'skipped' => $skipped];
+        return ['files' => $filtered, 'skipped' => $skipped, 'skippedMissingId' => $skippedMissingId];
     }
 
     /**
@@ -642,23 +706,48 @@ class AllureReportService
      *
      * @return bool True if result/container files were sent, false if only attachments or nothing
      */
-    private function sendResultsToAllure(string $projectId, string $resultsPath, string $region): bool
+    private function sendResultsToAllure(string $projectId, string $resultsPath, TestRun $run): bool
     {
         // Collect all file paths (without loading content yet)
         $resultFiles = glob($resultsPath . '/*-result.json') ?: [];
         $containerFiles = glob($resultsPath . '/*-container.json') ?: [];
         $attachmentFiles = glob($resultsPath . '/*-attachment') ?: [];
 
-        // Filter results by region group
-        $filterResult = $this->filterResultsByRegionGroup($resultFiles, $region);
-        $resultFiles = $filterResult['files'];
+        if (TestRun::TYPE_MFTF === $run->getType()) {
+            $resultFileCount = count($resultFiles);
+            $allowedTestIds = $this->buildAllowedTestIdSet($run);
+            $this->logger->debug('Built test allowlist', [
+                'runId' => $run->getId(),
+                'count' => count($allowedTestIds),
+                'testIds' => array_keys($allowedTestIds),
+            ]);
 
-        $this->logger->info('Filtered results by region group', [
-            'projectId' => $projectId,
-            'region' => $region,
-            'kept' => count($resultFiles),
-            'skipped' => $filterResult['skipped'],
-        ]);
+            if (empty($allowedTestIds)) {
+                $this->logger->error('Empty test allowlist - no TestResults with testId', [
+                    'runId' => $run->getId(),
+                ]);
+                $resultFiles = [];
+                $filterResult = ['files' => [], 'skipped' => $resultFileCount, 'skippedMissingId' => 0];
+            } else {
+                $filterResult = $this->filterResultsByAllowedTestIds($resultFiles, $allowedTestIds, $run);
+                $resultFiles = $filterResult['files'];
+            }
+
+            $this->logger->info('Filtered results by testId allowlist', [
+                'projectId' => $projectId,
+                'runId' => $run->getId(),
+                'allowed' => count($allowedTestIds),
+                'kept' => count($resultFiles),
+                'skipped' => $filterResult['skipped'],
+                'skippedMissingId' => $filterResult['skippedMissingId'],
+            ]);
+        } else {
+            $this->logger->info('Skipping testId filtering for non-MFTF run', [
+                'projectId' => $projectId,
+                'runId' => $run->getId(),
+                'type' => $run->getType(),
+            ]);
+        }
 
         // Extract UUIDs from filtered results for container filtering
         $filteredUuids = array_map(
@@ -680,9 +769,9 @@ class AllureReportService
         }
 
         if (!$hasResultFiles) {
-            $this->logger->warning('No Allure result files found after region filtering', [
+            $this->logger->warning('No Allure result files found after allowlist filtering', [
                 'projectId' => $projectId,
-                'region' => $region,
+                'runId' => $run->getId(),
                 'resultsPath' => $resultsPath,
             ]);
 
