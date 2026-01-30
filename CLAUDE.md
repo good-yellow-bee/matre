@@ -221,6 +221,14 @@ Do not include Claude attribution in commits.
 | SSL Validation | `src/Command/ValidateSslConfigCommand.php` |
 | Traefik SSL    | `docker/traefik/traefik.yml`               |
 
+## Allure Docker API
+
+⚠️ **NEVER use the Allure API `clean-results` endpoint** - it permanently deletes ALL test history with no backup or recovery option.
+
+- ❌ `DELETE /allure-docker-service/projects/{id}/results` - FORBIDDEN
+- ❌ `GET /allure-docker-service/clean-results?project_id={id}` - FORBIDDEN
+- ✅ Use `scripts/allure_cleanup.py` for selective test removal (creates backups)
+
 ## Artifact Storage
 
 | Directory                      | Contents                                       | Access Pattern |
