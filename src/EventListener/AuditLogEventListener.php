@@ -66,6 +66,9 @@ class AuditLogEventListener
     public function onFlush(OnFlushEventArgs $args): void
     {
         $this->pendingCreates = [];
+        if (!$this->shouldLogForCurrentUser()) {
+            return;
+        }
         $em = $args->getObjectManager();
         $uow = $em->getUnitOfWork();
 
@@ -293,6 +296,11 @@ class AuditLogEventListener
         $user = $this->security->getUser();
 
         return $user instanceof User ? $user : null;
+    }
+
+    private function shouldLogForCurrentUser(): bool
+    {
+        return null !== $this->getCurrentUser();
     }
 
     private function getClientIp(): ?string
