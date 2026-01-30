@@ -113,6 +113,7 @@
                   <span class="text-warning">{{ run.resultCounts.broken }}</span>
                   /
                   <span class="text-secondary">{{ run.resultCounts.skipped }}</span>
+                  <span class="text-muted ms-1">({{ Math.round(run.resultCounts.passed / run.resultCounts.total * 100) }}% pass)</span>
                 </span>
                 <span v-else class="text-muted">—</span>
               </td>
