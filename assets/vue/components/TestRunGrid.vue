@@ -105,16 +105,15 @@
                 </span>
               </td>
               <td>
-                <span v-if="run.resultCounts.total > 0" class="small">
-                  <span class="text-success">{{ run.resultCounts.passed }}</span>
-                  /
-                  <span class="text-danger">{{ run.resultCounts.failed }}</span>
-                  /
-                  <span class="text-warning">{{ run.resultCounts.broken }}</span>
-                  /
-                  <span class="text-secondary">{{ run.resultCounts.skipped }}</span>
-                  <span class="text-muted ms-1">({{ Math.round(run.resultCounts.passed / run.resultCounts.total * 100) }}% pass)</span>
-                </span>
+                <div v-if="run.resultCounts.total > 0">
+                  <span class="small">
+                    <span class="text-success">{{ run.resultCounts.passed }}</span>
+                    / <span class="text-danger">{{ run.resultCounts.failed }}</span>
+                    / <span class="text-warning">{{ run.resultCounts.broken }}</span>
+                    / <span class="text-secondary">{{ run.resultCounts.skipped }}</span>
+                  </span>
+                  <div class="text-muted small">{{ Math.round(run.resultCounts.passed / run.resultCounts.total * 100) }}% pass</div>
+                </div>
                 <span v-else class="text-muted">—</span>
               </td>
               <td class="text-muted small">{{ run.duration || '—' }}</td>
