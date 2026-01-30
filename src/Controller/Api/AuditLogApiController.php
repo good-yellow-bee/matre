@@ -38,7 +38,7 @@ class AuditLogApiController extends AbstractController
         $page = max(1, (int) $request->query->get('page', 1));
         $perPage = max(1, min(100, (int) $request->query->get('perPage', 20)));
         $sort = $request->query->get('sort', 'createdAt');
-        $order = strtoupper($request->query->get('order', 'DESC')) === 'ASC' ? 'ASC' : 'DESC';
+        $order = 'ASC' === strtoupper($request->query->get('order', 'DESC')) ? 'ASC' : 'DESC';
 
         $logs = $this->auditLogRepository->findPaginated(
             $filters,

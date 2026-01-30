@@ -58,9 +58,9 @@ class FileUploadService
     /**
      * Upload a file to the public uploads directory.
      *
-     * @param UploadedFile $file The uploaded file
-     * @param string|null $subdirectory Optional subdirectory within uploads (e.g., 'images', 'avatars')
-     * @param bool $preserveOriginalName Whether to preserve the original filename
+     * @param UploadedFile $file                 The uploaded file
+     * @param string|null  $subdirectory         Optional subdirectory within uploads (e.g., 'images', 'avatars')
+     * @param bool         $preserveOriginalName Whether to preserve the original filename
      *
      * @return string The path to the uploaded file (relative to storage root)
      *
@@ -101,9 +101,9 @@ class FileUploadService
     /**
      * Upload a file to the private documents directory.
      *
-     * @param UploadedFile $file The uploaded file
-     * @param string|null $subdirectory Optional subdirectory
-     * @param bool $preserveOriginalName Whether to preserve the original filename
+     * @param UploadedFile $file                 The uploaded file
+     * @param string|null  $subdirectory         Optional subdirectory
+     * @param bool         $preserveOriginalName Whether to preserve the original filename
      *
      * @return string The path to the uploaded file
      *
@@ -301,8 +301,8 @@ class FileUploadService
     /**
      * Generate a safe filename for storage.
      *
-     * @param UploadedFile $file The uploaded file
-     * @param bool $preserveOriginalName Whether to preserve the original filename
+     * @param UploadedFile $file                 The uploaded file
+     * @param bool         $preserveOriginalName Whether to preserve the original filename
      *
      * @return string The safe filename
      */
