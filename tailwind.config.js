@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+    darkMode: 'class',
     content: [
         "./assets/**/*.js",
         "./assets/**/*.vue",
@@ -18,6 +19,17 @@ module.exports = {
                 sans: ['Inter', 'sans-serif'],
             },
             colors: {
+                // Dark mode charcoal palette
+                charcoal: {
+                    950: '#1a1a1a',  // Darkest - main bg
+                    900: '#222222',  // Slightly lighter
+                    800: '#2d2d2d',  // Cards, panels
+                    700: '#3d3d3d',  // Borders, hover
+                    600: '#525252',  // Muted
+                    500: '#737373',  // Icons
+                    400: '#a3a3a3',  // Secondary text
+                    300: '#d4d4d4',  // Primary text
+                },
                 border: "hsl(240 5.9% 90%)",
                 input: "hsl(240 5.9% 90%)",
                 ring: "hsl(240 5.9% 10%)",
