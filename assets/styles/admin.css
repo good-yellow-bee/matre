@@ -54,6 +54,637 @@
 }
 
 /* ============================================
+   Dark Mode Variables
+   ============================================ */
+html.dark {
+    /* Colors - Warm Charcoal Palette */
+    --primary-blue: #60a5fa;
+    --primary-blue-hover: #93c5fd;
+    --primary-blue-light: #1e3a5f;
+
+    /* Neutrals - Warm charcoal tones */
+    --neutral-50: #1a1a1a;   /* Darkest - main background */
+    --neutral-100: #2d2d2d;  /* Cards, sidebar */
+    --neutral-200: #3d3d3d;  /* Borders, dividers */
+    --neutral-300: #525252;  /* Muted elements */
+    --neutral-600: #a3a3a3;  /* Secondary text */
+    --neutral-900: #f5f5f5;  /* Primary text */
+
+    /* Semantic Colors - Adjusted for dark mode */
+    --success: #34d399;
+    --danger: #f87171;
+    --warning: #fbbf24;
+
+    /* Shadows - Subtle for dark mode */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.5);
+    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.6);
+}
+
+/* ============================================
+   Dark Mode Component Overrides
+   ============================================ */
+html.dark .admin-navbar,
+html.dark .admin-navbar .dropdown-menu,
+html.dark .card,
+html.dark .stat-card,
+html.dark .quick-action-card,
+html.dark .form-section {
+    background: #2d2d2d;
+}
+
+html.dark .admin-main,
+html.dark body.admin-layout {
+    background-color: #1a1a1a;
+}
+
+html.dark .form-control,
+html.dark .form-select,
+html.dark input[type="text"],
+html.dark input[type="email"],
+html.dark input[type="password"],
+html.dark input[type="number"],
+html.dark input[type="date"],
+html.dark input[type="datetime-local"],
+html.dark input[type="url"],
+html.dark input[type="tel"],
+html.dark select,
+html.dark textarea {
+    background: #2d2d2d;
+    border-color: #3d3d3d;
+    color: #f5f5f5;
+}
+
+html.dark .form-control:focus,
+html.dark .form-select:focus,
+html.dark input:focus,
+html.dark select:focus,
+html.dark textarea:focus {
+    background: #2d2d2d;
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+}
+
+html.dark .table tbody td {
+    border-bottom-color: #3d3d3d;
+    color: #d4d4d4;
+}
+
+html.dark .table thead th {
+    border-bottom-color: #3d3d3d;
+    color: #a3a3a3;
+}
+
+html.dark .table-hover tbody tr:hover {
+    background-color: #333333;
+}
+
+html.dark .card-header {
+    border-bottom-color: #3d3d3d;
+}
+
+html.dark .form-section-title {
+    border-bottom-color: #3d3d3d;
+}
+
+html.dark .form-actions {
+    border-top-color: #3d3d3d;
+}
+
+html.dark .btn-secondary {
+    background: #3d3d3d;
+    border-color: #525252;
+    color: #f5f5f5;
+}
+
+html.dark .btn-secondary:hover {
+    background: #525252;
+}
+
+html.dark .input-group-text {
+    background-color: #3d3d3d;
+    border-color: #3d3d3d;
+    color: #a3a3a3;
+}
+
+html.dark .alert-success {
+    background: #14532d;
+    color: #bbf7d0;
+}
+
+html.dark .alert-danger {
+    background: #7f1d1d;
+    color: #fecaca;
+}
+
+html.dark .alert-warning {
+    background: #78350f;
+    color: #fde68a;
+}
+
+html.dark .alert-info {
+    background: #1e3a5f;
+    color: #bfdbfe;
+}
+
+html.dark .badge-primary {
+    background: #1e3a8a;
+    color: #93c5fd;
+}
+
+html.dark .badge-success {
+    background: #14532d;
+    color: #86efac;
+}
+
+html.dark .badge-danger {
+    background: #7f1d1d;
+    color: #fca5a5;
+}
+
+html.dark .badge-warning {
+    background: #78350f;
+    color: #fcd34d;
+}
+
+html.dark input:-webkit-autofill,
+html.dark input:-webkit-autofill:hover,
+html.dark input:-webkit-autofill:focus,
+html.dark input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px #2d2d2d inset !important;
+    box-shadow: 0 0 0 30px #2d2d2d inset !important;
+    -webkit-text-fill-color: #f5f5f5 !important;
+}
+
+html.dark ::placeholder {
+    color: #737373;
+}
+
+html.dark .admin-navbar .user-menu .dropdown-menu {
+    background: #2d2d2d;
+    border-color: #3d3d3d;
+}
+
+html.dark .admin-navbar .dropdown-item:hover {
+    background-color: #3d3d3d;
+}
+
+html.dark label,
+html.dark .form-label {
+    color: #d4d4d4;
+}
+
+/* ============================================
+   Tailwind Dark Mode Background Overrides
+   Force dark backgrounds when .dark class is active
+   ============================================ */
+html.dark .dark\:bg-charcoal-950 {
+    background-color: #1a1a1a !important;
+}
+
+html.dark .dark\:bg-charcoal-900 {
+    background-color: #222222 !important;
+}
+
+html.dark .dark\:bg-charcoal-800 {
+    background-color: #2d2d2d !important;
+}
+
+html.dark .dark\:bg-charcoal-700 {
+    background-color: #3d3d3d !important;
+}
+
+/* Dark mode border overrides */
+html.dark .dark\:border-charcoal-700 {
+    border-color: #3d3d3d !important;
+}
+
+html.dark .dark\:border-charcoal-600 {
+    border-color: #525252 !important;
+}
+
+/* Dark mode text overrides */
+html.dark .dark\:text-white {
+    color: #ffffff !important;
+}
+
+html.dark .dark\:text-charcoal-300 {
+    color: #d4d4d4 !important;
+}
+
+html.dark .dark\:text-charcoal-400 {
+    color: #a3a3a3 !important;
+}
+
+/* Dark mode shadow overrides */
+html.dark .dark\:shadow-none {
+    box-shadow: none !important;
+}
+
+/* ============================================
+   Comprehensive Dark Mode Overrides
+   Force dark backgrounds on ALL white elements
+   ============================================ */
+
+/* Cards and containers */
+html.dark .card,
+html.dark .card-body,
+html.dark .card-header,
+html.dark .card-footer,
+html.dark .form-section,
+html.dark .stat-card,
+html.dark .quick-action-card,
+html.dark .test-run-grid .card,
+html.dark [class*="bg-white"],
+html.dark .admin-main > div,
+html.dark .admin-main .card,
+html.dark main .card,
+html.dark [class*="-form-container"] > .card,
+html.dark form > .card {
+    background-color: #2d2d2d !important;
+    border-color: #3d3d3d !important;
+    color: #d4d4d4 !important;
+}
+
+/* Tables */
+html.dark .table,
+html.dark .table-responsive,
+html.dark table {
+    background-color: #2d2d2d !important;
+    color: #d4d4d4 !important;
+}
+
+html.dark .table thead,
+html.dark .table-light,
+html.dark thead.table-light,
+html.dark .table thead th,
+html.dark .table th {
+    background-color: #252525 !important;
+    border-color: #3d3d3d !important;
+    color: #a3a3a3 !important;
+}
+
+html.dark .table tbody tr,
+html.dark .table tbody td,
+html.dark .table td {
+    background-color: #2d2d2d !important;
+    border-color: #3d3d3d !important;
+    color: #d4d4d4 !important;
+}
+
+html.dark .table-hover tbody tr:hover,
+html.dark .table tbody tr:hover {
+    background-color: #363636 !important;
+}
+
+/* Form inputs and selects */
+html.dark .form-control,
+html.dark .form-select,
+html.dark input[type="text"],
+html.dark input[type="email"],
+html.dark input[type="password"],
+html.dark input[type="number"],
+html.dark input[type="url"],
+html.dark input[type="search"],
+html.dark select,
+html.dark textarea {
+    background-color: #252525 !important;
+    border-color: #3d3d3d !important;
+    color: #f5f5f5 !important;
+}
+
+/* Dropdowns and selects in Vue components */
+html.dark .grid-header select,
+html.dark .filters select,
+html.dark [class*="filter"] select {
+    background-color: #252525 !important;
+    border-color: #3d3d3d !important;
+    color: #f5f5f5 !important;
+}
+
+/* Role/permission boxes */
+html.dark .role-card,
+html.dark .permission-card,
+html.dark [class*="role-"],
+html.dark .rounded-lg.border {
+    background-color: #2d2d2d !important;
+    border-color: #3d3d3d !important;
+}
+
+/* Section titles and headers */
+html.dark .section-title,
+html.dark .card-title,
+html.dark h1, html.dark h2, html.dark h3, html.dark h4, html.dark h5, html.dark h6 {
+    color: #f5f5f5 !important;
+}
+
+/* Muted text */
+html.dark .text-muted,
+html.dark .text-secondary,
+html.dark .small,
+html.dark small {
+    color: #a3a3a3 !important;
+}
+
+/* Links in dark mode - use subtle gray instead of blue */
+html.dark a:not(.btn):not(.btn-primary):not(.badge) {
+    color: #a3a3a3 !important;
+}
+
+html.dark a:not(.btn):not(.btn-primary):not(.badge):hover {
+    color: #d4d4d4 !important;
+}
+
+/* Sidebar nav links in dark mode */
+html.dark .nav-link,
+html.dark .sidebar a,
+html.dark .admin-sidebar a {
+    color: #a3a3a3 !important;
+}
+
+html.dark .nav-link:hover,
+html.dark .sidebar a:hover,
+html.dark .admin-sidebar a:hover {
+    color: #ffffff !important;
+    background-color: #3d3d3d !important;
+}
+
+html.dark .nav-link.active,
+html.dark .sidebar a.active,
+html.dark .admin-sidebar a.active {
+    color: #ffffff !important;
+    background-color: #3d3d3d !important;
+}
+
+/* Primary buttons in dark mode - use teal/emerald instead of blue */
+html.dark .btn-primary,
+html.dark .btn-primary *,
+html.dark .btn-primary span,
+html.dark .btn-primary i,
+html.dark a.btn-primary,
+html.dark a.btn-primary *,
+html.dark button.btn-primary,
+html.dark button.btn-primary * {
+    background-color: #10b981 !important;
+    border-color: #10b981 !important;
+    color: #ffffff !important;
+}
+
+html.dark .btn-primary:hover,
+html.dark .btn-primary:hover *,
+html.dark a.btn-primary:hover,
+html.dark a.btn-primary:hover *,
+html.dark button.btn-primary:hover,
+html.dark button.btn-primary:hover * {
+    background-color: #059669 !important;
+    border-color: #059669 !important;
+    color: #ffffff !important;
+}
+
+/* Force white text on primary buttons - maximum specificity */
+html.dark [class*="btn-primary"],
+html.dark a.btn-primary,
+html.dark button.btn-primary,
+html.dark .btn.btn-primary {
+    color: #ffffff !important;
+}
+
+html.dark [class*="btn-primary"] *,
+html.dark a.btn-primary *,
+html.dark a.btn-primary i,
+html.dark a.btn-primary span,
+html.dark button.btn-primary *,
+html.dark .btn.btn-primary * {
+    color: #ffffff !important;
+    background-color: transparent !important;
+}
+
+/* Override any link color for btn-primary */
+html.dark a[class*="btn-primary"],
+html.dark a[class*="btn-primary"]:hover,
+html.dark a[class*="btn-primary"]:visited {
+    color: #ffffff !important;
+}
+
+/* Success buttons in dark mode - white text */
+html.dark .btn-success,
+html.dark .btn-success *,
+html.dark .btn-success span,
+html.dark .btn-success i,
+html.dark a.btn-success,
+html.dark a.btn-success *,
+html.dark a.btn-success:hover,
+html.dark a.btn-success:visited,
+html.dark a[class*="btn-success"],
+html.dark a[class*="btn-success"] *,
+html.dark button.btn-success,
+html.dark button.btn-success * {
+    color: #ffffff !important;
+}
+
+/* Link-style buttons in dark mode */
+html.dark .btn-link,
+html.dark a.btn:not(.btn-primary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info) {
+    color: #a3a3a3 !important;
+}
+
+html.dark .btn-link:hover,
+html.dark a.btn:not(.btn-primary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):hover {
+    color: #d4d4d4 !important;
+}
+
+/* Borders */
+html.dark .border,
+html.dark [class*="border-"],
+html.dark [class*="rounded"],
+html.dark .form-section,
+html.dark .card {
+    border-color: #3d3d3d !important;
+}
+
+/* White backgrounds - Tailwind/Bootstrap utility classes */
+html.dark .bg-white,
+html.dark .bg-light {
+    background-color: var(--neutral-100) !important;
+}
+
+/* Specific Vue component containers */
+html.dark .test-run-grid,
+html.dark .user-form,
+html.dark .env-variable-grid,
+html.dark .cron-job-grid,
+html.dark .audit-log-grid {
+    color: #d4d4d4 !important;
+}
+
+/* Form group backgrounds */
+html.dark .form-group,
+html.dark .mb-3,
+html.dark .mb-4 {
+    color: #d4d4d4 !important;
+}
+
+/* Checkbox and toggle containers */
+html.dark .form-check,
+html.dark .form-switch {
+    color: #d4d4d4 !important;
+}
+
+/* Active account toggle area */
+html.dark .rounded-xl,
+html.dark .rounded-lg {
+    background-color: #2d2d2d !important;
+    border-color: #3d3d3d !important;
+}
+
+/* Vue scoped styles overrides - use :where() for low specificity but !important to win */
+html.dark .toggle-row,
+html.dark .role-checkboxes .form-check,
+html.dark .password-section,
+html.dark .roles-section,
+html.dark .notification-section,
+html.dark .environment-grid,
+html.dark .channel-card,
+html.dark .environment-option,
+html.dark .trigger-option,
+html.dark .notification-options {
+    background-color: #2d2d2d !important;
+    border-color: #3d3d3d !important;
+    color: #d4d4d4 !important;
+}
+
+/* Bootstrap list-group dark mode */
+html.dark .list-group,
+html.dark .list-group-item,
+html.dark .list-group-item-action {
+    background-color: #2d2d2d !important;
+    border-color: #3d3d3d !important;
+    color: #d4d4d4 !important;
+}
+
+html.dark .list-group-item-action:hover,
+html.dark .list-group-item-action:focus {
+    background-color: #3d3d3d !important;
+    color: #f5f5f5 !important;
+}
+
+/* Vue form wrappers with scoped styles - ultra aggressive */
+html.dark .test-env-form,
+html.dark .user-form,
+html.dark .notifications-form,
+html.dark .cron-job-form,
+html.dark .test-suite-form,
+html.dark .test-run-form,
+html.dark [class*="-form"],
+html.dark [class*="form"][class*="container"],
+html.dark div[class$="-form"],
+.dark .test-env-form,
+.dark .user-form,
+.dark .notifications-form,
+.dark .cron-job-form,
+.dark .test-suite-form,
+.dark [class*="-form"] {
+    background: #2d2d2d !important;
+    background-color: #2d2d2d !important;
+    border-color: #3d3d3d !important;
+    border: 1px solid #3d3d3d !important;
+}
+
+/* Form sections in Vue components */
+html.dark .form-section,
+html.dark .notifications-form .form-section,
+html.dark .user-form .password-section,
+html.dark .user-form .roles-section {
+    background-color: #252525 !important;
+    border-color: #3d3d3d !important;
+}
+
+/* Form container backgrounds */
+html.dark .form-container,
+html.dark .user-form-container,
+html.dark .notifications-form-container,
+html.dark .test-environment-form-container,
+html.dark .test-suite-form-container,
+html.dark .cron-job-form-container,
+html.dark [class*="-form-container"],
+html.dark [class*="-form"] > form,
+html.dark form.card,
+html.dark .card-body form {
+    background-color: transparent !important;
+}
+
+/* Outer form wrapper cards */
+html.dark .form-wrapper,
+html.dark .content-wrapper,
+html.dark main > .card,
+html.dark .admin-main > .card {
+    background-color: #1a1a1a !important;
+    border-color: #3d3d3d !important;
+}
+
+/* Section titles */
+html.dark .section-title,
+html.dark .form-section-title,
+html.dark [class*="section-title"] {
+    color: #f5f5f5 !important;
+    border-bottom-color: #3d3d3d !important;
+    border-color: #3d3d3d !important;
+}
+
+/* Card footers */
+html.dark .card-footer {
+    background-color: #252525 !important;
+    border-color: #3d3d3d !important;
+}
+
+/* Pagination */
+html.dark .pagination .page-link {
+    background-color: #2d2d2d !important;
+    border-color: #3d3d3d !important;
+    color: #d4d4d4 !important;
+}
+
+html.dark .pagination .page-item.active .page-link {
+    background-color: #3b82f6 !important;
+    border-color: #3b82f6 !important;
+    color: #ffffff !important;
+}
+
+/* Password input group button */
+html.dark .password-input-group .btn,
+html.dark .btn-outline-secondary {
+    background-color: #3d3d3d !important;
+    border-color: #525252 !important;
+    color: #d4d4d4 !important;
+}
+
+/* Info boxes and help sections */
+html.dark .info-box,
+html.dark .help-box,
+html.dark .how-notifications-work {
+    background-color: #252525 !important;
+    border-color: #3d3d3d !important;
+    color: #a3a3a3 !important;
+}
+
+/* Preview containers */
+html.dark .preview-container {
+    background-color: #2d2d2d !important;
+    border-color: #3d3d3d !important;
+}
+
+/* Catch-all for any remaining white backgrounds in dark mode */
+html.dark [style*="background: white"],
+html.dark [style*="background-color: white"],
+html.dark [style*="background: #fff"],
+html.dark [style*="background-color: #fff"],
+html.dark [style*="background: rgb(255, 255, 255)"],
+html.dark [style*="background-color: rgb(255, 255, 255)"] {
+    background-color: #2d2d2d !important;
+}
+
+/* ============================================
    2. Base Layout
    ============================================ */
 body.admin-layout {
