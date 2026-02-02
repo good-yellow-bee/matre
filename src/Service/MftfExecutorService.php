@@ -28,6 +28,10 @@ class MftfExecutorService
         private readonly int $seleniumPort,
         private readonly string $magentoRoot,
         private readonly string $testModulePath = 'app/code/SiiPoland/Catalog',
+        private readonly int $webDriverConnectionTimeout = 30,
+        private readonly int $webDriverRequestTimeout = 120,
+        private readonly int $webDriverPageLoadTimeout = 60,
+        private readonly int $webDriverWaitTimeout = 90,
     ) {
     }
 
@@ -345,6 +349,51 @@ class MftfExecutorService
         $acceptanceDir = $this->magentoRoot . '/dev/tests/acceptance';
         $parts[] = 'cd ' . escapeshellarg($acceptanceDir);
 
+        // Ensure WebDriver timeouts are applied in codeception.yml (per-run, safe defaults)
+        $codeceptionPatch = <<<'PHP'
+            $path = getcwd() . '/codeception.yml';
+            if (!is_file($path)) {
+                exit(0);
+            }
+            $autoload = getcwd() . '/../../vendor/autoload.php';
+            if (!is_file($autoload)) {
+                exit(0);
+            }
+            require $autoload;
+            if (!class_exists('Symfony\Component\Yaml\Yaml')) {
+                exit(0);
+            }
+            $config = Symfony\Component\Yaml\Yaml::parseFile($path);
+            if (!is_array($config)) {
+                $config = [];
+            }
+            if (!isset($config['modules']) || !is_array($config['modules'])) {
+                $config['modules'] = [];
+            }
+            if (!isset($config['modules']['config']) || !is_array($config['modules']['config'])) {
+                $config['modules']['config'] = [];
+            }
+            if (!isset($config['modules']['config']['WebDriver']) || !is_array($config['modules']['config']['WebDriver'])) {
+                $config['modules']['config']['WebDriver'] = [];
+            }
+            $wd = &$config['modules']['config']['WebDriver'];
+            $wd['connection_timeout'] = %d;
+            $wd['request_timeout'] = %d;
+            $wd['pageload_timeout'] = %d;
+            $wd['wait'] = %d;
+            file_put_contents($path, Symfony\Component\Yaml\Yaml::dump($config, 10, 2));
+            PHP;
+        $parts[] = sprintf(
+            'php -r %s',
+            escapeshellarg(sprintf(
+                $codeceptionPatch,
+                $this->webDriverConnectionTimeout,
+                $this->webDriverRequestTimeout,
+                $this->webDriverPageLoadTimeout,
+                $this->webDriverWaitTimeout,
+            )),
+        );
+
         // MFTF fix: Ensure AllureCodeception is in the enabled extensions list.
         // Some Magento installations have it only in config section but not enabled.
         // Without this, Allure output directory is never set and screenshots fail.
@@ -406,6 +455,10 @@ class MftfExecutorService
         $seleniumPortLine = $this->shellEscapeService->buildEnvFileLine('SELENIUM_PORT', (string) $this->seleniumPort);
         $parts[] = sprintf('echo %s >> %s', escapeshellarg($seleniumHostLine), escapeshellarg($mftfEnvFile));
         $parts[] = sprintf('echo %s >> %s', escapeshellarg($seleniumPortLine), escapeshellarg($mftfEnvFile));
+
+        // Layer 3: Override MFTF wait timeout (align with WebDriver wait)
+        $waitTimeoutLine = $this->shellEscapeService->buildEnvFileLine('WAIT_TIMEOUT', (string) $this->webDriverWaitTimeout);
+        $parts[] = sprintf('echo %s >> %s', escapeshellarg($waitTimeoutLine), escapeshellarg($mftfEnvFile));
 
         // Create per-run Allure output directory before MFTF runs
         // (codeception.yml outputDirectory is set via sed earlier in this command)
