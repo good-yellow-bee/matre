@@ -353,15 +353,15 @@ class MftfExecutorService
         $codeceptionPatch = <<<'PHP'
             $path = getcwd() . '/codeception.yml';
             if (!is_file($path)) {
-                exit(0);
+                return;
             }
             $autoload = getcwd() . '/../../vendor/autoload.php';
             if (!is_file($autoload)) {
-                exit(0);
+                return;
             }
             require $autoload;
             if (!class_exists('Symfony\Component\Yaml\Yaml')) {
-                exit(0);
+                return;
             }
             $config = Symfony\Component\Yaml\Yaml::parseFile($path);
             if (!is_array($config)) {
