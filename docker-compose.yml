@@ -175,7 +175,7 @@ services:
       - "4443:4443"
       - "4444:4444"
     environment:
-      SE_SESSION_REQUEST_TIMEOUT: 600
+      SE_SESSION_REQUEST_TIMEOUT: 1200
       SE_SESSION_RETRY_INTERVAL: 5
     networks:
       - matre_network

@@ -163,7 +163,7 @@ class TestRunnerService
                 // Execute MFTF tests
                 if (TestRun::TYPE_MFTF === $type || TestRun::TYPE_BOTH === $type) {
                     $mftfResult = $this->mftfExecutor->execute($run, $lockRefreshCallback, $heartbeatCallback);
-                    $output .= "=== MFTF Output ===\n" . $mftfResult['output'] . "\n\n";
+                    $output .= "=== MFTF Output ===\n" . $this->sanitizeMftfOutput($mftfResult['output']) . "\n\n";
 
                     // Check for fatal errors that prevent test execution
                     $isFatalError = preg_match('/ERROR: \d+ Test\(s\) failed to generate/i', $mftfResult['output'])
@@ -633,5 +633,30 @@ class TestRunnerService
             'totalTests' => $totalTests,
             'failedCount' => $failedCount,
         ]);
+    }
+
+    /**
+     * Remove noisy JS console warnings from stored output while keeping raw logs intact.
+     */
+    private function sanitizeMftfOutput(string $output): string
+    {
+        if ('' === $output) {
+            return $output;
+        }
+
+        $lines = preg_split("/\r\n|\n|\r/", $output);
+        if (false === $lines) {
+            return $output;
+        }
+
+        $filtered = [];
+        foreach ($lines as $line) {
+            if (preg_match('/^javascript ERROR\\(WARNING\\).*preloaded using link preload but not used/i', $line)) {
+                continue;
+            }
+            $filtered[] = $line;
+        }
+
+        return implode("\n", $filtered);
     }
 }
