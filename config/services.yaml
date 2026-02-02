@@ -75,10 +75,10 @@ services:
             $seleniumPort: '%env(int:SELENIUM_PORT)%'
             $magentoRoot: '%env(MAGENTO_ROOT)%'
             $testModulePath: '%env(TEST_MODULE_PATH)%'
-            $webDriverConnectionTimeout: '%env(int:default:30:MFTF_WEBDRIVER_CONNECTION_TIMEOUT)%'
-            $webDriverRequestTimeout: '%env(int:default:120:MFTF_WEBDRIVER_REQUEST_TIMEOUT)%'
-            $webDriverPageLoadTimeout: '%env(int:default:60:MFTF_WEBDRIVER_PAGELOAD_TIMEOUT)%'
-            $webDriverWaitTimeout: '%env(int:default:90:MFTF_WEBDRIVER_WAIT_TIMEOUT)%'
+            $webDriverConnectionTimeout: '%env(int:MFTF_WEBDRIVER_CONNECTION_TIMEOUT)%'
+            $webDriverRequestTimeout: '%env(int:MFTF_WEBDRIVER_REQUEST_TIMEOUT)%'
+            $webDriverPageLoadTimeout: '%env(int:MFTF_WEBDRIVER_PAGELOAD_TIMEOUT)%'
+            $webDriverWaitTimeout: '%env(int:MFTF_WEBDRIVER_WAIT_TIMEOUT)%'
 
     App\Service\PlaywrightExecutorService:
         arguments:
