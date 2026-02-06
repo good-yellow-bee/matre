@@ -238,7 +238,7 @@ class TestResultRepository extends ServiceEntityRepository
     }
 
     /**
-     * Allure-style aggregate: for each environment, get the latest result of every unique test.
+     * Allure-style aggregate: latest result per unique test, scoped to last N runs per environment.
      *
      * @param int[] $environmentIds
      *
@@ -253,16 +253,25 @@ class TestResultRepository extends ServiceEntityRepository
         $conn = $this->getEntityManager()->getConnection();
 
         $sql = <<<'SQL'
-            WITH latest_per_test AS (
-                SELECT r.environment_id, tr.test_name, tr.status,
+            WITH recent_runs AS (
+                SELECT id, environment_id,
                        ROW_NUMBER() OVER (
-                           PARTITION BY r.environment_id, tr.test_name
-                           ORDER BY r.id DESC, tr.id DESC
+                           PARTITION BY environment_id
+                           ORDER BY id DESC
+                       ) as run_rank
+                FROM matre_test_runs
+                WHERE environment_id IN (:envIds)
+                AND status IN ('completed', 'failed')
+            ),
+            latest_per_test AS (
+                SELECT rr.environment_id, tr.status,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY rr.environment_id, COALESCE(NULLIF(tr.test_id, ''), tr.test_name)
+                           ORDER BY rr.id DESC, tr.id DESC
                        ) as rn
                 FROM matre_test_results tr
-                INNER JOIN matre_test_runs r ON tr.test_run_id = r.id
-                WHERE r.environment_id IN (:envIds)
-                AND r.status IN ('completed', 'failed')
+                INNER JOIN recent_runs rr ON tr.test_run_id = rr.id
+                WHERE rr.run_rank <= :runLimit
             )
             SELECT environment_id,
                    SUM(status = 'passed') as passed,
@@ -277,7 +286,7 @@ class TestResultRepository extends ServiceEntityRepository
 
         $rows = $conn->executeQuery(
             $sql,
-            ['envIds' => $environmentIds],
+            ['envIds' => $environmentIds, 'runLimit' => 5],
             ['envIds' => ArrayParameterType::INTEGER],
         )->fetchAllAssociative();
 
