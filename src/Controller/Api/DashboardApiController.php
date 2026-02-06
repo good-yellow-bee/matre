@@ -94,24 +94,12 @@ class DashboardApiController extends AbstractController
 
         $envIds = array_map(fn ($e) => $e->getId(), $environments);
         $lastRuns = $this->testRunRepository->findLastTwoCompletedPerEnvironment($envIds);
-
-        // Collect all run IDs for batch result query
-        $allRunIds = [];
-        foreach ($lastRuns as $runs) {
-            if ($runs['current']) {
-                $allRunIds[] = $runs['current']['id'];
-            }
-            if ($runs['previous']) {
-                $allRunIds[] = $runs['previous']['id'];
-            }
-        }
-
-        $resultCounts = $this->testResultRepository->getResultCountsForRuns($allRunIds);
+        $resultCounts = $this->testResultRepository->getAggregateByEnvironments($envIds);
 
         $data = [];
         foreach ($environments as $env) {
             $envId = $env->getId();
-            $runs = $lastRuns[$envId] ?? ['current' => null, 'previous' => null];
+            $runs = $lastRuns[$envId] ?? ['current' => null];
 
             $entry = [
                 'id' => $envId,
@@ -122,20 +110,11 @@ class DashboardApiController extends AbstractController
             ];
 
             if ($runs['current']) {
-                $runId = $runs['current']['id'];
-                $counts = $resultCounts[$runId] ?? ['passed' => 0, 'failed' => 0, 'skipped' => 0, 'broken' => 0, 'total' => 0];
+                $counts = $resultCounts[$envId];
                 $passRate = $counts['total'] > 0 ? round($counts['passed'] / $counts['total'] * 100, 1) : 0;
 
-                $passRateDelta = null;
-                if ($runs['previous']) {
-                    $prevId = $runs['previous']['id'];
-                    $prevCounts = $resultCounts[$prevId] ?? ['passed' => 0, 'failed' => 0, 'skipped' => 0, 'broken' => 0, 'total' => 0];
-                    $prevPassRate = $prevCounts['total'] > 0 ? round($prevCounts['passed'] / $prevCounts['total'] * 100, 1) : 0;
-                    $passRateDelta = round($passRate - $prevPassRate, 1);
-                }
-
                 $entry['lastRun'] = [
-                    'id' => $runId,
+                    'id' => $runs['current']['id'],
                     'status' => $runs['current']['status'],
                     'completedAt' => $runs['current']['completed_at'],
                     'results' => [
@@ -146,7 +125,7 @@ class DashboardApiController extends AbstractController
                         'total' => $counts['total'],
                         'passRate' => $passRate,
                     ],
-                    'passRateDelta' => $passRateDelta,
+                    'passRateDelta' => null,
                 ];
             }
 
