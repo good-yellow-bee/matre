@@ -135,8 +135,8 @@ class MftfExecutorServiceTest extends TestCase
             ->method('getAllAsKeyValue')
             ->willReturn([]);
 
-        // 2 calls: SELENIUM_HOST and SELENIUM_PORT
-        $this->mockShellEscapeService()->expects($this->exactly(2))
+        // 3 calls: SELENIUM_HOST, SELENIUM_PORT, WAIT_TIMEOUT
+        $this->mockShellEscapeService()->expects($this->exactly(3))
             ->method('buildEnvFileLine')
             ->willReturnCallback(function ($key, $value) {
                 return "{$key}={$value}";
@@ -146,6 +146,7 @@ class MftfExecutorServiceTest extends TestCase
 
         $this->assertStringContainsString('SELENIUM_HOST', $command);
         $this->assertStringContainsString('SELENIUM_PORT', $command);
+        $this->assertStringContainsString('WAIT_TIMEOUT', $command);
     }
 
     public function testBuildCommandWithGlobalEnvVariables(): void
