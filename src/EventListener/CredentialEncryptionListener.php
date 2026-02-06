@@ -77,6 +77,21 @@ class CredentialEncryptionListener
     public function postLoad(TestEnvironment|User $entity, PostLoadEventArgs $args): void
     {
         $this->decryptEntity($entity);
+
+        // Sync Doctrine's original data with decrypted values
+        // to prevent phantom dirty detection
+        $em = $args->getObjectManager();
+        $uow = $em->getUnitOfWork();
+        $originalData = $uow->getOriginalEntityData($entity);
+
+        if ($entity instanceof TestEnvironment) {
+            $originalData['adminPassword'] = $entity->getAdminPassword();
+        }
+        if ($entity instanceof User) {
+            $originalData['totpSecret'] = $entity->getTotpSecret();
+        }
+
+        $uow->setOriginalEntityData($entity, $originalData);
     }
 
     /**
