@@ -8,6 +8,7 @@ use App\Entity\TestEnvironment;
 use App\Entity\TestRun;
 use App\Entity\TestSuite;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -311,5 +312,58 @@ class TestRunRepository extends ServiceEntityRepository
         }
 
         return $stats;
+    }
+
+    /**
+     * @param int[] $environmentIds
+     *
+     * @return array<int, array{current: ?array, previous: ?array}>
+     */
+    public function findLastTwoCompletedPerEnvironment(array $environmentIds): array
+    {
+        if (empty($environmentIds)) {
+            return [];
+        }
+
+        $conn = $this->getEntityManager()->getConnection();
+
+        $sql = <<<'SQL'
+            WITH ranked AS (
+                SELECT id, environment_id, status, completed_at,
+                       ROW_NUMBER() OVER (PARTITION BY environment_id ORDER BY id DESC) as rn
+                FROM matre_test_runs
+                WHERE environment_id IN (:ids)
+                AND status IN ('completed', 'failed')
+            )
+            SELECT id, environment_id, status, completed_at, rn FROM ranked WHERE rn <= 2
+        SQL;
+
+        $rows = $conn->executeQuery(
+            $sql,
+            ['ids' => $environmentIds],
+            ['ids' => ArrayParameterType::INTEGER],
+        )->fetchAllAssociative();
+
+        $result = [];
+        foreach ($environmentIds as $envId) {
+            $result[$envId] = ['current' => null, 'previous' => null];
+        }
+
+        foreach ($rows as $row) {
+            $envId = (int) $row['environment_id'];
+            $entry = [
+                'id' => (int) $row['id'],
+                'status' => $row['status'],
+                'completed_at' => $row['completed_at'],
+            ];
+
+            if (1 === (int) $row['rn']) {
+                $result[$envId]['current'] = $entry;
+            } else {
+                $result[$envId]['previous'] = $entry;
+            }
+        }
+
+        return $result;
     }
 }
