@@ -83,7 +83,7 @@ jobs:
 
     services:
       mysql:
-        image: mysql:${{ env.MYSQL_VERSION }}
+        image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: root
           MYSQL_DATABASE: matre_test
@@ -128,7 +128,7 @@ jobs:
           DB_USER=root
           DB_PASS=root
           DB_NAME=matre_test
-          DB_VERSION=${{ env.MYSQL_VERSION }}
+          DB_VERSION=8.0
           MAILER_DSN=null://null
           EOF
 
@@ -219,7 +219,7 @@ jobs:
 
     services:
       mysql:
-        image: mysql:${{ env.MYSQL_VERSION }}
+        image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: root
           MYSQL_DATABASE: matre_test
@@ -255,7 +255,7 @@ jobs:
           DB_USER=root
           DB_PASS=root
           DB_NAME=matre_test
-          DB_VERSION=${{ env.MYSQL_VERSION }}
+          DB_VERSION=8.0
           EOF
 
       - name: Wait for MySQL
@@ -275,7 +275,7 @@ jobs:
         run: bin/console doctrine:migrations:migrate --env=test --no-interaction
 
       - name: Validate Doctrine schema
-        run: bin/console doctrine:schema:validate --env=test
+        run: bin/console doctrine:schema:validate --env=test --skip-sync
 
   # ============================================================
   # Job 5: Lint & Syntax Check

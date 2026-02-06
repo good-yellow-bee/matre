@@ -7,6 +7,7 @@ namespace App\Repository;
 use App\Entity\TestResult;
 use App\Entity\TestRun;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -231,6 +232,70 @@ class TestResultRepository extends ServiceEntityRepository
                 $counts[$runId][$status] = $count;
             }
             $counts[$runId]['total'] += $count;
+        }
+
+        return $counts;
+    }
+
+    /**
+     * Allure-style aggregate: for each environment, get the latest result of every unique test.
+     *
+     * @param int[] $environmentIds
+     *
+     * @return array<int, array{passed: int, failed: int, skipped: int, broken: int, total: int}>
+     */
+    public function getAggregateByEnvironments(array $environmentIds): array
+    {
+        if (empty($environmentIds)) {
+            return [];
+        }
+
+        $conn = $this->getEntityManager()->getConnection();
+
+        $sql = <<<'SQL'
+            WITH latest_per_test AS (
+                SELECT r.environment_id, tr.test_name, tr.status,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY r.environment_id, tr.test_name
+                           ORDER BY r.id DESC, tr.id DESC
+                       ) as rn
+                FROM matre_test_results tr
+                INNER JOIN matre_test_runs r ON tr.test_run_id = r.id
+                WHERE r.environment_id IN (:envIds)
+                AND r.status IN ('completed', 'failed')
+            )
+            SELECT environment_id,
+                   SUM(status = 'passed') as passed,
+                   SUM(status = 'failed') as failed,
+                   SUM(status = 'skipped') as skipped,
+                   SUM(status = 'broken') as broken,
+                   COUNT(*) as total
+            FROM latest_per_test
+            WHERE rn = 1
+            GROUP BY environment_id
+            SQL;
+
+        $rows = $conn->executeQuery(
+            $sql,
+            ['envIds' => $environmentIds],
+            ['envIds' => ArrayParameterType::INTEGER],
+        )->fetchAllAssociative();
+
+        // Initialize all environments with zero counts
+        $counts = [];
+        foreach ($environmentIds as $id) {
+            $counts[$id] = ['passed' => 0, 'failed' => 0, 'skipped' => 0, 'broken' => 0, 'total' => 0];
+        }
+
+        foreach ($rows as $row) {
+            $envId = (int) $row['environment_id'];
+            $counts[$envId] = [
+                'passed' => (int) $row['passed'],
+                'failed' => (int) $row['failed'],
+                'skipped' => (int) $row['skipped'],
+                'broken' => (int) $row['broken'],
+                'total' => (int) $row['total'],
+            ];
         }
 
         return $counts;
