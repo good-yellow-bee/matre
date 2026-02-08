@@ -224,8 +224,11 @@ npm run dev
 # Build for production
 npm run build
 
-# Run tests
-docker-compose exec php bin/phpunit
+# Run PHPUnit tests
+docker-compose exec php vendor/bin/phpunit
+
+# Run Playwright E2E tests
+npm run test:e2e
 
 # Code quality
 docker-compose exec php vendor/bin/phpstan analyse
@@ -233,6 +236,8 @@ docker-compose exec php vendor/bin/phpstan analyse
 # View worker logs
 docker-compose logs -f matre_test_worker
 ```
+
+See [tests/README.md](tests/README.md) for full testing documentation.
 
 ## Tech Stack
 

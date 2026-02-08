@@ -183,7 +183,7 @@ class MftfExecutorServiceTest extends TestCase
                 'INVALID_VAR' => 'bad value',
             ]);
 
-        $this->mockShellEscapeService()->expects($this->atLeast(3))
+        $this->mockShellEscapeService()->expects($this->exactly(2))
             ->method('buildEnvFileLine')
             ->willReturnCallback(function ($key, $value) {
                 if ('INVALID_VAR' === $key) {
@@ -194,12 +194,14 @@ class MftfExecutorServiceTest extends TestCase
             });
 
         $this->mockLogger()->expects($this->once())
-            ->method('warning')
-            ->with('Skipping invalid environment variable', $this->anything());
+            ->method('error')
+            ->with('Invalid environment variable detected', $this->anything());
 
-        $command = $this->service->buildCommand($run);
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Test run aborted');
+        $this->expectExceptionMessage('INVALID_VAR');
 
-        $this->assertStringContainsString('VALID_VAR', $command);
+        $this->service->buildCommand($run);
     }
 
     public function testBuildCommandIncludesArtifactMoveCommand(): void

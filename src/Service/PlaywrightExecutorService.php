@@ -139,16 +139,23 @@ class PlaywrightExecutorService
         // SECURITY: Validate and escape all variables to prevent command injection
         $env = $run->getEnvironment();
         $globalVars = $this->globalEnvVariableRepository->getAllAsKeyValue($env->getName());
+        $invalidVars = [];
         foreach ($globalVars as $key => $value) {
             try {
                 $parts[] = $this->shellEscapeService->buildExportStatement($key, $value);
             } catch (\InvalidArgumentException $e) {
-                // Log and skip invalid variables rather than failing the entire run
-                $this->logger->warning('Skipping invalid environment variable', [
+                $invalidVars[] = ['key' => $key, 'error' => $e->getMessage()];
+                $this->logger->error('Invalid environment variable detected', [
                     'key' => $key,
                     'error' => $e->getMessage(),
+                    'runId' => $run->getId(),
+                    'errorId' => \App\Constants\ErrorIds::PLAYWRIGHT_ENV_VAR_INVALID,
                 ]);
             }
+        }
+
+        if (!empty($invalidVars)) {
+            throw new \RuntimeException(sprintf('Test run aborted: %d invalid environment variable(s): %s', count($invalidVars), implode(', ', array_column($invalidVars, 'key'))));
         }
 
         // Layer 2: Set TestEnvironment core variables (override globals)

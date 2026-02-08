@@ -77,7 +77,6 @@ class AllureReportServiceTest extends TestCase
     private function callPrivate(AllureReportService $service, string $method, array $args = []): mixed
     {
         $ref = new \ReflectionMethod(AllureReportService::class, $method);
-        $ref->setAccessible(true);
 
         return $ref->invokeArgs($service, $args);
     }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service\Security;
 
+use App\Constants\ErrorIds;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
@@ -22,6 +24,7 @@ class CredentialEncryptionService
     public function __construct(
         #[Autowire('%kernel.secret%')]
         string $appSecret,
+        private readonly LoggerInterface $logger,
     ) {
         // Derive a 256-bit key from the app secret
         $this->encryptionKey = hash('sha256', $appSecret, true);
@@ -146,7 +149,9 @@ class CredentialEncryptionService
     }
 
     /**
-     * Decrypt a value, returning original if decryption fails (for migration).
+     * Decrypt a value, returning original if not encrypted (for legacy migration).
+     *
+     * @throws \RuntimeException if value appears encrypted but decryption fails
      */
     public function decryptSafe(string $value): string
     {
@@ -156,8 +161,23 @@ class CredentialEncryptionService
 
         try {
             return $this->decrypt($value);
-        } catch (\RuntimeException) {
-            // Value is not encrypted (legacy data)
+        } catch (\RuntimeException $e) {
+            $this->logger->error('Credential decryption failed', [
+                'error' => $e->getMessage(),
+                'valueLength' => strlen($value),
+                'looksEncrypted' => $this->isEncrypted($value),
+                'errorId' => ErrorIds::CREDENTIAL_DECRYPTION_FAILED,
+            ]);
+
+            // If value looks encrypted but failed to decrypt, it's corrupted or tampered
+            if ($this->isEncrypted($value)) {
+                $this->logger->critical('Encrypted credential is corrupted or tampered', [
+                    'errorId' => ErrorIds::CREDENTIAL_TAMPERING_DETECTED,
+                ]);
+                throw new \RuntimeException('Encrypted credential is corrupted or tampered', 0, $e);
+            }
+
+            // Value doesn't look encrypted - assume legacy plaintext
             return $value;
         }
     }

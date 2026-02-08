@@ -221,6 +221,35 @@ Do not include Claude attribution in commits.
 | SSL Validation | `src/Command/ValidateSslConfigCommand.php` |
 | Traefik SSL    | `docker/traefik/traefik.yml`               |
 
+## Testing
+
+See `tests/README.md` for full details.
+
+**PHPUnit** (in Docker):
+```bash
+./local.sh test                              # All suites
+docker exec matre_php vendor/bin/phpunit --testsuite="Unit Tests"
+docker exec matre_php vendor/bin/phpunit --coverage-text
+```
+
+**Playwright E2E** (requires running containers):
+```bash
+npm run test:e2e                             # Headless
+npm run test:e2e:headed                      # With browser
+npm run test:e2e:ui                          # Interactive UI
+BASE_URL=http://localhost:8089 npx playwright test tests/e2e/auth.spec.ts
+```
+
+| Suite | Config | Location |
+|-------|--------|----------|
+| Smoke | `phpunit.dist.xml` | `tests/Smoke/` |
+| Unit | `phpunit.dist.xml` | `tests/Unit/` |
+| Functional | `phpunit.dist.xml` | `tests/Functional/` |
+| Integration | `phpunit.dist.xml` | `tests/Integration/` |
+| E2E | `playwright.config.ts` | `tests/e2e/` |
+
+**CI:** All suites run via `.github/workflows/symfony-ci.yml` (PHPUnit + Playwright).
+
 ## Allure Docker API
 
 ⚠️ **NEVER use the Allure API `clean-results` endpoint** - it permanently deletes ALL test history with no backup or recovery option.

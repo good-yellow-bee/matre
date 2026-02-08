@@ -431,17 +431,24 @@ class MftfExecutorService
         $globalVars = $this->globalEnvVariableRepository->getAllAsKeyValue($env->getCode());
         if (!empty($globalVars)) {
             $globalContent = "# Global variables (from ATR database)\n";
+            $invalidVars = [];
             foreach ($globalVars as $key => $value) {
                 try {
                     // SECURITY: Validate variable name and build safe env file line
                     $globalContent .= $this->shellEscapeService->buildEnvFileLine($key, $value) . "\n";
                 } catch (\InvalidArgumentException $e) {
-                    // Log and skip invalid variables rather than failing the entire run
-                    $this->logger->warning('Skipping invalid environment variable', [
+                    $invalidVars[] = ['key' => $key, 'error' => $e->getMessage()];
+                    $this->logger->error('Invalid environment variable detected', [
                         'key' => $key,
                         'error' => $e->getMessage(),
+                        'runId' => $run->getId(),
+                        'errorId' => \App\Constants\ErrorIds::MFTF_ENV_VAR_INVALID,
                     ]);
                 }
+            }
+
+            if (!empty($invalidVars)) {
+                throw new \RuntimeException(sprintf('Test run aborted: %d invalid environment variable(s): %s', count($invalidVars), implode(', ', array_column($invalidVars, 'key'))));
             }
             $parts[] = sprintf('echo %s > %s', escapeshellarg($globalContent), escapeshellarg($mftfEnvFile));
             $parts[] = sprintf('cat %s >> %s', escapeshellarg($moduleEnvFile), escapeshellarg($mftfEnvFile));
