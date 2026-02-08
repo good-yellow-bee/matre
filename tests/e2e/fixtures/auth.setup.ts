@@ -16,11 +16,15 @@ setup('authenticate as admin', async ({ page }) => {
   await page.locator('#username').fill(ADMIN_USER);
   await page.locator('#password').fill(ADMIN_PASS);
 
-  // Submit form and wait for navigation
+  // Submit form and wait for the initial auth redirect.
   await Promise.all([
-    page.waitForURL(/\/admin/, { timeout: 15_000 }),
+    page.waitForURL(/\/(admin|login)/, { timeout: 15_000 }),
     page.locator('button[type="submit"]').click(),
   ]);
+
+  // Validate that auth persists on a protected route before saving state.
+  await page.goto('/admin/test-runs');
+  await expect(page).toHaveURL(/\/admin\/test-runs/, { timeout: 15_000 });
 
   await page.context().storageState({ path: AUTH_FILE });
 });
