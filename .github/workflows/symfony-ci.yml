@@ -401,7 +401,7 @@ jobs:
 
       - name: Start Symfony server
         run: |
-          APP_ENV=test DB_NAME=matre_test DB_USER=root DB_PASS=root DB_HOST=127.0.0.1 php -S 127.0.0.1:8080 -t public &
+          APP_ENV=test DB_DRIVER=pdo_mysql DB_HOST=127.0.0.1 DB_PORT=3306 DB_NAME=matre_test DB_USER=root DB_PASS=root DB_VERSION=8.0 DB_CHARSET=utf8mb4 php -S 127.0.0.1:8080 -t public &
           npx wait-on http://127.0.0.1:8080/login --timeout 30000
 
       - name: Run Playwright tests
