@@ -30,7 +30,7 @@ test.describe('Global Settings', () => {
     const headlessField = page.locator('[name*="headless"]');
     const hasField = await headlessField.count();
 
-    expect(hasField).toBeGreaterThanOrEqual(0);
+    expect(hasField).toBeGreaterThan(0);
   });
 
   test('settings form has save button', async ({ page }) => {

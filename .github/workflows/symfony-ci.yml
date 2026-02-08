@@ -124,6 +124,7 @@ jobs:
       - name: Create .env.test.local file
         run: |
           cat > .env.test.local <<EOF
+          APP_ENV=test
           DB_HOST=127.0.0.1
           DB_USER=root
           DB_PASS=root
@@ -372,6 +373,7 @@ jobs:
       - name: Create .env.test.local file
         run: |
           cat > .env.test.local <<EOF
+          APP_ENV=test
           DB_HOST=127.0.0.1
           DB_USER=root
           DB_PASS=root
@@ -399,7 +401,7 @@ jobs:
 
       - name: Start Symfony server
         run: |
-          php -S 127.0.0.1:8080 -t public &
+          APP_ENV=test php -S 127.0.0.1:8080 -t public &
           npx wait-on http://127.0.0.1:8080/login --timeout 30000
 
       - name: Run Playwright tests
