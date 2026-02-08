@@ -406,6 +406,7 @@ class PlaywrightExecutorServiceTest extends TestCase
     ): TestEnvironment {
         $env = new TestEnvironment();
         $env->setName($name);
+        $env->setCode($name);
         $env->setBaseUrl($baseUrl);
 
         return $env;
