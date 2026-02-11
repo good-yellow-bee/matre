@@ -120,6 +120,22 @@
           </small>
         </div>
 
+        <div v-if="isMftfGroupType" class="mb-3">
+          <label for="excludedTests" class="form-label">Excluded Tests</label>
+          <textarea
+            id="excludedTests"
+            v-model="form.excludedTests"
+            class="form-control"
+            :class="{ 'is-invalid': errors.excludedTests }"
+            rows="3"
+            placeholder="MOEC11676, MOEC2609ES"
+          ></textarea>
+          <div v-if="errors.excludedTests" class="invalid-feedback">{{ errors.excludedTests }}</div>
+          <small class="form-text text-muted">
+            Comma-separated exact MFTF test names from XML <code>&lt;test name="..."&gt;</code>.
+          </small>
+        </div>
+
         <!-- Description -->
         <div class="mb-3">
           <label for="description" class="form-label">Description</label>
@@ -214,7 +230,7 @@
       <div class="alert alert-info">
         <strong>Test Pattern Examples:</strong>
         <ul class="mb-0 mt-2">
-          <li><strong>MFTF:</strong> <code>MOEC1625Test</code> (single test) or <code>checkout</code> (group)</li>
+          <li><strong>MFTF:</strong> <code>MOEC1625</code> (single test) or <code>checkout</code> (group)</li>
           <li><strong>Playwright:</strong> <code>@checkout</code> (tag) or <code>CheckoutTest</code> (file/test name)</li>
         </ul>
       </div>
@@ -243,6 +259,7 @@ const form = reactive({
   name: '',
   type: '',
   testPattern: '',
+  excludedTests: '',
   description: '',
   cronExpression: '',
   environments: [],
@@ -276,6 +293,7 @@ const searchInput = ref(null);
 const selectContainer = ref(null);
 
 const isPlaywrightType = computed(() => form.type.startsWith('playwright_'));
+const isMftfGroupType = computed(() => form.type === 'mftf_group');
 
 const patternPlaceholder = computed(() => {
   return form.type === 'playwright_group'
@@ -355,6 +373,7 @@ const fetchSuiteData = async () => {
     form.name = data.name;
     form.type = data.type;
     form.testPattern = data.testPattern;
+    form.excludedTests = data.excludedTests || '';
     form.description = data.description || '';
     form.cronExpression = data.cronExpression || '';
     form.environments = data.environments || [];
@@ -431,6 +450,9 @@ const validateCron = async () => {
 // Pattern selector methods
 const onTypeChange = () => {
   form.testPattern = '';
+  if (form.type !== 'mftf_group') {
+    form.excludedTests = '';
+  }
   patternItems.value = [];
   patternCached.value = false;
   patternMessage.value = '';
@@ -599,11 +621,15 @@ const submitForm = async () => {
   try {
     const url = isEditMode.value ? `${props.apiUrl}/${props.suiteId}` : props.apiUrl;
     const method = isEditMode.value ? 'PUT' : 'POST';
+    const payload = {
+      ...form,
+      excludedTests: isMftfGroupType.value ? form.excludedTests : null,
+    };
 
     const response = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      body: JSON.stringify(payload),
     });
 
     const data = await response.json();

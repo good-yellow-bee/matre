@@ -80,6 +80,7 @@ class TestSuiteApiController extends AbstractController
             'name' => $suite->getName(),
             'type' => $suite->getType(),
             'testPattern' => $suite->getTestPattern(),
+            'excludedTests' => $suite->getExcludedTests(),
             'description' => $suite->getDescription(),
             'cronExpression' => $suite->getCronExpression(),
             'isActive' => $suite->getIsActive(),
@@ -264,6 +265,22 @@ class TestSuiteApiController extends AbstractController
             }
         }
 
+        if (array_key_exists('excludedTests', $data)) {
+            if (null !== $data['excludedTests'] && !is_string($data['excludedTests'])) {
+                $errors['excludedTests'] = 'Excluded tests must be a string';
+            } elseif (is_string($data['excludedTests']) && mb_strlen(trim($data['excludedTests'])) > 5000) {
+                $errors['excludedTests'] = 'Excluded tests cannot exceed 5000 characters';
+            }
+        }
+
+        if (
+            isset($data['type'])
+            && TestSuite::TYPE_MFTF_GROUP !== $data['type']
+            && !empty(trim((string) ($data['excludedTests'] ?? '')))
+        ) {
+            $errors['excludedTests'] = 'Excluded tests are supported only for MFTF Group suites';
+        }
+
         return $errors;
     }
 
@@ -272,6 +289,7 @@ class TestSuiteApiController extends AbstractController
         $suite->setName($data['name']);
         $suite->setType($data['type']);
         $suite->setTestPattern($data['testPattern']);
+        $suite->setExcludedTests(TestSuite::TYPE_MFTF_GROUP === $data['type'] ? ($data['excludedTests'] ?? null) : null);
         $suite->setDescription($data['description'] ?? null);
         $suite->setCronExpression($data['cronExpression'] ?? null);
         $suite->setIsActive($data['isActive'] ?? true);

@@ -79,6 +79,12 @@ class TestSuite
     private string $testPattern;
 
     /**
+     * Comma/newline-separated list of exact MFTF test names to skip in group execution.
+     */
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $excludedTests = null;
+
+    /**
      * Cron expression for scheduled execution.
      * Leave null for manual-only suites.
      */
@@ -171,6 +177,37 @@ class TestSuite
         $this->testPattern = $testPattern;
 
         return $this;
+    }
+
+    public function getExcludedTests(): ?string
+    {
+        return $this->excludedTests;
+    }
+
+    public function setExcludedTests(?string $excludedTests): static
+    {
+        $excludedTests = null !== $excludedTests ? trim($excludedTests) : null;
+        $this->excludedTests = '' === $excludedTests ? null : $excludedTests;
+
+        return $this;
+    }
+
+    /**
+     * Parse excluded tests as trimmed exact test names.
+     *
+     * @return array<int, string>
+     */
+    public function getExcludedTestsList(): array
+    {
+        if (null === $this->excludedTests || '' === trim($this->excludedTests)) {
+            return [];
+        }
+
+        $tokens = preg_split('/[\r\n,]+/', $this->excludedTests) ?: [];
+        $tokens = array_map(static fn (string $value): string => trim($value), $tokens);
+        $tokens = array_filter($tokens, static fn (string $value): bool => '' !== $value);
+
+        return array_values(array_unique($tokens));
     }
 
     public function getCronExpression(): ?string

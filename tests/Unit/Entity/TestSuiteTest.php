@@ -73,6 +73,44 @@ class TestSuiteTest extends TestCase
         $this->assertEquals('MOEC1625', $suite->getTestPattern());
     }
 
+    public function testExcludedTestsGetterAndSetter(): void
+    {
+        $suite = new TestSuite();
+
+        $this->assertNull($suite->getExcludedTests());
+        $this->assertSame([], $suite->getExcludedTestsList());
+
+        $suite->setExcludedTests('MOEC11676, MOEC2609ES');
+        $this->assertEquals('MOEC11676, MOEC2609ES', $suite->getExcludedTests());
+        $this->assertSame(['MOEC11676', 'MOEC2609ES'], $suite->getExcludedTestsList());
+    }
+
+    public function testExcludedTestsListParsesCommaAndNewlineSeparatedValues(): void
+    {
+        $suite = new TestSuite();
+        $suite->setExcludedTests(" MOEC11676,\nMOEC2609ES\r\nMOEC11676 ,, ");
+
+        $this->assertSame(['MOEC11676', 'MOEC2609ES'], $suite->getExcludedTestsList());
+    }
+
+    public function testExcludedTestsSetterNormalizesEmptyStringToNull(): void
+    {
+        $suite = new TestSuite();
+        $suite->setExcludedTests('   ');
+
+        $this->assertNull($suite->getExcludedTests());
+        $this->assertSame([], $suite->getExcludedTestsList());
+    }
+
+    public function testExcludedTestsSetterAcceptsNull(): void
+    {
+        $suite = new TestSuite();
+        $suite->setExcludedTests(null);
+
+        $this->assertNull($suite->getExcludedTests());
+        $this->assertSame([], $suite->getExcludedTestsList());
+    }
+
     public function testCronExpressionGetterAndSetter(): void
     {
         $suite = new TestSuite();
