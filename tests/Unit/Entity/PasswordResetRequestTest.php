@@ -31,7 +31,7 @@ class PasswordResetRequestTest extends TestCase
     public function testUserGetterAndSetter(): void
     {
         $request = new PasswordResetRequest();
-        $user = $this->createMock(User::class);
+        $user = $this->createStub(User::class);
 
         $request->setUser($user);
 
@@ -183,7 +183,7 @@ class PasswordResetRequestTest extends TestCase
     public function testFluentInterface(): void
     {
         $request = new PasswordResetRequest();
-        $user = $this->createMock(User::class);
+        $user = $this->createStub(User::class);
 
         $result = $request
             ->setUser($user)

@@ -9,6 +9,7 @@ use App\Entity\User;
 use App\Repository\PasswordResetRequestRepository;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
@@ -33,6 +34,7 @@ class PasswordResetService
         private readonly EmailService $emailService,
         private readonly UserPasswordHasherInterface $passwordHasher,
         private readonly UrlGeneratorInterface $urlGenerator,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -90,9 +92,14 @@ class PasswordResetService
                 $token,
                 $resetUrl,
             );
-        } catch (\Exception $e) {
-            // Log error but don't reveal to user
-            // In production, you should log this
+        } catch (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $e) {
+            $this->logger->error('Failed to send password reset email', [
+                'email' => $user->getEmail(),
+                'error' => $e->getMessage(),
+                'errorId' => \App\Constants\ErrorIds::PASSWORD_RESET_EMAIL_FAILED,
+            ]);
+
+            // Still return true to prevent email enumeration
             return true;
         }
 
@@ -147,8 +154,13 @@ class PasswordResetService
                 $user->getEmail(),
                 $user->getUsername(),
             );
-        } catch (\Exception $e) {
-            // Log error but password was still changed
+        } catch (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $e) {
+            $this->logger->error('Failed to send password changed email', [
+                'email' => $user->getEmail(),
+                'error' => $e->getMessage(),
+                'errorId' => \App\Constants\ErrorIds::PASSWORD_CHANGED_EMAIL_FAILED,
+            ]);
+            // Password was still changed successfully
         }
 
         return true;

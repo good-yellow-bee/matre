@@ -328,15 +328,15 @@ class TestRunRepository extends ServiceEntityRepository
         $conn = $this->getEntityManager()->getConnection();
 
         $sql = <<<'SQL'
-            WITH ranked AS (
-                SELECT id, environment_id, status, completed_at,
-                       ROW_NUMBER() OVER (PARTITION BY environment_id ORDER BY id DESC) as rn
-                FROM matre_test_runs
-                WHERE environment_id IN (:ids)
-                AND status IN ('completed', 'failed')
-            )
-            SELECT id, environment_id, status, completed_at, rn FROM ranked WHERE rn <= 2
-        SQL;
+                WITH ranked AS (
+                    SELECT id, environment_id, status, completed_at,
+                           ROW_NUMBER() OVER (PARTITION BY environment_id ORDER BY id DESC) as rn
+                    FROM matre_test_runs
+                    WHERE environment_id IN (:ids)
+                    AND status IN ('completed', 'failed')
+                )
+                SELECT id, environment_id, status, completed_at, rn FROM ranked WHERE rn <= 2
+            SQL;
 
         $rows = $conn->executeQuery(
             $sql,

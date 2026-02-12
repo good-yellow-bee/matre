@@ -24,7 +24,7 @@ class TestResultTest extends TestCase
     public function testTestRunGetterAndSetter(): void
     {
         $result = new TestResult();
-        $run = $this->createMock(TestRun::class);
+        $run = $this->createStub(TestRun::class);
 
         $return = $result->setTestRun($run);
 
@@ -217,7 +217,7 @@ class TestResultTest extends TestCase
     public function testFluentInterface(): void
     {
         $result = new TestResult();
-        $run = $this->createMock(TestRun::class);
+        $run = $this->createStub(TestRun::class);
 
         $return = $result
             ->setTestRun($run)
