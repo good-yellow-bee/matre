@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Constants\ErrorIds;
 use App\Entity\TestResult;
 use App\Entity\TestRun;
 use App\Repository\GlobalEnvVariableRepository;
@@ -150,7 +151,7 @@ class PlaywrightExecutorService
                     'key' => $key,
                     'error' => $e->getMessage(),
                     'runId' => $run->getId(),
-                    'errorId' => \App\Constants\ErrorIds::PLAYWRIGHT_ENV_VAR_INVALID,
+                    'errorId' => ErrorIds::PLAYWRIGHT_ENV_VAR_INVALID,
                 ]);
 
                 throw new \RuntimeException(sprintf('Test run aborted: invalid environment variable "%s": %s', $key, $e->getMessage()));

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Constants\ErrorIds;
 use App\Entity\PasswordResetRequest;
 use App\Entity\User;
 use App\Repository\PasswordResetRequestRepository;
@@ -96,7 +97,7 @@ class PasswordResetService
             $this->logger->error('Failed to send password reset email', [
                 'email' => $user->getEmail(),
                 'error' => $e->getMessage(),
-                'errorId' => \App\Constants\ErrorIds::PASSWORD_RESET_EMAIL_FAILED,
+                'errorId' => ErrorIds::PASSWORD_RESET_EMAIL_FAILED,
             ]);
 
             // Still return true to prevent email enumeration
@@ -158,7 +159,7 @@ class PasswordResetService
             $this->logger->error('Failed to send password changed email', [
                 'email' => $user->getEmail(),
                 'error' => $e->getMessage(),
-                'errorId' => \App\Constants\ErrorIds::PASSWORD_CHANGED_EMAIL_FAILED,
+                'errorId' => ErrorIds::PASSWORD_CHANGED_EMAIL_FAILED,
             ]);
             // Password was still changed successfully
         }
