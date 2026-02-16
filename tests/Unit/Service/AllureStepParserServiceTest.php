@@ -156,6 +156,7 @@ class AllureStepParserServiceTest extends TestCase
         $run = new TestRun();
         $ref = new \ReflectionClass($run);
         $idProp = $ref->getProperty('id');
+        $idProp->setAccessible(true);
         $idProp->setValue($run, $id);
 
         return $run;
@@ -166,6 +167,7 @@ class AllureStepParserServiceTest extends TestCase
         $result = new TestResult();
         $ref = new \ReflectionClass($result);
         $idProp = $ref->getProperty('id');
+        $idProp->setAccessible(true);
         $idProp->setValue($result, $id);
 
         $result->setTestName($testName);
