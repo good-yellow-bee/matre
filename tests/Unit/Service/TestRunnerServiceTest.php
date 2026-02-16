@@ -460,6 +460,118 @@ class TestRunnerServiceTest extends TestCase
         $this->assertEquals('Generated test file not found - see output log', $run->getErrorMessage());
     }
 
+    public function testExecuteRunGroupFailsWhenAllTestsExcluded(): void
+    {
+        $run = $this->createTestRun(TestRun::TYPE_MFTF);
+        $run->setTestFilter('us');
+
+        $suite = $this->createTestSuite('US Group Suite');
+        $suite->setType(TestSuite::TYPE_MFTF_GROUP);
+        $suite->setExcludedTests('MOEC11676, MOEC2609ES');
+        $run->setSuite($suite);
+
+        $this->setupLockMock();
+
+        $this->mftfExecutor->expects($this->once())
+            ->method('getOutputFilePath')
+            ->willReturn('/var/output.txt');
+
+        $this->moduleCloneService->expects($this->once())
+            ->method('getDefaultTargetPath')
+            ->willReturn('/var/test-modules/current');
+
+        $this->testDiscovery->expects($this->once())
+            ->method('resolveGroupToTests')
+            ->with('us', '/var/test-modules/current')
+            ->willReturn(['MOEC11676', 'MOEC2609ES']);
+
+        $this->mftfExecutor->expects($this->never())->method('executeSingleTest');
+        $this->artifactCollector->expects($this->never())->method('collectArtifacts');
+        $this->entityManager->expects($this->atLeast(3))->method('flush');
+
+        $this->service->executeRun($run);
+
+        $this->assertEquals(TestRun::STATUS_FAILED, $run->getStatus());
+        $this->assertEquals('All tests in group excluded by suite configuration', $run->getErrorMessage());
+    }
+
+    public function testExecuteRunGroupExecutesOnlyNonExcludedTests(): void
+    {
+        $run = $this->createTestRun(TestRun::TYPE_MFTF);
+        $run->setTestFilter('us');
+
+        $suite = $this->createTestSuite('US Group Suite');
+        $suite->setType(TestSuite::TYPE_MFTF_GROUP);
+        $suite->setExcludedTests('MOEC11676');
+        $run->setSuite($suite);
+
+        $this->setupLockMock();
+
+        $this->mftfExecutor->expects($this->once())
+            ->method('getOutputFilePath')
+            ->willReturn('/var/output.txt');
+
+        $this->moduleCloneService->expects($this->once())
+            ->method('getDefaultTargetPath')
+            ->willReturn('/var/test-modules/current');
+
+        $this->testDiscovery->expects($this->once())
+            ->method('resolveGroupToTests')
+            ->with('us', '/var/test-modules/current')
+            ->willReturn(['MOEC11676', 'MOEC2609ES']);
+
+        $this->mftfExecutor->expects($this->once())
+            ->method('executeSingleTest')
+            ->with($run, 'MOEC2609ES', $this->isType('callable'), null)
+            ->willReturn([
+                'output' => 'single test output',
+                'exitCode' => 0,
+                'outputFilePath' => '/var/test-output/run-1/MOEC2609ES.log',
+            ]);
+
+        $parsedResult = new TestResult();
+        $parsedResult->setTestName('MOEC2609ES');
+        $parsedResult->setStatus(TestResult::STATUS_PASSED);
+
+        $this->mftfExecutor->expects($this->once())
+            ->method('parseResults')
+            ->with($run, 'single test output', '/var/test-output/run-1/MOEC2609ES.log')
+            ->willReturn([$parsedResult]);
+
+        $this->entityManager->expects($this->once())
+            ->method('persist')
+            ->with($parsedResult);
+
+        $this->allureReportService->expects($this->once())
+            ->method('copyTestAllureResults')
+            ->with(1, 'MOEC2609ES');
+
+        $this->allureReportService->expects($this->once())
+            ->method('generateIncrementalReport')
+            ->with($run);
+
+        $this->artifactCollector->expects($this->once())
+            ->method('collectTestScreenshot')
+            ->with($run, $parsedResult);
+
+        $this->allureStepParser->expects($this->once())
+            ->method('getDurationForResult')
+            ->with($parsedResult)
+            ->willReturn(null);
+
+        $this->artifactCollector->expects($this->once())
+            ->method('collectArtifacts')
+            ->with($run)
+            ->willReturn(['screenshots' => [], 'html' => []]);
+
+        $this->entityManager->expects($this->atLeast(4))->method('flush');
+
+        $this->service->executeRun($run);
+
+        $this->assertEquals(TestRun::STATUS_COMPLETED, $run->getStatus());
+        $this->assertCount(1, $run->getResults());
+    }
+
     // =====================
     // executeRun() Tests - Playwright Only
     // =====================

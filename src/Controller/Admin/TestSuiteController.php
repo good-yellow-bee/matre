@@ -128,6 +128,7 @@ class TestSuiteController extends AbstractController
         $copy->setType($suite->getType());
         $copy->setDescription($suite->getDescription());
         $copy->setTestPattern($suite->getTestPattern());
+        $copy->setExcludedTests($suite->getExcludedTests());
         $copy->setCronExpression($suite->getCronExpression());
         $copy->setEstimatedDuration($suite->getEstimatedDuration());
         $copy->setIsActive(true);

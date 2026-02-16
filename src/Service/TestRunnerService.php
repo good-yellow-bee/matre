@@ -140,6 +140,22 @@ class TestRunnerService
             }
             $this->entityManager->flush();
 
+            // Wrap heartbeat to refresh updatedAt during execution (prevents watchdog false positives)
+            $wrappedHeartbeat = $heartbeatCallback
+                ? function () use ($run, $heartbeatCallback): void {
+                    try {
+                        $run->setUpdatedAt(new \DateTimeImmutable());
+                        $this->entityManager->flush();
+                    } catch (\Throwable $e) {
+                        $this->logger->warning('Heartbeat DB flush failed, continuing execution', [
+                            'runId' => $run->getId(),
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                    $heartbeatCallback();
+                }
+            : null;
+
             // Check if this is a group run that should use sequential execution
             $suite = $run->getSuite();
             $isGroupRun = null !== $suite && TestSuite::TYPE_MFTF_GROUP === $suite->getType();
@@ -148,7 +164,7 @@ class TestRunnerService
                 // Sequential execution - one test at a time
                 // Note: Report generation and notifications are handled by the message handler
                 // (PHASE_REPORT and PHASE_NOTIFY) after executeRun returns
-                $this->executeGroupRun($run, $lockRefreshCallback, $heartbeatCallback);
+                $this->executeGroupRun($run, $lockRefreshCallback, $wrappedHeartbeat);
 
                 return;
             }
@@ -162,7 +178,7 @@ class TestRunnerService
             try {
                 // Execute MFTF tests
                 if (TestRun::TYPE_MFTF === $type || TestRun::TYPE_BOTH === $type) {
-                    $mftfResult = $this->mftfExecutor->execute($run, $lockRefreshCallback, $heartbeatCallback);
+                    $mftfResult = $this->mftfExecutor->execute($run, $lockRefreshCallback, $wrappedHeartbeat);
                     $output .= "=== MFTF Output ===\n" . $this->sanitizeMftfOutput($mftfResult['output']) . "\n\n";
 
                     // Check for fatal errors that prevent test execution
@@ -196,7 +212,7 @@ class TestRunnerService
 
                 // Execute Playwright tests
                 if (TestRun::TYPE_PLAYWRIGHT === $type || TestRun::TYPE_BOTH === $type) {
-                    $playwrightResult = $this->playwrightExecutor->execute($run, null, $heartbeatCallback);
+                    $playwrightResult = $this->playwrightExecutor->execute($run, null, $wrappedHeartbeat);
                     $output .= "=== Playwright Output ===\n" . $playwrightResult['output'] . "\n\n";
 
                     // ALWAYS parse results (even on failure) to capture partial test data
@@ -440,9 +456,80 @@ class TestRunnerService
             return;
         }
 
-        $totalTests = count($testNames);
         // Count already-executed tests (for redelivery protection - skip all existing results)
         $completedTests = $run->getResults()->count();
+
+        $suite = $run->getSuite();
+        $excludedTests = $suite?->getExcludedTestsList() ?? [];
+        $excludedLookup = [];
+        if (!empty($excludedTests)) {
+            $excludedLookup = array_fill_keys($excludedTests, true);
+            $matchedExcluded = [];
+            $originalCount = count($testNames);
+
+            $testNames = array_values(array_filter(
+                $testNames,
+                static function (string $testName) use ($excludedLookup, &$matchedExcluded): bool {
+                    if (isset($excludedLookup[$testName])) {
+                        $matchedExcluded[] = $testName;
+
+                        return false;
+                    }
+
+                    return true;
+                },
+            ));
+
+            $this->logger->info('Filtered excluded tests from group', [
+                'runId' => $run->getId(),
+                'groupName' => $groupName,
+                'configuredExcluded' => $excludedTests,
+                'matchedExcluded' => $matchedExcluded,
+                'unmatchedExcluded' => array_values(array_diff($excludedTests, $matchedExcluded)),
+                'originalCount' => $originalCount,
+                'remainingCount' => count($testNames),
+            ]);
+        }
+
+        if (empty($testNames)) {
+            if ($completedTests > 0) {
+                $this->logger->info('All remaining tests excluded, finalizing from existing results', [
+                    'runId' => $run->getId(),
+                    'groupName' => $groupName,
+                    'completedTests' => $completedTests,
+                ]);
+                $run->setCurrentTestName(null);
+                $run->setProgress($completedTests, $completedTests);
+                $existingResults = array_values(array_filter(
+                    $run->getResults()->toArray(),
+                    fn (TestResult $result): bool => !$this->isResultExcluded($result, $excludedLookup),
+                ));
+                if (empty($existingResults)) {
+                    $run->markFailed('All tests in group excluded by suite configuration');
+                    $this->entityManager->flush();
+
+                    return;
+                }
+                $failedCount = $this->finalizeGroupRunStatus($run, $existingResults);
+                $this->entityManager->flush();
+
+                $this->logger->info('Sequential group execution completed', [
+                    'runId' => $run->getId(),
+                    'completedTests' => $completedTests,
+                    'totalTests' => $completedTests,
+                    'failedCount' => $failedCount,
+                ]);
+
+                return;
+            }
+
+            $run->markFailed('All tests in group excluded by suite configuration');
+            $this->entityManager->flush();
+
+            return;
+        }
+
+        $totalTests = count($testNames);
 
         $this->logger->info('Resolved group tests', [
             'groupName' => $groupName,
@@ -594,7 +681,10 @@ class TestRunnerService
 
         // Collect ALL artifacts at end (batch) - screenshot names unique per test
         $this->logger->info('Collecting artifacts for group run', ['runId' => $run->getId()]);
-        $allResults = $run->getResults()->toArray();
+        $allResults = array_values(array_filter(
+            $run->getResults()->toArray(),
+            fn (TestResult $result): bool => !$this->isResultExcluded($result, $excludedLookup),
+        ));
         $artifacts = $this->artifactCollector->collectArtifacts($run);
         if (!empty($artifacts['screenshots'])) {
             $this->artifactCollector->associateScreenshotsWithResults($allResults, $artifacts['screenshots']);
@@ -605,22 +695,7 @@ class TestRunnerService
         // Determine overall run status (only if not cancelled)
         $this->entityManager->refresh($run);
         if (TestRun::STATUS_CANCELLED !== $run->getStatus()) {
-            $totalCount = count($allResults);
-            $brokenCount = count(array_filter($allResults, fn ($r) => $r->isBroken()));
-            $passedCount = count(array_filter($allResults, fn ($r) => $r->isPassed()));
-            $failedCount = count(array_filter($allResults, fn ($r) => $r->isFailed() || $r->isBroken()));
-
-            // FAILED only if: no results, all broken, or all failed (0 passed)
-            if (0 === $totalCount) {
-                $run->markFailed('No test results collected');
-            } elseif ($brokenCount === $totalCount) {
-                $run->markFailed('All tests broken - possible infrastructure error');
-            } elseif (0 === $passedCount && $failedCount > 0) {
-                $run->markFailed(sprintf('All %d test(s) failed', $failedCount));
-            } else {
-                // Some tests passed - mark completed (even with failures)
-                $run->markCompleted();
-            }
+            $failedCount = $this->finalizeGroupRunStatus($run, $allResults);
         } else {
             $failedCount = 0; // For logging
         }
@@ -633,6 +708,50 @@ class TestRunnerService
             'totalTests' => $totalTests,
             'failedCount' => $failedCount,
         ]);
+    }
+
+    /**
+     * @param array<int, TestResult> $results
+     */
+    private function finalizeGroupRunStatus(TestRun $run, array $results): int
+    {
+        $totalCount = count($results);
+        $brokenCount = count(array_filter($results, fn ($r) => $r->isBroken()));
+        $passedCount = count(array_filter($results, fn ($r) => $r->isPassed()));
+        $failedCount = count(array_filter($results, fn ($r) => $r->isFailed() || $r->isBroken()));
+
+        // FAILED only if: no results, all broken, or all failed (0 passed)
+        if (0 === $totalCount) {
+            $run->markFailed('No test results collected');
+        } elseif ($brokenCount === $totalCount) {
+            $run->markFailed('All tests broken - possible infrastructure error');
+        } elseif (0 === $passedCount && $failedCount > 0) {
+            $run->markFailed(sprintf('All %d test(s) failed', $failedCount));
+        } else {
+            // Some tests passed - mark completed (even with failures)
+            $run->markCompleted();
+        }
+
+        return $failedCount;
+    }
+
+    /**
+     * @param array<string, bool> $excludedLookup
+     */
+    private function isResultExcluded(TestResult $result, array $excludedLookup): bool
+    {
+        if (empty($excludedLookup)) {
+            return false;
+        }
+
+        $testName = $result->getTestName();
+        if (isset($excludedLookup[$testName])) {
+            return true;
+        }
+
+        $testId = $result->getTestId();
+
+        return null !== $testId && isset($excludedLookup[$testId]);
     }
 
     /**

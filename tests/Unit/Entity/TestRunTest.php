@@ -340,6 +340,18 @@ class TestRunTest extends TestCase
 
         $this->assertEquals(TestRun::STATUS_COMPLETED, $run->getStatus());
         $this->assertNotNull($run->getCompletedAt());
+        $this->assertNull($run->getErrorMessage());
+    }
+
+    public function testMarkCompletedClearsStaleErrorMessage(): void
+    {
+        $run = new TestRun();
+        $run->setErrorMessage('Run stalled - no progress for 30 minutes');
+
+        $run->markCompleted();
+
+        $this->assertEquals(TestRun::STATUS_COMPLETED, $run->getStatus());
+        $this->assertNull($run->getErrorMessage());
     }
 
     public function testMarkFailed(): void

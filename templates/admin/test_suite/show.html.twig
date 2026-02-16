@@ -31,6 +31,18 @@
                         <th>Test Pattern</th>
                         <td><code>{{ suite.testPattern }}</code></td>
                     </tr>
+                    {% if suite.type == 'mftf_group' %}
+                        <tr>
+                            <th>Excluded Tests</th>
+                            <td>
+                                {% if suite.excludedTests %}
+                                    <code>{{ suite.excludedTests }}</code>
+                                {% else %}
+                                    <span class="text-muted">None</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endif %}
                     <tr>
                         <th>Schedule</th>
                         <td>
