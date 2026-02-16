@@ -471,23 +471,28 @@ class TestRunnerServiceTest extends TestCase
         $run->setSuite($suite);
 
         $this->setupLockMock();
+        $em = $this->mockEntityManager();
+        $mftf = $this->mockMftfExecutor();
+        $clone = $this->mockModuleCloneService();
+        $discovery = $this->mockTestDiscovery();
+        $artifacts = $this->mockArtifactCollector();
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getOutputFilePath')
             ->willReturn('/var/output.txt');
 
-        $this->moduleCloneService->expects($this->once())
+        $clone->expects($this->once())
             ->method('getDefaultTargetPath')
             ->willReturn('/var/test-modules/current');
 
-        $this->testDiscovery->expects($this->once())
+        $discovery->expects($this->once())
             ->method('resolveGroupToTests')
             ->with('us', '/var/test-modules/current')
             ->willReturn(['MOEC11676', 'MOEC2609ES']);
 
-        $this->mftfExecutor->expects($this->never())->method('executeSingleTest');
-        $this->artifactCollector->expects($this->never())->method('collectArtifacts');
-        $this->entityManager->expects($this->atLeast(3))->method('flush');
+        $mftf->expects($this->never())->method('executeSingleTest');
+        $artifacts->expects($this->never())->method('collectArtifacts');
+        $em->expects($this->atLeast(3))->method('flush');
 
         $this->service->executeRun($run);
 
@@ -506,21 +511,28 @@ class TestRunnerServiceTest extends TestCase
         $run->setSuite($suite);
 
         $this->setupLockMock();
+        $em = $this->mockEntityManager();
+        $mftf = $this->mockMftfExecutor();
+        $clone = $this->mockModuleCloneService();
+        $discovery = $this->mockTestDiscovery();
+        $allure = $this->mockAllureReportService();
+        $artifacts = $this->mockArtifactCollector();
+        $stepParser = $this->mockAllureStepParser();
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getOutputFilePath')
             ->willReturn('/var/output.txt');
 
-        $this->moduleCloneService->expects($this->once())
+        $clone->expects($this->once())
             ->method('getDefaultTargetPath')
             ->willReturn('/var/test-modules/current');
 
-        $this->testDiscovery->expects($this->once())
+        $discovery->expects($this->once())
             ->method('resolveGroupToTests')
             ->with('us', '/var/test-modules/current')
             ->willReturn(['MOEC11676', 'MOEC2609ES']);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('executeSingleTest')
             ->with($run, 'MOEC2609ES', $this->isType('callable'), null)
             ->willReturn([
@@ -533,38 +545,38 @@ class TestRunnerServiceTest extends TestCase
         $parsedResult->setTestName('MOEC2609ES');
         $parsedResult->setStatus(TestResult::STATUS_PASSED);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('parseResults')
             ->with($run, 'single test output', '/var/test-output/run-1/MOEC2609ES.log')
             ->willReturn([$parsedResult]);
 
-        $this->entityManager->expects($this->once())
+        $em->expects($this->once())
             ->method('persist')
             ->with($parsedResult);
 
-        $this->allureReportService->expects($this->once())
+        $allure->expects($this->once())
             ->method('copyTestAllureResults')
             ->with(1, 'MOEC2609ES');
 
-        $this->allureReportService->expects($this->once())
+        $allure->expects($this->once())
             ->method('generateIncrementalReport')
             ->with($run);
 
-        $this->artifactCollector->expects($this->once())
+        $artifacts->expects($this->once())
             ->method('collectTestScreenshot')
             ->with($run, $parsedResult);
 
-        $this->allureStepParser->expects($this->once())
+        $stepParser->expects($this->once())
             ->method('getDurationForResult')
             ->with($parsedResult)
             ->willReturn(null);
 
-        $this->artifactCollector->expects($this->once())
+        $artifacts->expects($this->once())
             ->method('collectArtifacts')
             ->with($run)
             ->willReturn(['screenshots' => [], 'html' => []]);
 
-        $this->entityManager->expects($this->atLeast(4))->method('flush');
+        $em->expects($this->atLeast(4))->method('flush');
 
         $this->service->executeRun($run);
 
@@ -1343,6 +1355,22 @@ class TestRunnerServiceTest extends TestCase
         $this->rebuildService();
 
         return $this->artifactCollector;
+    }
+
+    private function mockTestDiscovery(): MockObject&TestDiscoveryService
+    {
+        $this->testDiscovery = $this->createMock(TestDiscoveryService::class);
+        $this->rebuildService();
+
+        return $this->testDiscovery;
+    }
+
+    private function mockAllureStepParser(): MockObject&AllureStepParserService
+    {
+        $this->allureStepParser = $this->createMock(AllureStepParserService::class);
+        $this->rebuildService();
+
+        return $this->allureStepParser;
     }
 
     private function createTestEnvironment(int $id = 1, string $name = 'test-env'): TestEnvironment
