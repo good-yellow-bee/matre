@@ -588,6 +588,7 @@ class TestRun
     {
         $this->completedAt = new \DateTimeImmutable();
         $this->status = self::STATUS_COMPLETED;
+        $this->errorMessage = null;
 
         return $this;
     }
