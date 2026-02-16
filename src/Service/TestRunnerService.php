@@ -140,6 +140,22 @@ class TestRunnerService
             }
             $this->entityManager->flush();
 
+            // Wrap heartbeat to refresh updatedAt during execution (prevents watchdog false positives)
+            $wrappedHeartbeat = $heartbeatCallback
+                ? function () use ($run, $heartbeatCallback): void {
+                    try {
+                        $run->setUpdatedAt(new \DateTimeImmutable());
+                        $this->entityManager->flush();
+                    } catch (\Throwable $e) {
+                        $this->logger->warning('Heartbeat DB flush failed, continuing execution', [
+                            'runId' => $run->getId(),
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                    $heartbeatCallback();
+                }
+            : null;
+
             // Check if this is a group run that should use sequential execution
             $suite = $run->getSuite();
             $isGroupRun = null !== $suite && TestSuite::TYPE_MFTF_GROUP === $suite->getType();
@@ -148,7 +164,7 @@ class TestRunnerService
                 // Sequential execution - one test at a time
                 // Note: Report generation and notifications are handled by the message handler
                 // (PHASE_REPORT and PHASE_NOTIFY) after executeRun returns
-                $this->executeGroupRun($run, $lockRefreshCallback, $heartbeatCallback);
+                $this->executeGroupRun($run, $lockRefreshCallback, $wrappedHeartbeat);
 
                 return;
             }
@@ -162,7 +178,7 @@ class TestRunnerService
             try {
                 // Execute MFTF tests
                 if (TestRun::TYPE_MFTF === $type || TestRun::TYPE_BOTH === $type) {
-                    $mftfResult = $this->mftfExecutor->execute($run, $lockRefreshCallback, $heartbeatCallback);
+                    $mftfResult = $this->mftfExecutor->execute($run, $lockRefreshCallback, $wrappedHeartbeat);
                     $output .= "=== MFTF Output ===\n" . $this->sanitizeMftfOutput($mftfResult['output']) . "\n\n";
 
                     // Check for fatal errors that prevent test execution
@@ -196,7 +212,7 @@ class TestRunnerService
 
                 // Execute Playwright tests
                 if (TestRun::TYPE_PLAYWRIGHT === $type || TestRun::TYPE_BOTH === $type) {
-                    $playwrightResult = $this->playwrightExecutor->execute($run, null, $heartbeatCallback);
+                    $playwrightResult = $this->playwrightExecutor->execute($run, null, $wrappedHeartbeat);
                     $output .= "=== Playwright Output ===\n" . $playwrightResult['output'] . "\n\n";
 
                     // ALWAYS parse results (even on failure) to capture partial test data
