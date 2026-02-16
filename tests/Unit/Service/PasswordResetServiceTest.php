@@ -123,9 +123,8 @@ class PasswordResetServiceTest extends TestCase
         $urlGenerator->method('generate')->willReturn('https://example.com/reset/token');
 
         $emailService = $this->createStub(EmailService::class);
-        $transportException = new \Symfony\Component\Mailer\Exception\TransportException('SMTP error');
         $emailService->method('sendPasswordResetEmail')
-            ->willThrowException($transportException);
+            ->willThrowException(new \RuntimeException('Template rendering failed'));
 
         $service = $this->createService(
             resetRequestRepository: $resetRequestRepository,
@@ -135,6 +134,40 @@ class PasswordResetServiceTest extends TestCase
         );
 
         $this->assertTrue($service->createResetRequest('user@example.com'));
+    }
+
+    public function testResetPasswordReturnsTrueWhenConfirmationEmailThrowsNonTransportException(): void
+    {
+        $user = $this->createStub(User::class);
+        $user->method('getEmail')->willReturn('user@example.com');
+        $user->method('getUsername')->willReturn('testuser');
+
+        $resetRequest = $this->createMock(PasswordResetRequest::class);
+        $resetRequest->method('getUser')->willReturn($user);
+        $resetRequest->expects($this->once())->method('setIsUsed')->with(true);
+
+        $resetRequestRepository = $this->createMock(PasswordResetRequestRepository::class);
+        $resetRequestRepository->method('findValidByToken')->willReturn($resetRequest);
+        $resetRequestRepository->expects($this->once())->method('deleteForUser')->with($user);
+
+        $passwordHasher = $this->createStub(UserPasswordHasherInterface::class);
+        $passwordHasher->method('hashPassword')->with($user, 'newpass123')->willReturn('hashed_password');
+
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects($this->once())->method('flush');
+
+        $emailService = $this->createMock(EmailService::class);
+        $emailService->expects($this->once())->method('sendPasswordChangedEmail')
+            ->willThrowException(new \RuntimeException('Twig failure'));
+
+        $service = $this->createService(
+            entityManager: $entityManager,
+            resetRequestRepository: $resetRequestRepository,
+            emailService: $emailService,
+            passwordHasher: $passwordHasher,
+        );
+
+        $this->assertTrue($service->resetPassword('valid-token', 'newpass123'));
     }
 
     public function testValidateTokenDelegatesToRepository(): void

@@ -109,6 +109,14 @@ class CredentialEncryptionServiceTest extends TestCase
         $this->assertSame('not-encrypted', $this->service->decryptSafe('not-encrypted'));
     }
 
+    public function testDecryptSafeReturnsOriginalForBase64LikeLegacyPlaintext(): void
+    {
+        $base64LikePlaintext = base64_encode(str_repeat('A', 40));
+
+        $this->assertTrue($this->service->isEncrypted($base64LikePlaintext));
+        $this->assertSame($base64LikePlaintext, $this->service->decryptSafe($base64LikePlaintext));
+    }
+
     public function testDifferentAppSecretsProduceDifferentCiphertexts(): void
     {
         $logger = $this->createMock(LoggerInterface::class);

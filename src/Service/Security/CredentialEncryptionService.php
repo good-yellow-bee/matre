@@ -150,13 +150,16 @@ class CredentialEncryptionService
 
     /**
      * Decrypt a value, returning original if not encrypted (for legacy migration).
-     *
-     * @throws \RuntimeException if value appears encrypted but decryption fails
      */
     public function decryptSafe(string $value): string
     {
         if ('' === $value) {
             return '';
+        }
+
+        $looksEncrypted = $this->isEncrypted($value);
+        if (!$looksEncrypted) {
+            return $value;
         }
 
         try {
@@ -165,19 +168,11 @@ class CredentialEncryptionService
             $this->logger->error('Credential decryption failed', [
                 'error' => $e->getMessage(),
                 'valueLength' => strlen($value),
-                'looksEncrypted' => $this->isEncrypted($value),
+                'looksEncrypted' => $looksEncrypted,
                 'errorId' => ErrorIds::CREDENTIAL_DECRYPTION_FAILED,
             ]);
 
-            // If value looks encrypted but failed to decrypt, it's corrupted or tampered
-            if ($this->isEncrypted($value)) {
-                $this->logger->critical('Encrypted credential is corrupted or tampered', [
-                    'errorId' => ErrorIds::CREDENTIAL_TAMPERING_DETECTED,
-                ]);
-                throw new \RuntimeException('Encrypted credential is corrupted or tampered', 0, $e);
-            }
-
-            // Value doesn't look encrypted - assume legacy plaintext
+            // isEncrypted() is heuristic; fail open for legacy plaintext compatibility.
             return $value;
         }
     }

@@ -93,10 +93,11 @@ class PasswordResetService
                 $token,
                 $resetUrl,
             );
-        } catch (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $e) {
+        } catch (\Throwable $e) {
             $this->logger->error('Failed to send password reset email', [
                 'email' => $user->getEmail(),
                 'error' => $e->getMessage(),
+                'exceptionClass' => $e::class,
                 'errorId' => ErrorIds::PASSWORD_RESET_EMAIL_FAILED,
             ]);
 
@@ -155,10 +156,11 @@ class PasswordResetService
                 $user->getEmail(),
                 $user->getUsername(),
             );
-        } catch (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $e) {
+        } catch (\Throwable $e) {
             $this->logger->error('Failed to send password changed email', [
                 'email' => $user->getEmail(),
                 'error' => $e->getMessage(),
+                'exceptionClass' => $e::class,
                 'errorId' => ErrorIds::PASSWORD_CHANGED_EMAIL_FAILED,
             ]);
             // Password was still changed successfully
