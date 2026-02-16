@@ -16,7 +16,7 @@ class PaginatorTest extends TestCase
 {
     public function testConstructorSetsDefaults(): void
     {
-        $qb = $this->createMock(QueryBuilder::class);
+        $qb = $this->createStub(QueryBuilder::class);
         $paginator = new Paginator($qb);
 
         $this->assertEquals(1, $paginator->getCurrentPage());
@@ -25,7 +25,7 @@ class PaginatorTest extends TestCase
 
     public function testConstructorWithCustomValues(): void
     {
-        $qb = $this->createMock(QueryBuilder::class);
+        $qb = $this->createStub(QueryBuilder::class);
         $paginator = new Paginator($qb, 3, 15);
 
         $this->assertEquals(3, $paginator->getCurrentPage());
@@ -34,7 +34,7 @@ class PaginatorTest extends TestCase
 
     public function testConstructorNormalizesInvalidPage(): void
     {
-        $qb = $this->createMock(QueryBuilder::class);
+        $qb = $this->createStub(QueryBuilder::class);
         $paginator = new Paginator($qb, -1, 20);
 
         $this->assertEquals(1, $paginator->getCurrentPage());
@@ -82,8 +82,8 @@ class PaginatorTest extends TestCase
 
     public function testGetTotalItems(): void
     {
-        $qb = $this->createMock(QueryBuilder::class);
-        $doctrinePaginator = $this->createMock(DoctrinePaginator::class);
+        $qb = $this->createStub(QueryBuilder::class);
+        $doctrinePaginator = $this->createStub(DoctrinePaginator::class);
         $doctrinePaginator->method('count')->willReturn(100);
 
         $paginator = new Paginator($qb);
@@ -94,8 +94,8 @@ class PaginatorTest extends TestCase
 
     public function testGetTotalPagesExactDivision(): void
     {
-        $qb = $this->createMock(QueryBuilder::class);
-        $doctrinePaginator = $this->createMock(DoctrinePaginator::class);
+        $qb = $this->createStub(QueryBuilder::class);
+        $doctrinePaginator = $this->createStub(DoctrinePaginator::class);
         $doctrinePaginator->method('count')->willReturn(100);
 
         $paginator = new Paginator($qb, 1, 20);
@@ -106,8 +106,8 @@ class PaginatorTest extends TestCase
 
     public function testGetTotalPagesWithRemainder(): void
     {
-        $qb = $this->createMock(QueryBuilder::class);
-        $doctrinePaginator = $this->createMock(DoctrinePaginator::class);
+        $qb = $this->createStub(QueryBuilder::class);
+        $doctrinePaginator = $this->createStub(DoctrinePaginator::class);
         $doctrinePaginator->method('count')->willReturn(105);
 
         $paginator = new Paginator($qb, 1, 20);
@@ -118,7 +118,7 @@ class PaginatorTest extends TestCase
 
     public function testHasPreviousPageOnFirstPage(): void
     {
-        $qb = $this->createMock(QueryBuilder::class);
+        $qb = $this->createStub(QueryBuilder::class);
         $paginator = new Paginator($qb, 1, 20);
 
         $this->assertFalse($paginator->hasPreviousPage());
@@ -126,7 +126,7 @@ class PaginatorTest extends TestCase
 
     public function testHasPreviousPageOnSecondPage(): void
     {
-        $qb = $this->createMock(QueryBuilder::class);
+        $qb = $this->createStub(QueryBuilder::class);
         $paginator = new Paginator($qb, 2, 20);
 
         $this->assertTrue($paginator->hasPreviousPage());
@@ -134,8 +134,8 @@ class PaginatorTest extends TestCase
 
     public function testHasNextPageOnLastPage(): void
     {
-        $qb = $this->createMock(QueryBuilder::class);
-        $doctrinePaginator = $this->createMock(DoctrinePaginator::class);
+        $qb = $this->createStub(QueryBuilder::class);
+        $doctrinePaginator = $this->createStub(DoctrinePaginator::class);
         $doctrinePaginator->method('count')->willReturn(100);
 
         $paginator = new Paginator($qb, 5, 20);
@@ -145,8 +145,8 @@ class PaginatorTest extends TestCase
 
     public function testHasNextPageNotOnLastPage(): void
     {
-        $qb = $this->createMock(QueryBuilder::class);
-        $doctrinePaginator = $this->createMock(DoctrinePaginator::class);
+        $qb = $this->createStub(QueryBuilder::class);
+        $doctrinePaginator = $this->createStub(DoctrinePaginator::class);
         $doctrinePaginator->method('count')->willReturn(100);
 
         $paginator = new Paginator($qb, 3, 20);
@@ -156,7 +156,7 @@ class PaginatorTest extends TestCase
 
     public function testGetPreviousPage(): void
     {
-        $qb = $this->createMock(QueryBuilder::class);
+        $qb = $this->createStub(QueryBuilder::class);
         $paginator = new Paginator($qb, 3, 20);
 
         $this->assertEquals(2, $paginator->getPreviousPage());
@@ -164,7 +164,7 @@ class PaginatorTest extends TestCase
 
     public function testGetPreviousPageOnFirstPage(): void
     {
-        $qb = $this->createMock(QueryBuilder::class);
+        $qb = $this->createStub(QueryBuilder::class);
         $paginator = new Paginator($qb, 1, 20);
 
         $this->assertEquals(1, $paginator->getPreviousPage());
@@ -172,7 +172,7 @@ class PaginatorTest extends TestCase
 
     public function testGetNextPage(): void
     {
-        $qb = $this->createMock(QueryBuilder::class);
+        $qb = $this->createStub(QueryBuilder::class);
         $paginator = new Paginator($qb, 3, 20);
 
         $this->assertEquals(4, $paginator->getNextPage());
@@ -180,8 +180,8 @@ class PaginatorTest extends TestCase
 
     public function testGetPaginationData(): void
     {
-        $qb = $this->createMock(QueryBuilder::class);
-        $doctrinePaginator = $this->createMock(DoctrinePaginator::class);
+        $qb = $this->createStub(QueryBuilder::class);
+        $doctrinePaginator = $this->createStub(DoctrinePaginator::class);
         $doctrinePaginator->method('count')->willReturn(100);
 
         $paginator = new Paginator($qb, 3, 20);
@@ -200,7 +200,7 @@ class PaginatorTest extends TestCase
 
     public function testStaticCreateMethod(): void
     {
-        $qb = $this->createMock(QueryBuilder::class);
+        $qb = $this->createStub(QueryBuilder::class);
         $paginator = Paginator::create($qb, 2, 15);
 
         $this->assertInstanceOf(Paginator::class, $paginator);

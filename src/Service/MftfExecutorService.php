@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Constants\ErrorIds;
 use App\Entity\TestResult;
 use App\Entity\TestRun;
 use App\Repository\GlobalEnvVariableRepository;
@@ -88,6 +89,9 @@ class MftfExecutorService
 
         // Stream output to file with cancellation and lock refresh support
         $handle = fopen($outputFile, 'w');
+        if (false === $handle) {
+            throw new \RuntimeException(sprintf('Failed to open output file for writing: %s', $outputFile));
+        }
         $process->start(function ($type, $buffer) use ($handle) {
             fwrite($handle, $buffer);
         });
@@ -190,7 +194,7 @@ class MftfExecutorService
         ]);
 
         // Use full testName for unique file (avoid collisions)
-        $safeFileName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $testName);
+        $safeFileName = $this->shellEscapeService->sanitizeFilename($testName);
         $outputFile = sprintf(
             '%s/var/test-output/run-%d/%s.log',
             $this->projectDir,
@@ -222,6 +226,9 @@ class MftfExecutorService
 
         // Stream to per-test file with cancellation and lock refresh support
         $handle = fopen($outputFile, 'w');
+        if (false === $handle) {
+            throw new \RuntimeException(sprintf('Failed to open output file for writing: %s', $outputFile));
+        }
         $process->start(function ($type, $buffer) use ($handle) {
             fwrite($handle, $buffer);
         });
@@ -436,11 +443,14 @@ class MftfExecutorService
                     // SECURITY: Validate variable name and build safe env file line
                     $globalContent .= $this->shellEscapeService->buildEnvFileLine($key, $value) . "\n";
                 } catch (\InvalidArgumentException $e) {
-                    // Log and skip invalid variables rather than failing the entire run
-                    $this->logger->warning('Skipping invalid environment variable', [
+                    $this->logger->error('Invalid environment variable detected', [
                         'key' => $key,
                         'error' => $e->getMessage(),
+                        'runId' => $run->getId(),
+                        'errorId' => ErrorIds::MFTF_ENV_VAR_INVALID,
                     ]);
+
+                    throw new \RuntimeException(sprintf('Test run aborted: invalid environment variable "%s": %s', $key, $e->getMessage()));
                 }
             }
             $parts[] = sprintf('echo %s > %s', escapeshellarg($globalContent), escapeshellarg($mftfEnvFile));
@@ -790,6 +800,9 @@ class MftfExecutorService
 
         // Read last N bytes for large files
         $handle = fopen($path, 'r');
+        if (false === $handle) {
+            return '';
+        }
         fseek($handle, -$maxBytes, SEEK_END);
         $content = '... [truncated - showing last ' . round($maxBytes / 1024) . "KB]\n" . fread($handle, $maxBytes);
         fclose($handle);

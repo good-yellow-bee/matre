@@ -45,7 +45,7 @@ class TestRunTest extends TestCase
     public function testSuiteGetterAndSetter(): void
     {
         $run = new TestRun();
-        $suite = $this->createMock(TestSuite::class);
+        $suite = $this->createStub(TestSuite::class);
 
         $run->setSuite($suite);
         $this->assertSame($suite, $run->getSuite());
@@ -295,13 +295,13 @@ class TestRunTest extends TestCase
     {
         $run = new TestRun();
 
-        $passedResult = $this->createMock(TestResult::class);
+        $passedResult = $this->createStub(TestResult::class);
         $passedResult->method('getStatus')->willReturn('passed');
 
-        $failedResult = $this->createMock(TestResult::class);
+        $failedResult = $this->createStub(TestResult::class);
         $failedResult->method('getStatus')->willReturn('failed');
 
-        $skippedResult = $this->createMock(TestResult::class);
+        $skippedResult = $this->createStub(TestResult::class);
         $skippedResult->method('getStatus')->willReturn('skipped');
 
         // Use reflection to add results without calling setTestRun
@@ -403,7 +403,7 @@ class TestRunTest extends TestCase
 
     private function createMockEnvironment(): TestEnvironment
     {
-        $env = $this->createMock(TestEnvironment::class);
+        $env = $this->createStub(TestEnvironment::class);
         $env->method('getName')->willReturn('TestEnv');
 
         return $env;

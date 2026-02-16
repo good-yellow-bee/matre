@@ -154,7 +154,8 @@ class ShellEscapeService
             throw new \InvalidArgumentException('Invalid filename');
         }
 
-        return $basename;
+        // Replace non-alphanumeric chars (except -, _, .) with underscore
+        return preg_replace('/[^a-zA-Z0-9_.\-]/', '_', $basename);
     }
 
     /**

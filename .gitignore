@@ -58,6 +58,13 @@ outdated-deps.json
 security-report.json
 ###< Build/Reports ###
 
+###> Playwright ###
+/test-results/
+/playwright-report/
+/blob-report/
+tests/e2e/.auth/admin.json
+###< Playwright ###
+
 ###> Planning/Specs ###
 /docs/specs/
 ###< Planning/Specs ###

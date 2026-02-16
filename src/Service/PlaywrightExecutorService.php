@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Constants\ErrorIds;
 use App\Entity\TestResult;
 use App\Entity\TestRun;
 use App\Repository\GlobalEnvVariableRepository;
@@ -61,6 +62,9 @@ class PlaywrightExecutorService
 
         // Stream output to file and optionally to callback
         $handle = fopen($outputFile, 'w');
+        if (false === $handle) {
+            throw new \RuntimeException(sprintf('Failed to open output file for writing: %s', $outputFile));
+        }
         $process->start(function ($type, $buffer) use ($handle, $outputCallback) {
             fwrite($handle, $buffer);
             if (null !== $outputCallback) {
@@ -138,16 +142,19 @@ class PlaywrightExecutorService
         // Layer 1: Export global + environment-specific variables from database
         // SECURITY: Validate and escape all variables to prevent command injection
         $env = $run->getEnvironment();
-        $globalVars = $this->globalEnvVariableRepository->getAllAsKeyValue($env->getName());
+        $globalVars = $this->globalEnvVariableRepository->getAllAsKeyValue($env->getCode());
         foreach ($globalVars as $key => $value) {
             try {
                 $parts[] = $this->shellEscapeService->buildExportStatement($key, $value);
             } catch (\InvalidArgumentException $e) {
-                // Log and skip invalid variables rather than failing the entire run
-                $this->logger->warning('Skipping invalid environment variable', [
+                $this->logger->error('Invalid environment variable detected', [
                     'key' => $key,
                     'error' => $e->getMessage(),
+                    'runId' => $run->getId(),
+                    'errorId' => ErrorIds::PLAYWRIGHT_ENV_VAR_INVALID,
                 ]);
+
+                throw new \RuntimeException(sprintf('Test run aborted: invalid environment variable "%s": %s', $key, $e->getMessage()));
             }
         }
 
@@ -250,6 +257,9 @@ class PlaywrightExecutorService
 
         // Read last N bytes for large files
         $handle = fopen($path, 'r');
+        if (false === $handle) {
+            return '';
+        }
         fseek($handle, -$maxBytes, SEEK_END);
         $content = '... [truncated - showing last ' . round($maxBytes / 1024) . "KB]\n" . fread($handle, $maxBytes);
         fclose($handle);

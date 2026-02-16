@@ -21,20 +21,25 @@ use Psr\Log\LoggerInterface;
  */
 class PlaywrightExecutorServiceTest extends TestCase
 {
-    private MockObject&LoggerInterface $logger;
+    private LoggerInterface $logger;
 
-    private MockObject&GlobalEnvVariableRepository $envRepository;
+    private GlobalEnvVariableRepository $envRepository;
 
-    private MockObject&ShellEscapeService $shellEscapeService;
+    private ShellEscapeService $shellEscapeService;
 
     private PlaywrightExecutorService $service;
 
     protected function setUp(): void
     {
-        $this->logger = $this->createMock(LoggerInterface::class);
-        $this->envRepository = $this->createMock(GlobalEnvVariableRepository::class);
-        $this->shellEscapeService = $this->createMock(ShellEscapeService::class);
+        $this->logger = $this->createStub(LoggerInterface::class);
+        $this->envRepository = $this->createStub(GlobalEnvVariableRepository::class);
+        $this->shellEscapeService = $this->createStub(ShellEscapeService::class);
 
+        $this->rebuildService();
+    }
+
+    private function rebuildService(): void
+    {
         $this->service = new PlaywrightExecutorService(
             $this->logger,
             $this->envRepository,
@@ -85,12 +90,13 @@ class PlaywrightExecutorServiceTest extends TestCase
     public function testBuildCommandStartsWithCdToModules(): void
     {
         $run = $this->createTestRun();
+        [$envRepo, $shellEscape] = $this->setupBuildCommandMocks();
 
-        $this->envRepository->expects($this->once())
+        $envRepo->expects($this->once())
             ->method('getAllAsKeyValue')
             ->willReturn([]);
 
-        $this->shellEscapeService->expects($this->once())
+        $shellEscape->expects($this->once())
             ->method('buildExportStatement')
             ->willReturnCallback(fn ($k, $v) => "export {$k}=\"{$v}\"");
 
@@ -102,12 +108,13 @@ class PlaywrightExecutorServiceTest extends TestCase
     public function testBuildCommandIncludesFilter(): void
     {
         $run = $this->createTestRun('login test');
+        [$envRepo, $shellEscape] = $this->setupBuildCommandMocks();
 
-        $this->envRepository->expects($this->once())
+        $envRepo->expects($this->once())
             ->method('getAllAsKeyValue')
             ->willReturn([]);
 
-        $this->shellEscapeService->expects($this->atLeastOnce())
+        $shellEscape->expects($this->atLeastOnce())
             ->method('buildExportStatement')
             ->willReturnCallback(fn ($k, $v) => "export {$k}=\"{$v}\"");
 
@@ -120,12 +127,13 @@ class PlaywrightExecutorServiceTest extends TestCase
     public function testBuildCommandWithoutFilter(): void
     {
         $run = $this->createTestRun(null);
+        [$envRepo, $shellEscape] = $this->setupBuildCommandMocks();
 
-        $this->envRepository->expects($this->once())
+        $envRepo->expects($this->once())
             ->method('getAllAsKeyValue')
             ->willReturn([]);
 
-        $this->shellEscapeService->expects($this->atLeastOnce())
+        $shellEscape->expects($this->atLeastOnce())
             ->method('buildExportStatement')
             ->willReturnCallback(fn ($k, $v) => "export {$k}=\"{$v}\"");
 
@@ -137,12 +145,13 @@ class PlaywrightExecutorServiceTest extends TestCase
     public function testBuildCommandIncludesAllureReporter(): void
     {
         $run = $this->createTestRun();
+        [$envRepo, $shellEscape] = $this->setupBuildCommandMocks();
 
-        $this->envRepository->expects($this->once())
+        $envRepo->expects($this->once())
             ->method('getAllAsKeyValue')
             ->willReturn([]);
 
-        $this->shellEscapeService->expects($this->atLeastOnce())
+        $shellEscape->expects($this->atLeastOnce())
             ->method('buildExportStatement')
             ->willReturnCallback(fn ($k, $v) => "export {$k}=\"{$v}\"");
 
@@ -156,13 +165,14 @@ class PlaywrightExecutorServiceTest extends TestCase
     {
         $env = $this->createTestEnvironment('prod', 'https://prod.example.com');
         $run = $this->createTestRun('test', 1, $env);
+        [$envRepo, $shellEscape] = $this->setupBuildCommandMocks();
 
-        $this->envRepository->expects($this->once())
+        $envRepo->expects($this->once())
             ->method('getAllAsKeyValue')
             ->willReturn([]);
 
         // Note: TestEnvironment adds trailing slash to baseUrl
-        $this->shellEscapeService->expects($this->once())
+        $shellEscape->expects($this->once())
             ->method('buildExportStatement')
             ->with('BASE_URL', $this->stringContains('prod.example.com'))
             ->willReturn('export BASE_URL="https://prod.example.com/"');
@@ -178,12 +188,13 @@ class PlaywrightExecutorServiceTest extends TestCase
         $env->setAdminUsername('admin_user');
         $env->setAdminPassword('admin_pass');
         $run = $this->createTestRun('test', 1, $env);
+        [$envRepo, $shellEscape] = $this->setupBuildCommandMocks();
 
-        $this->envRepository->expects($this->once())
+        $envRepo->expects($this->once())
             ->method('getAllAsKeyValue')
             ->willReturn([]);
 
-        $this->shellEscapeService->expects($this->exactly(3))
+        $shellEscape->expects($this->exactly(3))
             ->method('buildExportStatement')
             ->willReturnCallback(fn ($k, $v) => "export {$k}=\"{$v}\"");
 
@@ -196,8 +207,9 @@ class PlaywrightExecutorServiceTest extends TestCase
     public function testBuildCommandIncludesGlobalEnvVariables(): void
     {
         $run = $this->createTestRun();
+        [$envRepo, $shellEscape] = $this->setupBuildCommandMocks();
 
-        $this->envRepository->expects($this->once())
+        $envRepo->expects($this->once())
             ->method('getAllAsKeyValue')
             ->with('stage-us')
             ->willReturn([
@@ -205,7 +217,7 @@ class PlaywrightExecutorServiceTest extends TestCase
                 'ANOTHER_VAR' => 'another_value',
             ]);
 
-        $this->shellEscapeService->expects($this->exactly(3))
+        $shellEscape->expects($this->exactly(3))
             ->method('buildExportStatement')
             ->willReturnCallback(fn ($k, $v) => "export {$k}=\"{$v}\"");
 
@@ -218,15 +230,20 @@ class PlaywrightExecutorServiceTest extends TestCase
     public function testBuildCommandSkipsInvalidVariables(): void
     {
         $run = $this->createTestRun();
+        [$envRepo, $shellEscape] = $this->setupBuildCommandMocks();
 
-        $this->envRepository->expects($this->once())
+        $logger = $this->createMock(LoggerInterface::class);
+        $this->logger = $logger;
+        $this->rebuildService();
+
+        $envRepo->expects($this->once())
             ->method('getAllAsKeyValue')
             ->willReturn([
                 'VALID_VAR' => 'value',
                 'INVALID_VAR' => 'bad',
             ]);
 
-        $this->shellEscapeService->expects($this->atLeast(2))
+        $shellEscape->expects($this->atLeast(2))
             ->method('buildExportStatement')
             ->willReturnCallback(function ($key, $value) {
                 if ('INVALID_VAR' === $key) {
@@ -236,13 +253,15 @@ class PlaywrightExecutorServiceTest extends TestCase
                 return "export {$key}=\"{$value}\"";
             });
 
-        $this->logger->expects($this->once())
-            ->method('warning')
-            ->with('Skipping invalid environment variable', $this->anything());
+        $logger->expects($this->once())
+            ->method('error')
+            ->with('Invalid environment variable detected', $this->anything());
 
-        $command = $this->service->buildCommand($run);
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Test run aborted');
+        $this->expectExceptionMessage('INVALID_VAR');
 
-        $this->assertStringContainsString('VALID_VAR', $command);
+        $this->service->buildCommand($run);
     }
 
     // =====================
@@ -367,12 +386,27 @@ class PlaywrightExecutorServiceTest extends TestCase
         );
     }
 
+    /**
+     * @return array{0: MockObject&GlobalEnvVariableRepository, 1: MockObject&ShellEscapeService}
+     */
+    private function setupBuildCommandMocks(): array
+    {
+        $envRepo = $this->createMock(GlobalEnvVariableRepository::class);
+        $shellEscape = $this->createMock(ShellEscapeService::class);
+        $this->envRepository = $envRepo;
+        $this->shellEscapeService = $shellEscape;
+        $this->rebuildService();
+
+        return [$envRepo, $shellEscape];
+    }
+
     private function createTestEnvironment(
         string $name = 'stage-us',
         string $baseUrl = 'https://stage.example.com',
     ): TestEnvironment {
         $env = new TestEnvironment();
         $env->setName($name);
+        $env->setCode($name);
         $env->setBaseUrl($baseUrl);
 
         return $env;

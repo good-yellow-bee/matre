@@ -32,60 +32,48 @@ use Symfony\Component\Lock\SharedLockInterface;
  */
 class TestRunnerServiceTest extends TestCase
 {
-    private MockObject&EntityManagerInterface $entityManager;
+    private EntityManagerInterface $entityManager;
 
-    private MockObject&TestRunRepository $testRunRepository;
+    private TestRunRepository $testRunRepository;
 
-    private MockObject&ModuleCloneService $moduleCloneService;
+    private ModuleCloneService $moduleCloneService;
 
-    private MockObject&MftfExecutorService $mftfExecutor;
+    private MftfExecutorService $mftfExecutor;
 
-    private MockObject&PlaywrightExecutorService $playwrightExecutor;
+    private PlaywrightExecutorService $playwrightExecutor;
 
-    private MockObject&AllureReportService $allureReportService;
+    private AllureReportService $allureReportService;
 
-    private MockObject&ArtifactCollectorService $artifactCollector;
+    private ArtifactCollectorService $artifactCollector;
 
-    private MockObject&AllureStepParserService $allureStepParser;
+    private AllureStepParserService $allureStepParser;
 
-    private MockObject&LoggerInterface $logger;
+    private LoggerInterface $logger;
 
-    private MockObject&TestDiscoveryService $testDiscovery;
+    private TestDiscoveryService $testDiscovery;
 
-    private MockObject&LockFactory $lockFactory;
+    private LockFactory $lockFactory;
 
-    private MockObject&SharedLockInterface $lock;
+    private SharedLockInterface $lock;
 
     private TestRunnerService $service;
 
     protected function setUp(): void
     {
-        $this->entityManager = $this->createMock(EntityManagerInterface::class);
-        $this->testRunRepository = $this->createMock(TestRunRepository::class);
-        $this->moduleCloneService = $this->createMock(ModuleCloneService::class);
-        $this->mftfExecutor = $this->createMock(MftfExecutorService::class);
-        $this->playwrightExecutor = $this->createMock(PlaywrightExecutorService::class);
-        $this->allureReportService = $this->createMock(AllureReportService::class);
-        $this->artifactCollector = $this->createMock(ArtifactCollectorService::class);
-        $this->allureStepParser = $this->createMock(AllureStepParserService::class);
-        $this->logger = $this->createMock(LoggerInterface::class);
-        $this->testDiscovery = $this->createMock(TestDiscoveryService::class);
-        $this->lockFactory = $this->createMock(LockFactory::class);
-        $this->lock = $this->createMock(SharedLockInterface::class);
+        $this->entityManager = $this->createStub(EntityManagerInterface::class);
+        $this->testRunRepository = $this->createStub(TestRunRepository::class);
+        $this->moduleCloneService = $this->createStub(ModuleCloneService::class);
+        $this->mftfExecutor = $this->createStub(MftfExecutorService::class);
+        $this->playwrightExecutor = $this->createStub(PlaywrightExecutorService::class);
+        $this->allureReportService = $this->createStub(AllureReportService::class);
+        $this->artifactCollector = $this->createStub(ArtifactCollectorService::class);
+        $this->allureStepParser = $this->createStub(AllureStepParserService::class);
+        $this->logger = $this->createStub(LoggerInterface::class);
+        $this->testDiscovery = $this->createStub(TestDiscoveryService::class);
+        $this->lockFactory = $this->createStub(LockFactory::class);
+        $this->lock = $this->createStub(SharedLockInterface::class);
 
-        $this->service = new TestRunnerService(
-            $this->entityManager,
-            $this->testRunRepository,
-            $this->moduleCloneService,
-            $this->mftfExecutor,
-            $this->playwrightExecutor,
-            $this->allureReportService,
-            $this->artifactCollector,
-            $this->allureStepParser,
-            $this->logger,
-            $this->testDiscovery,
-            $this->lockFactory,
-        );
+        $this->rebuildService();
     }
 
     // =====================
@@ -95,12 +83,13 @@ class TestRunnerServiceTest extends TestCase
     public function testCreateRunCreatesNewTestRun(): void
     {
         $env = $this->createTestEnvironment();
+        $em = $this->mockEntityManager();
 
-        $this->entityManager->expects($this->once())
+        $em->expects($this->once())
             ->method('persist')
             ->with($this->isInstanceOf(TestRun::class));
 
-        $this->entityManager->expects($this->once())
+        $em->expects($this->once())
             ->method('flush');
 
         $result = $this->service->createRun($env, TestRun::TYPE_MFTF);
@@ -115,9 +104,10 @@ class TestRunnerServiceTest extends TestCase
     public function testCreateRunWithTestFilter(): void
     {
         $env = $this->createTestEnvironment();
+        $em = $this->mockEntityManager();
 
-        $this->entityManager->expects($this->once())->method('persist');
-        $this->entityManager->expects($this->once())->method('flush');
+        $em->expects($this->once())->method('persist');
+        $em->expects($this->once())->method('flush');
 
         $result = $this->service->createRun($env, TestRun::TYPE_MFTF, 'AdminLoginTest');
 
@@ -128,9 +118,10 @@ class TestRunnerServiceTest extends TestCase
     {
         $env = $this->createTestEnvironment();
         $suite = $this->createTestSuite('Smoke Tests');
+        $em = $this->mockEntityManager();
 
-        $this->entityManager->expects($this->once())->method('persist');
-        $this->entityManager->expects($this->once())->method('flush');
+        $em->expects($this->once())->method('persist');
+        $em->expects($this->once())->method('flush');
 
         $result = $this->service->createRun($env, TestRun::TYPE_MFTF, null, $suite);
 
@@ -140,9 +131,10 @@ class TestRunnerServiceTest extends TestCase
     public function testCreateRunWithSchedulerTrigger(): void
     {
         $env = $this->createTestEnvironment();
+        $em = $this->mockEntityManager();
 
-        $this->entityManager->expects($this->once())->method('persist');
-        $this->entityManager->expects($this->once())->method('flush');
+        $em->expects($this->once())->method('persist');
+        $em->expects($this->once())->method('flush');
 
         $result = $this->service->createRun(
             $env,
@@ -158,11 +150,13 @@ class TestRunnerServiceTest extends TestCase
     public function testCreateRunLogsCreation(): void
     {
         $env = $this->createTestEnvironment();
+        $em = $this->mockEntityManager();
+        $logger = $this->mockLogger();
 
-        $this->entityManager->expects($this->once())->method('persist');
-        $this->entityManager->expects($this->once())->method('flush');
+        $em->expects($this->once())->method('persist');
+        $em->expects($this->once())->method('flush');
 
-        $this->logger->expects($this->once())
+        $logger->expects($this->once())
             ->method('info')
             ->with('Test run created', $this->callback(function ($context) {
                 return isset($context['type']) && TestRun::TYPE_MFTF === $context['type']
@@ -179,12 +173,14 @@ class TestRunnerServiceTest extends TestCase
     public function testPrepareRunPreparesModule(): void
     {
         $run = $this->createTestRun();
+        $em = $this->mockEntityManager();
+        $clone = $this->mockModuleCloneService();
 
-        $this->moduleCloneService->expects($this->once())
+        $clone->expects($this->once())
             ->method('prepareModule')
             ->willReturn('/var/test-modules/current');
 
-        $this->entityManager->expects($this->atLeastOnce())->method('flush');
+        $em->expects($this->atLeastOnce())->method('flush');
 
         $this->service->prepareRun($run);
 
@@ -195,14 +191,16 @@ class TestRunnerServiceTest extends TestCase
     {
         $run = $this->createTestRun();
         $statusTransitions = [];
+        $em = $this->mockEntityManager();
+        $clone = $this->mockModuleCloneService();
 
-        $this->entityManager->expects($this->atLeastOnce())
+        $em->expects($this->atLeastOnce())
             ->method('flush')
             ->willReturnCallback(function () use ($run, &$statusTransitions) {
                 $statusTransitions[] = $run->getStatus();
             });
 
-        $this->moduleCloneService->expects($this->once())
+        $clone->expects($this->once())
             ->method('prepareModule')
             ->willReturn('/var/test-modules/current');
 
@@ -215,12 +213,14 @@ class TestRunnerServiceTest extends TestCase
     public function testPrepareRunMarksFailedOnException(): void
     {
         $run = $this->createTestRun();
+        $em = $this->mockEntityManager();
+        $clone = $this->mockModuleCloneService();
 
-        $this->moduleCloneService->expects($this->once())
+        $clone->expects($this->once())
             ->method('prepareModule')
             ->willThrowException(new \RuntimeException('Git clone failed'));
 
-        $this->entityManager->expects($this->atLeastOnce())->method('flush');
+        $em->expects($this->atLeastOnce())->method('flush');
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Git clone failed');
@@ -238,12 +238,14 @@ class TestRunnerServiceTest extends TestCase
     public function testPrepareRunLogsError(): void
     {
         $run = $this->createTestRun();
+        $clone = $this->mockModuleCloneService();
+        $logger = $this->mockLogger();
 
-        $this->moduleCloneService->expects($this->once())
+        $clone->expects($this->once())
             ->method('prepareModule')
             ->willThrowException(new \RuntimeException('Clone failed'));
 
-        $this->logger->expects($this->atLeastOnce())
+        $logger->expects($this->atLeastOnce())
             ->method($this->logicalOr($this->equalTo('info'), $this->equalTo('error')));
 
         $this->expectException(\RuntimeException::class);
@@ -257,35 +259,39 @@ class TestRunnerServiceTest extends TestCase
     public function testExecuteRunMftfOnlySuccess(): void
     {
         $run = $this->createTestRun(TestRun::TYPE_MFTF);
+        $mftf = $this->mockMftfExecutor();
+        $pw = $this->mockPlaywrightExecutor();
+        $artifacts = $this->mockArtifactCollector();
+        $em = $this->mockEntityManager();
         $this->setupLockMock();
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getOutputFilePath')
             ->with($run)
             ->willReturn('/var/test-output/run-1.txt');
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('execute')
-            ->with($run, $this->isType('callable'))
+            ->with($run, $this->isCallable())
             ->willReturn(['output' => 'MFTF test output', 'exitCode' => 0]);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('parseResults')
             ->with($run, 'MFTF test output')
             ->willReturn([]);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getAllureResultsPath')
             ->willReturn('/var/allure-results');
 
-        $this->playwrightExecutor->expects($this->never())->method('execute');
+        $pw->expects($this->never())->method('execute');
 
-        $this->artifactCollector->expects($this->once())
+        $artifacts->expects($this->once())
             ->method('collectArtifacts')
             ->with($run)
             ->willReturn(['screenshots' => [], 'html' => []]);
 
-        $this->entityManager->expects($this->atLeast(2))->method('flush');
+        $em->expects($this->atLeast(2))->method('flush');
 
         $this->service->executeRun($run);
 
@@ -299,6 +305,9 @@ class TestRunnerServiceTest extends TestCase
     public function testExecuteRunMftfWithResults(): void
     {
         $run = $this->createTestRun(TestRun::TYPE_MFTF);
+        $mftf = $this->mockMftfExecutor();
+        $artifacts = $this->mockArtifactCollector();
+        $em = $this->mockEntityManager();
         $this->setupLockMock();
 
         $result1 = new TestResult();
@@ -309,27 +318,27 @@ class TestRunnerServiceTest extends TestCase
         $result2->setTestName('Test2');
         $result2->setStatus(TestResult::STATUS_PASSED);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getOutputFilePath')
             ->willReturn('/var/output.txt');
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('execute')
             ->willReturn(['output' => 'test output', 'exitCode' => 0]);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('parseResults')
             ->willReturn([$result1, $result2]);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getAllureResultsPath')
             ->willReturn('/var/allure');
 
-        $this->entityManager->expects($this->exactly(2))
+        $em->expects($this->exactly(2))
             ->method('persist')
             ->with($this->isInstanceOf(TestResult::class));
 
-        $this->artifactCollector->expects($this->once())
+        $artifacts->expects($this->once())
             ->method('collectArtifacts')
             ->willReturn(['screenshots' => [], 'html' => []]);
 
@@ -341,6 +350,8 @@ class TestRunnerServiceTest extends TestCase
     public function testExecuteRunMftfWithFailedTests(): void
     {
         $run = $this->createTestRun(TestRun::TYPE_MFTF);
+        $mftf = $this->mockMftfExecutor();
+        $artifacts = $this->mockArtifactCollector();
         $this->setupLockMock();
 
         $passedResult = new TestResult();
@@ -351,23 +362,23 @@ class TestRunnerServiceTest extends TestCase
         $failedResult->setTestName('FailedTest');
         $failedResult->setStatus(TestResult::STATUS_FAILED);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getOutputFilePath')
             ->willReturn('/var/output.txt');
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('execute')
             ->willReturn(['output' => 'test output', 'exitCode' => 1]);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('parseResults')
             ->willReturn([$passedResult, $failedResult]);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getAllureResultsPath')
             ->willReturn('/var/allure');
 
-        $this->artifactCollector->expects($this->once())
+        $artifacts->expects($this->once())
             ->method('collectArtifacts')
             ->willReturn(['screenshots' => [], 'html' => []]);
 
@@ -380,28 +391,30 @@ class TestRunnerServiceTest extends TestCase
     public function testExecuteRunMftfGenerationFailure(): void
     {
         $run = $this->createTestRun(TestRun::TYPE_MFTF);
+        $mftf = $this->mockMftfExecutor();
+        $artifacts = $this->mockArtifactCollector();
         $this->setupLockMock();
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getOutputFilePath')
             ->willReturn('/var/output.txt');
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('execute')
             ->willReturn([
                 'output' => 'ERROR: 2 Test(s) failed to generate',
                 'exitCode' => 1,
             ]);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('parseResults')
             ->willReturn([]);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getAllureResultsPath')
             ->willReturn('/var/allure');
 
-        $this->artifactCollector->expects($this->once())
+        $artifacts->expects($this->once())
             ->method('collectArtifacts')
             ->willReturn(['screenshots' => [], 'html' => []]);
 
@@ -414,28 +427,30 @@ class TestRunnerServiceTest extends TestCase
     public function testExecuteRunMftfModuleNotFound(): void
     {
         $run = $this->createTestRun(TestRun::TYPE_MFTF);
+        $mftf = $this->mockMftfExecutor();
+        $artifacts = $this->mockArtifactCollector();
         $this->setupLockMock();
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getOutputFilePath')
             ->willReturn('/var/output.txt');
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('execute')
             ->willReturn([
                 'output' => 'Module_Something is not available under Magento/FunctionalTest',
                 'exitCode' => 1,
             ]);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('parseResults')
             ->willReturn([]);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getAllureResultsPath')
             ->willReturn('/var/allure');
 
-        $this->artifactCollector->expects($this->once())
+        $artifacts->expects($this->once())
             ->method('collectArtifacts')
             ->willReturn(['screenshots' => [], 'html' => []]);
 
@@ -456,23 +471,28 @@ class TestRunnerServiceTest extends TestCase
         $run->setSuite($suite);
 
         $this->setupLockMock();
+        $em = $this->mockEntityManager();
+        $mftf = $this->mockMftfExecutor();
+        $clone = $this->mockModuleCloneService();
+        $discovery = $this->mockTestDiscovery();
+        $artifacts = $this->mockArtifactCollector();
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getOutputFilePath')
             ->willReturn('/var/output.txt');
 
-        $this->moduleCloneService->expects($this->once())
+        $clone->expects($this->once())
             ->method('getDefaultTargetPath')
             ->willReturn('/var/test-modules/current');
 
-        $this->testDiscovery->expects($this->once())
+        $discovery->expects($this->once())
             ->method('resolveGroupToTests')
             ->with('us', '/var/test-modules/current')
             ->willReturn(['MOEC11676', 'MOEC2609ES']);
 
-        $this->mftfExecutor->expects($this->never())->method('executeSingleTest');
-        $this->artifactCollector->expects($this->never())->method('collectArtifacts');
-        $this->entityManager->expects($this->atLeast(3))->method('flush');
+        $mftf->expects($this->never())->method('executeSingleTest');
+        $artifacts->expects($this->never())->method('collectArtifacts');
+        $em->expects($this->atLeast(3))->method('flush');
 
         $this->service->executeRun($run);
 
@@ -491,21 +511,28 @@ class TestRunnerServiceTest extends TestCase
         $run->setSuite($suite);
 
         $this->setupLockMock();
+        $em = $this->mockEntityManager();
+        $mftf = $this->mockMftfExecutor();
+        $clone = $this->mockModuleCloneService();
+        $discovery = $this->mockTestDiscovery();
+        $allure = $this->mockAllureReportService();
+        $artifacts = $this->mockArtifactCollector();
+        $stepParser = $this->mockAllureStepParser();
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getOutputFilePath')
             ->willReturn('/var/output.txt');
 
-        $this->moduleCloneService->expects($this->once())
+        $clone->expects($this->once())
             ->method('getDefaultTargetPath')
             ->willReturn('/var/test-modules/current');
 
-        $this->testDiscovery->expects($this->once())
+        $discovery->expects($this->once())
             ->method('resolveGroupToTests')
             ->with('us', '/var/test-modules/current')
             ->willReturn(['MOEC11676', 'MOEC2609ES']);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('executeSingleTest')
             ->with($run, 'MOEC2609ES', $this->isType('callable'), null)
             ->willReturn([
@@ -518,38 +545,38 @@ class TestRunnerServiceTest extends TestCase
         $parsedResult->setTestName('MOEC2609ES');
         $parsedResult->setStatus(TestResult::STATUS_PASSED);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('parseResults')
             ->with($run, 'single test output', '/var/test-output/run-1/MOEC2609ES.log')
             ->willReturn([$parsedResult]);
 
-        $this->entityManager->expects($this->once())
+        $em->expects($this->once())
             ->method('persist')
             ->with($parsedResult);
 
-        $this->allureReportService->expects($this->once())
+        $allure->expects($this->once())
             ->method('copyTestAllureResults')
             ->with(1, 'MOEC2609ES');
 
-        $this->allureReportService->expects($this->once())
+        $allure->expects($this->once())
             ->method('generateIncrementalReport')
             ->with($run);
 
-        $this->artifactCollector->expects($this->once())
+        $artifacts->expects($this->once())
             ->method('collectTestScreenshot')
             ->with($run, $parsedResult);
 
-        $this->allureStepParser->expects($this->once())
+        $stepParser->expects($this->once())
             ->method('getDurationForResult')
             ->with($parsedResult)
             ->willReturn(null);
 
-        $this->artifactCollector->expects($this->once())
+        $artifacts->expects($this->once())
             ->method('collectArtifacts')
             ->with($run)
             ->willReturn(['screenshots' => [], 'html' => []]);
 
-        $this->entityManager->expects($this->atLeast(4))->method('flush');
+        $em->expects($this->atLeast(4))->method('flush');
 
         $this->service->executeRun($run);
 
@@ -564,29 +591,32 @@ class TestRunnerServiceTest extends TestCase
     public function testExecuteRunPlaywrightOnlySuccess(): void
     {
         $run = $this->createTestRun(TestRun::TYPE_PLAYWRIGHT);
+        $mftf = $this->mockMftfExecutor();
+        $pw = $this->mockPlaywrightExecutor();
+        $artifacts = $this->mockArtifactCollector();
         $this->setupLockMock();
 
-        $this->playwrightExecutor->expects($this->once())
+        $pw->expects($this->once())
             ->method('getOutputFilePath')
             ->with($run)
             ->willReturn('/var/playwright-output.txt');
 
-        $this->playwrightExecutor->expects($this->once())
+        $pw->expects($this->once())
             ->method('execute')
             ->with($run)
             ->willReturn(['output' => 'Playwright test output', 'exitCode' => 0]);
 
-        $this->playwrightExecutor->expects($this->once())
+        $pw->expects($this->once())
             ->method('parseResults')
             ->willReturn([]);
 
-        $this->playwrightExecutor->expects($this->once())
+        $pw->expects($this->once())
             ->method('getAllureResultsPath')
             ->willReturn('/var/allure-pw');
 
-        $this->mftfExecutor->expects($this->never())->method('execute');
+        $mftf->expects($this->never())->method('execute');
 
-        $this->artifactCollector->expects($this->once())
+        $artifacts->expects($this->once())
             ->method('collectArtifacts')
             ->willReturn(['screenshots' => [], 'html' => []]);
 
@@ -599,29 +629,31 @@ class TestRunnerServiceTest extends TestCase
     public function testExecuteRunPlaywrightWithFailedTests(): void
     {
         $run = $this->createTestRun(TestRun::TYPE_PLAYWRIGHT);
+        $pw = $this->mockPlaywrightExecutor();
+        $artifacts = $this->mockArtifactCollector();
         $this->setupLockMock();
 
         $failedResult = new TestResult();
         $failedResult->setTestName('FailedPWTest');
         $failedResult->setStatus(TestResult::STATUS_FAILED);
 
-        $this->playwrightExecutor->expects($this->once())
+        $pw->expects($this->once())
             ->method('getOutputFilePath')
             ->willReturn('/var/output.txt');
 
-        $this->playwrightExecutor->expects($this->once())
+        $pw->expects($this->once())
             ->method('execute')
             ->willReturn(['output' => 'PW output', 'exitCode' => 1]);
 
-        $this->playwrightExecutor->expects($this->once())
+        $pw->expects($this->once())
             ->method('parseResults')
             ->willReturn([$failedResult]);
 
-        $this->playwrightExecutor->expects($this->once())
+        $pw->expects($this->once())
             ->method('getAllureResultsPath')
             ->willReturn('/var/allure');
 
-        $this->artifactCollector->expects($this->once())
+        $artifacts->expects($this->once())
             ->method('collectArtifacts')
             ->willReturn(['screenshots' => [], 'html' => []]);
 
@@ -638,37 +670,40 @@ class TestRunnerServiceTest extends TestCase
     public function testExecuteRunBothTypesSuccess(): void
     {
         $run = $this->createTestRun(TestRun::TYPE_BOTH);
+        $mftf = $this->mockMftfExecutor();
+        $pw = $this->mockPlaywrightExecutor();
+        $artifacts = $this->mockArtifactCollector();
         $this->setupLockMock();
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getOutputFilePath')
             ->willReturn('/var/mftf-output.txt');
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('execute')
             ->willReturn(['output' => 'MFTF output', 'exitCode' => 0]);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('parseResults')
             ->willReturn([]);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getAllureResultsPath')
             ->willReturn('/var/allure-mftf');
 
-        $this->playwrightExecutor->expects($this->once())
+        $pw->expects($this->once())
             ->method('execute')
             ->willReturn(['output' => 'Playwright output', 'exitCode' => 0]);
 
-        $this->playwrightExecutor->expects($this->once())
+        $pw->expects($this->once())
             ->method('parseResults')
             ->willReturn([]);
 
-        $this->playwrightExecutor->expects($this->once())
+        $pw->expects($this->once())
             ->method('getAllureResultsPath')
             ->willReturn('/var/allure-pw');
 
-        $this->artifactCollector->expects($this->once())
+        $artifacts->expects($this->once())
             ->method('collectArtifacts')
             ->willReturn(['screenshots' => [], 'html' => []]);
 
@@ -681,25 +716,28 @@ class TestRunnerServiceTest extends TestCase
     public function testExecuteRunBothTypesMftfFailsPlaywrightSucceeds(): void
     {
         $run = $this->createTestRun(TestRun::TYPE_BOTH);
+        $mftf = $this->mockMftfExecutor();
+        $pw = $this->mockPlaywrightExecutor();
+        $artifacts = $this->mockArtifactCollector();
         $this->setupLockMock();
 
         $mftfFailed = new TestResult();
         $mftfFailed->setTestName('MftfFailed');
         $mftfFailed->setStatus(TestResult::STATUS_FAILED);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getOutputFilePath')
             ->willReturn('/var/output.txt');
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('execute')
             ->willReturn(['output' => 'MFTF output', 'exitCode' => 1]);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('parseResults')
             ->willReturn([$mftfFailed]);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getAllureResultsPath')
             ->willReturn('/var/allure');
 
@@ -707,19 +745,19 @@ class TestRunnerServiceTest extends TestCase
         $pwPassed->setTestName('PwPassed');
         $pwPassed->setStatus(TestResult::STATUS_PASSED);
 
-        $this->playwrightExecutor->expects($this->once())
+        $pw->expects($this->once())
             ->method('execute')
             ->willReturn(['output' => 'PW output', 'exitCode' => 0]);
 
-        $this->playwrightExecutor->expects($this->once())
+        $pw->expects($this->once())
             ->method('parseResults')
             ->willReturn([$pwPassed]);
 
-        $this->playwrightExecutor->expects($this->once())
+        $pw->expects($this->once())
             ->method('getAllureResultsPath')
             ->willReturn('/var/allure');
 
-        $this->artifactCollector->expects($this->once())
+        $artifacts->expects($this->once())
             ->method('collectArtifacts')
             ->willReturn(['screenshots' => [], 'html' => []]);
 
@@ -732,25 +770,28 @@ class TestRunnerServiceTest extends TestCase
     public function testExecuteRunBothTypesBothFail(): void
     {
         $run = $this->createTestRun(TestRun::TYPE_BOTH);
+        $mftf = $this->mockMftfExecutor();
+        $pw = $this->mockPlaywrightExecutor();
+        $artifacts = $this->mockArtifactCollector();
         $this->setupLockMock();
 
         $mftfFailed = new TestResult();
         $mftfFailed->setTestName('MftfFailed');
         $mftfFailed->setStatus(TestResult::STATUS_FAILED);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getOutputFilePath')
             ->willReturn('/var/output.txt');
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('execute')
             ->willReturn(['output' => 'MFTF output', 'exitCode' => 1]);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('parseResults')
             ->willReturn([$mftfFailed]);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getAllureResultsPath')
             ->willReturn('/var/allure');
 
@@ -758,19 +799,19 @@ class TestRunnerServiceTest extends TestCase
         $pwFailed->setTestName('PwFailed');
         $pwFailed->setStatus(TestResult::STATUS_FAILED);
 
-        $this->playwrightExecutor->expects($this->once())
+        $pw->expects($this->once())
             ->method('execute')
             ->willReturn(['output' => 'PW output', 'exitCode' => 1]);
 
-        $this->playwrightExecutor->expects($this->once())
+        $pw->expects($this->once())
             ->method('parseResults')
             ->willReturn([$pwFailed]);
 
-        $this->playwrightExecutor->expects($this->once())
+        $pw->expects($this->once())
             ->method('getAllureResultsPath')
             ->willReturn('/var/allure');
 
-        $this->artifactCollector->expects($this->once())
+        $artifacts->expects($this->once())
             ->method('collectArtifacts')
             ->willReturn(['screenshots' => [], 'html' => []]);
 
@@ -789,36 +830,44 @@ class TestRunnerServiceTest extends TestCase
     {
         $env = $this->createTestEnvironment(42, 'test-env');
         $run = $this->createTestRun(TestRun::TYPE_MFTF, TestRun::STATUS_PENDING, $env);
+        $mftf = $this->mockMftfExecutor();
+        $artifacts = $this->mockArtifactCollector();
 
-        $this->lockFactory->expects($this->once())
+        $lockFactory = $this->createMock(LockFactory::class);
+        $lock = $this->createMock(SharedLockInterface::class);
+        $this->lockFactory = $lockFactory;
+        $this->lock = $lock;
+        $this->rebuildService();
+
+        $lockFactory->expects($this->once())
             ->method('createLock')
             ->with('mftf_execution_env_42', 1800)
-            ->willReturn($this->lock);
+            ->willReturn($lock);
 
-        $this->lock->expects($this->once())
+        $lock->expects($this->once())
             ->method('acquire')
             ->with(true);
 
-        $this->lock->expects($this->once())
+        $lock->expects($this->once())
             ->method('release');
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getOutputFilePath')
             ->willReturn('/var/output.txt');
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('execute')
             ->willReturn(['output' => 'test', 'exitCode' => 0]);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('parseResults')
             ->willReturn([]);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getAllureResultsPath')
             ->willReturn('/var/allure');
 
-        $this->artifactCollector->expects($this->once())
+        $artifacts->expects($this->once())
             ->method('collectArtifacts')
             ->willReturn(['screenshots' => [], 'html' => []]);
 
@@ -828,19 +877,26 @@ class TestRunnerServiceTest extends TestCase
     public function testExecuteRunReleasesLockOnException(): void
     {
         $run = $this->createTestRun(TestRun::TYPE_MFTF);
+        $mftf = $this->mockMftfExecutor();
 
-        $this->lockFactory->expects($this->once())
+        $lockFactory = $this->createMock(LockFactory::class);
+        $lock = $this->createMock(SharedLockInterface::class);
+        $this->lockFactory = $lockFactory;
+        $this->lock = $lock;
+        $this->rebuildService();
+
+        $lockFactory->expects($this->once())
             ->method('createLock')
-            ->willReturn($this->lock);
+            ->willReturn($lock);
 
-        $this->lock->expects($this->once())->method('acquire');
-        $this->lock->expects($this->once())->method('release');
+        $lock->expects($this->once())->method('acquire');
+        $lock->expects($this->once())->method('release');
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getOutputFilePath')
             ->willReturn('/var/output.txt');
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('execute')
             ->willThrowException(new \RuntimeException('Execution failed'));
 
@@ -855,27 +911,29 @@ class TestRunnerServiceTest extends TestCase
     public function testExecuteRunCreatesLockRefreshCallback(): void
     {
         $run = $this->createTestRun(TestRun::TYPE_MFTF);
+        $mftf = $this->mockMftfExecutor();
+        $artifacts = $this->mockArtifactCollector();
         $this->setupLockMock();
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getOutputFilePath')
             ->willReturn('/var/output.txt');
 
         // Verify that a callable (lock refresh callback) is passed to the executor
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('execute')
-            ->with($run, $this->isType('callable'))
+            ->with($run, $this->isCallable())
             ->willReturn(['output' => 'test', 'exitCode' => 0]);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('parseResults')
             ->willReturn([]);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getAllureResultsPath')
             ->willReturn('/var/allure');
 
-        $this->artifactCollector->expects($this->once())
+        $artifacts->expects($this->once())
             ->method('collectArtifacts')
             ->willReturn(['screenshots' => [], 'html' => []]);
 
@@ -889,29 +947,31 @@ class TestRunnerServiceTest extends TestCase
     public function testExecuteRunCollectsArtifactsEvenOnFailure(): void
     {
         $run = $this->createTestRun(TestRun::TYPE_MFTF);
+        $mftf = $this->mockMftfExecutor();
+        $artifacts = $this->mockArtifactCollector();
         $this->setupLockMock();
 
         $failedResult = new TestResult();
         $failedResult->setTestName('FailedTest');
         $failedResult->setStatus(TestResult::STATUS_FAILED);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getOutputFilePath')
             ->willReturn('/var/output.txt');
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('execute')
             ->willReturn(['output' => 'failed', 'exitCode' => 1]);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('parseResults')
             ->willReturn([$failedResult]);
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getAllureResultsPath')
             ->willReturn('/var/allure');
 
-        $this->artifactCollector->expects($this->once())
+        $artifacts->expects($this->once())
             ->method('collectArtifacts')
             ->with($run)
             ->willReturn([
@@ -919,7 +979,7 @@ class TestRunnerServiceTest extends TestCase
                 'html' => ['/var/html/1.html'],
             ]);
 
-        $this->artifactCollector->expects($this->once())
+        $artifacts->expects($this->once())
             ->method('associateScreenshotsWithResults')
             ->with([$failedResult], ['/var/screenshots/1.png']);
 
@@ -931,13 +991,14 @@ class TestRunnerServiceTest extends TestCase
     public function testExecuteRunExceptionMarksFailedWithMessage(): void
     {
         $run = $this->createTestRun(TestRun::TYPE_MFTF);
+        $mftf = $this->mockMftfExecutor();
         $this->setupLockMock();
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getOutputFilePath')
             ->willReturn('/var/output.txt');
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('execute')
             ->willThrowException(new \RuntimeException('Docker connection failed'));
 
@@ -961,6 +1022,9 @@ class TestRunnerServiceTest extends TestCase
     public function testGenerateReportsCreatesReport(): void
     {
         $run = $this->createTestRun(TestRun::TYPE_MFTF, TestRun::STATUS_RUNNING);
+        $mftf = $this->mockMftfExecutor();
+        $allure = $this->mockAllureReportService();
+        $em = $this->mockEntityManager();
 
         $report = new TestReport();
         $report->setTestRun($run);
@@ -968,20 +1032,20 @@ class TestRunnerServiceTest extends TestCase
         $report->setFilePath('/var/reports/run-1');
         $report->setPublicUrl('https://example.com/reports/run-1');
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getAllureResultsPath')
             ->willReturn('/var/allure-results');
 
-        $this->allureReportService->expects($this->once())
+        $allure->expects($this->once())
             ->method('generateReport')
             ->with($run, ['/var/allure-results'])
             ->willReturn($report);
 
-        $this->entityManager->expects($this->once())
+        $em->expects($this->once())
             ->method('persist')
             ->with($report);
 
-        $this->entityManager->expects($this->exactly(2))->method('flush');
+        $em->expects($this->exactly(2))->method('flush');
 
         $result = $this->service->generateReports($run);
 
@@ -993,12 +1057,14 @@ class TestRunnerServiceTest extends TestCase
     {
         $run = $this->createTestRun(TestRun::TYPE_MFTF, TestRun::STATUS_RUNNING);
         $statusDuringGeneration = null;
+        $mftf = $this->mockMftfExecutor();
+        $allure = $this->mockAllureReportService();
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getAllureResultsPath')
             ->willReturn('/var/allure');
 
-        $this->allureReportService->expects($this->once())
+        $allure->expects($this->once())
             ->method('generateReport')
             ->willReturnCallback(function () use ($run, &$statusDuringGeneration) {
                 $statusDuringGeneration = $run->getStatus();
@@ -1018,16 +1084,20 @@ class TestRunnerServiceTest extends TestCase
     public function testGenerateReportsCreatesPlaceholderOnAllureFailure(): void
     {
         $run = $this->createTestRun(TestRun::TYPE_MFTF, TestRun::STATUS_RUNNING);
+        $mftf = $this->mockMftfExecutor();
+        $allure = $this->mockAllureReportService();
+        $em = $this->mockEntityManager();
+        $logger = $this->mockLogger();
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getAllureResultsPath')
             ->willReturn('/var/allure');
 
-        $this->allureReportService->expects($this->once())
+        $allure->expects($this->once())
             ->method('generateReport')
             ->willThrowException(new \RuntimeException('Allure service unavailable'));
 
-        $this->entityManager->expects($this->once())
+        $em->expects($this->once())
             ->method('persist')
             ->with($this->callback(function (TestReport $report) {
                 return '' === $report->getFilePath()
@@ -1035,7 +1105,7 @@ class TestRunnerServiceTest extends TestCase
                     && TestReport::TYPE_ALLURE === $report->getReportType();
             }));
 
-        $this->logger->expects($this->once())
+        $logger->expects($this->once())
             ->method('warning')
             ->with('Allure report generation failed, creating placeholder', $this->anything());
 
@@ -1048,16 +1118,19 @@ class TestRunnerServiceTest extends TestCase
     public function testGenerateReportsBothTypesCollectsAllPaths(): void
     {
         $run = $this->createTestRun(TestRun::TYPE_BOTH, TestRun::STATUS_RUNNING);
+        $mftf = $this->mockMftfExecutor();
+        $pw = $this->mockPlaywrightExecutor();
+        $allure = $this->mockAllureReportService();
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getAllureResultsPath')
             ->willReturn('/var/allure-mftf');
 
-        $this->playwrightExecutor->expects($this->once())
+        $pw->expects($this->once())
             ->method('getAllureResultsPath')
             ->willReturn('/var/allure-pw');
 
-        $this->allureReportService->expects($this->once())
+        $allure->expects($this->once())
             ->method('generateReport')
             ->with($run, ['/var/allure-mftf', '/var/allure-pw'])
             ->willReturn((new TestReport())->setTestRun($run)->setReportType(TestReport::TYPE_ALLURE));
@@ -1068,8 +1141,9 @@ class TestRunnerServiceTest extends TestCase
     public function testGenerateReportsMarksFailedOnException(): void
     {
         $run = $this->createTestRun(TestRun::TYPE_MFTF, TestRun::STATUS_RUNNING);
+        $mftf = $this->mockMftfExecutor();
 
-        $this->mftfExecutor->expects($this->once())
+        $mftf->expects($this->once())
             ->method('getAllureResultsPath')
             ->willThrowException(new \RuntimeException('Fatal error'));
 
@@ -1092,6 +1166,8 @@ class TestRunnerServiceTest extends TestCase
     public function testCancelRunCancelsAndCleansUp(): void
     {
         $run = $this->createTestRun(TestRun::TYPE_MFTF, TestRun::STATUS_PENDING);
+        $em = $this->mockEntityManager();
+        $logger = $this->mockLogger();
 
         // Make it cancellable
         $reflection = new \ReflectionClass($run);
@@ -1099,9 +1175,9 @@ class TestRunnerServiceTest extends TestCase
 
         // Module is shared, no per-run cleanup expectations
 
-        $this->entityManager->expects($this->once())->method('flush');
+        $em->expects($this->once())->method('flush');
 
-        $this->logger->expects($this->once())
+        $logger->expects($this->once())
             ->method('info')
             ->with('Cancelling test run', $this->anything());
 
@@ -1128,6 +1204,7 @@ class TestRunnerServiceTest extends TestCase
     {
         $env = $this->createTestEnvironment();
         $suite = $this->createTestSuite();
+        $em = $this->mockEntityManager();
 
         $originalRun = new TestRun();
         $originalRun->setEnvironment($env);
@@ -1136,8 +1213,8 @@ class TestRunnerServiceTest extends TestCase
         $originalRun->setSuite($suite);
         $originalRun->setTriggeredBy(TestRun::TRIGGER_SCHEDULER);
 
-        $this->entityManager->expects($this->once())->method('persist');
-        $this->entityManager->expects($this->once())->method('flush');
+        $em->expects($this->once())->method('persist');
+        $em->expects($this->once())->method('flush');
 
         $newRun = $this->service->retryRun($originalRun);
 
@@ -1155,9 +1232,10 @@ class TestRunnerServiceTest extends TestCase
     public function testCleanupRunLogsCompletion(): void
     {
         $run = $this->createTestRun();
+        $logger = $this->mockLogger();
 
         // Module is shared, no per-run cleanup - just logging
-        $this->logger->expects($this->once())
+        $logger->expects($this->once())
             ->method('info')
             ->with('Test run cleanup completed', $this->anything());
 
@@ -1171,8 +1249,9 @@ class TestRunnerServiceTest extends TestCase
     public function testHasRunningForEnvironmentDelegatesToRepository(): void
     {
         $env = $this->createTestEnvironment();
+        $repo = $this->mockTestRunRepository();
 
-        $this->testRunRepository->expects($this->once())
+        $repo->expects($this->once())
             ->method('hasRunningForEnvironment')
             ->with($env)
             ->willReturn(true);
@@ -1185,8 +1264,9 @@ class TestRunnerServiceTest extends TestCase
     public function testHasRunningForEnvironmentReturnsFalse(): void
     {
         $env = $this->createTestEnvironment();
+        $repo = $this->mockTestRunRepository();
 
-        $this->testRunRepository->expects($this->once())
+        $repo->expects($this->once())
             ->method('hasRunningForEnvironment')
             ->with($env)
             ->willReturn(false);
@@ -1194,6 +1274,103 @@ class TestRunnerServiceTest extends TestCase
         $result = $this->service->hasRunningForEnvironment($env);
 
         $this->assertFalse($result);
+    }
+
+    private function rebuildService(): void
+    {
+        $this->service = new TestRunnerService(
+            $this->entityManager,
+            $this->testRunRepository,
+            $this->moduleCloneService,
+            $this->mftfExecutor,
+            $this->playwrightExecutor,
+            $this->allureReportService,
+            $this->artifactCollector,
+            $this->allureStepParser,
+            $this->logger,
+            $this->testDiscovery,
+            $this->lockFactory,
+        );
+    }
+
+    private function mockEntityManager(): MockObject&EntityManagerInterface
+    {
+        $this->entityManager = $this->createMock(EntityManagerInterface::class);
+        $this->rebuildService();
+
+        return $this->entityManager;
+    }
+
+    private function mockTestRunRepository(): MockObject&TestRunRepository
+    {
+        $this->testRunRepository = $this->createMock(TestRunRepository::class);
+        $this->rebuildService();
+
+        return $this->testRunRepository;
+    }
+
+    private function mockModuleCloneService(): MockObject&ModuleCloneService
+    {
+        $this->moduleCloneService = $this->createMock(ModuleCloneService::class);
+        $this->rebuildService();
+
+        return $this->moduleCloneService;
+    }
+
+    private function mockMftfExecutor(): MockObject&MftfExecutorService
+    {
+        $this->mftfExecutor = $this->createMock(MftfExecutorService::class);
+        $this->rebuildService();
+
+        return $this->mftfExecutor;
+    }
+
+    private function mockPlaywrightExecutor(): MockObject&PlaywrightExecutorService
+    {
+        $this->playwrightExecutor = $this->createMock(PlaywrightExecutorService::class);
+        $this->rebuildService();
+
+        return $this->playwrightExecutor;
+    }
+
+    private function mockAllureReportService(): MockObject&AllureReportService
+    {
+        $this->allureReportService = $this->createMock(AllureReportService::class);
+        $this->rebuildService();
+
+        return $this->allureReportService;
+    }
+
+    private function mockLogger(): MockObject&LoggerInterface
+    {
+        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->rebuildService();
+
+        return $this->logger;
+    }
+
+    private function mockArtifactCollector(): MockObject&ArtifactCollectorService
+    {
+        $this->artifactCollector = $this->createMock(ArtifactCollectorService::class);
+        $this->rebuildService();
+
+        return $this->artifactCollector;
+    }
+
+    private function mockTestDiscovery(): MockObject&TestDiscoveryService
+    {
+        $this->testDiscovery = $this->createMock(TestDiscoveryService::class);
+        $this->rebuildService();
+
+        return $this->testDiscovery;
+    }
+
+    private function mockAllureStepParser(): MockObject&AllureStepParserService
+    {
+        $this->allureStepParser = $this->createMock(AllureStepParserService::class);
+        $this->rebuildService();
+
+        return $this->allureStepParser;
     }
 
     private function createTestEnvironment(int $id = 1, string $name = 'test-env'): TestEnvironment
@@ -1236,15 +1413,21 @@ class TestRunnerServiceTest extends TestCase
 
     private function setupLockMock(): void
     {
-        $this->lockFactory->expects($this->once())
-            ->method('createLock')
-            ->willReturn($this->lock);
+        $lockFactory = $this->createMock(LockFactory::class);
+        $lock = $this->createMock(SharedLockInterface::class);
+        $this->lockFactory = $lockFactory;
+        $this->lock = $lock;
+        $this->rebuildService();
 
-        $this->lock->expects($this->once())
+        $lockFactory->expects($this->once())
+            ->method('createLock')
+            ->willReturn($lock);
+
+        $lock->expects($this->once())
             ->method('acquire')
             ->with(true);
 
-        $this->lock->expects($this->once())
+        $lock->expects($this->once())
             ->method('release');
     }
 }
