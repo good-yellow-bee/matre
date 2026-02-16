@@ -257,6 +257,9 @@ class PlaywrightExecutorService
 
         // Read last N bytes for large files
         $handle = fopen($path, 'r');
+        if (false === $handle) {
+            return '';
+        }
         fseek($handle, -$maxBytes, SEEK_END);
         $content = '... [truncated - showing last ' . round($maxBytes / 1024) . "KB]\n" . fread($handle, $maxBytes);
         fclose($handle);
