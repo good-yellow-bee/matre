@@ -172,8 +172,7 @@ class CredentialEncryptionService
                 'errorId' => ErrorIds::CREDENTIAL_DECRYPTION_FAILED,
             ]);
 
-            // isEncrypted() is heuristic; fail open for legacy plaintext compatibility.
-            return $value;
+            throw $e;
         }
     }
 }

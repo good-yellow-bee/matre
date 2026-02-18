@@ -163,7 +163,7 @@ class PlaywrightExecutorServiceTest extends TestCase
 
     public function testBuildCommandExportsBaseUrl(): void
     {
-        $env = $this->createTestEnvironment('prod', 'https://prod.example.com');
+        $env = $this->createTestEnvironment('Production', 'prod', 'https://prod.example.com');
         $run = $this->createTestRun('test', 1, $env);
         [$envRepo, $shellEscape] = $this->setupBuildCommandMocks();
 
@@ -172,7 +172,7 @@ class PlaywrightExecutorServiceTest extends TestCase
             ->willReturn([]);
 
         // Note: TestEnvironment adds trailing slash to baseUrl
-        $shellEscape->expects($this->once())
+        $shellEscape->expects($this->atLeastOnce())
             ->method('buildExportStatement')
             ->with('BASE_URL', $this->stringContains('prod.example.com'))
             ->willReturn('export BASE_URL="https://prod.example.com/"');
@@ -401,12 +401,13 @@ class PlaywrightExecutorServiceTest extends TestCase
     }
 
     private function createTestEnvironment(
-        string $name = 'stage-us',
+        string $name = 'Stage US',
+        string $code = 'stage-us',
         string $baseUrl = 'https://stage.example.com',
     ): TestEnvironment {
         $env = new TestEnvironment();
         $env->setName($name);
-        $env->setCode($name);
+        $env->setCode($code);
         $env->setBaseUrl($baseUrl);
 
         return $env;

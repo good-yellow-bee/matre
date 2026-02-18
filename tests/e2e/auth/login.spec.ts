@@ -36,10 +36,7 @@ test.describe('Login', () => {
     const loginPage = new LoginPage(page);
     await loginPage.goto();
 
-    const rememberCheckbox = page.locator('[name="_remember_me"]');
-    const hasRememberMe = await rememberCheckbox.count();
-
-    expect(hasRememberMe).toBeGreaterThanOrEqual(0);
+    await expect(loginPage.rememberMe).toBeVisible();
   });
 
   test('unauthenticated access redirects to login', async ({ page }) => {

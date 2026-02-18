@@ -126,18 +126,26 @@ class CredentialEncryptionListener
         if ($entity instanceof TestEnvironment) {
             $password = $entity->getAdminPassword();
             if (null !== $password && '' !== $password) {
-                $entity->setAdminPassword(
-                    $this->encryptionService->decryptSafe($password),
-                );
+                try {
+                    $entity->setAdminPassword(
+                        $this->encryptionService->decryptSafe($password),
+                    );
+                } catch (\RuntimeException) {
+                    // Already logged in decryptSafe; leave encrypted value in entity
+                }
             }
         }
 
         if ($entity instanceof User) {
             $totpSecret = $entity->getTotpSecret();
             if (null !== $totpSecret && '' !== $totpSecret) {
-                $entity->setTotpSecret(
-                    $this->encryptionService->decryptSafe($totpSecret),
-                );
+                try {
+                    $entity->setTotpSecret(
+                        $this->encryptionService->decryptSafe($totpSecret),
+                    );
+                } catch (\RuntimeException) {
+                    // Already logged in decryptSafe; leave encrypted value in entity
+                }
             }
         }
     }
