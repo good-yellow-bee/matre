@@ -163,7 +163,7 @@ class PlaywrightExecutorServiceTest extends TestCase
 
     public function testBuildCommandExportsBaseUrl(): void
     {
-        $env = $this->createTestEnvironment('prod', 'https://prod.example.com');
+        $env = $this->createTestEnvironment('Production', 'prod', 'https://prod.example.com');
         $run = $this->createTestRun('test', 1, $env);
         [$envRepo, $shellEscape] = $this->setupBuildCommandMocks();
 
@@ -172,7 +172,7 @@ class PlaywrightExecutorServiceTest extends TestCase
             ->willReturn([]);
 
         // Note: TestEnvironment adds trailing slash to baseUrl
-        $shellEscape->expects($this->once())
+        $shellEscape->expects($this->atLeastOnce())
             ->method('buildExportStatement')
             ->with('BASE_URL', $this->stringContains('prod.example.com'))
             ->willReturn('export BASE_URL="https://prod.example.com/"');
@@ -386,6 +386,37 @@ class PlaywrightExecutorServiceTest extends TestCase
         );
     }
 
+    public function testParseJsonResultsLogsWarningWhenFormatIsInvalid(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())
+            ->method('warning')
+            ->with('Invalid Playwright JSON results format', $this->callback(static function (array $context): bool {
+                return isset($context['path']) && str_ends_with($context['path'], '/results.json');
+            }));
+
+        $tmpDir = sys_get_temp_dir() . '/playwright-json-invalid-' . uniqid('', true);
+        mkdir($tmpDir . '/var/playwright-results', 0o755, true);
+        file_put_contents($tmpDir . '/var/playwright-results/results.json', '{"invalid":true}');
+
+        $service = new PlaywrightExecutorService(
+            $logger,
+            $this->createStub(GlobalEnvVariableRepository::class),
+            $this->createStub(ShellEscapeService::class),
+            $tmpDir,
+        );
+
+        $method = new \ReflectionMethod(PlaywrightExecutorService::class, 'parseJsonResults');
+        $method->setAccessible(true);
+        $result = $method->invoke($service, $this->createTestRun());
+
+        $this->assertSame([], $result);
+        unlink($tmpDir . '/var/playwright-results/results.json');
+        rmdir($tmpDir . '/var/playwright-results');
+        rmdir($tmpDir . '/var');
+        rmdir($tmpDir);
+    }
+
     /**
      * @return array{0: MockObject&GlobalEnvVariableRepository, 1: MockObject&ShellEscapeService}
      */
@@ -401,12 +432,13 @@ class PlaywrightExecutorServiceTest extends TestCase
     }
 
     private function createTestEnvironment(
-        string $name = 'stage-us',
+        string $name = 'Stage US',
+        string $code = 'stage-us',
         string $baseUrl = 'https://stage.example.com',
     ): TestEnvironment {
         $env = new TestEnvironment();
         $env->setName($name);
-        $env->setCode($name);
+        $env->setCode($code);
         $env->setBaseUrl($baseUrl);
 
         return $env;

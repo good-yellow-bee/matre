@@ -142,10 +142,7 @@ class PasswordResetService
         $hashedPassword = $this->passwordHasher->hashPassword($user, $newPassword);
         $user->setPassword($hashedPassword);
 
-        // Mark reset request as used
-        $resetRequest->setIsUsed(true);
-
-        // Delete all other reset requests for this user
+        // Delete all reset requests for this user (including current one)
         $this->resetRequestRepository->deleteForUser($user);
 
         $this->entityManager->flush();

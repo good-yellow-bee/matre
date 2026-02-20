@@ -83,6 +83,17 @@ class EntityVoterTest extends TestCase
         );
     }
 
+    public function testAdminCanDeleteSettings(): void
+    {
+        $admin = $this->createUserStub(['ROLE_ADMIN', 'ROLE_USER']);
+        $settings = new Settings();
+
+        $this->assertSame(
+            VoterInterface::ACCESS_GRANTED,
+            $this->voter->vote($this->createToken($admin), $settings, [EntityVoter::DELETE]),
+        );
+    }
+
     public function testNotLoggedInDenied(): void
     {
         $token = $this->createStub(TokenInterface::class);

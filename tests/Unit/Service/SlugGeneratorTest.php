@@ -23,8 +23,8 @@ class SlugGeneratorTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->slugger = $this->createStub(SluggerInterface::class);
-        $this->entityManager = $this->createStub(EntityManagerInterface::class);
+        $this->slugger = $this->createMock(SluggerInterface::class);
+        $this->entityManager = $this->createMock(EntityManagerInterface::class);
         $this->service = new SlugGenerator($this->slugger, $this->entityManager);
     }
 

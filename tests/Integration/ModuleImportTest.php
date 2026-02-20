@@ -181,7 +181,7 @@ class ModuleImportTest extends KernelTestCase
         $service->cleanup($this->tempDir . '/nonexistent');
 
         // Should not throw
-        $this->assertTrue(true);
+        $this->addToAssertionCount(1);
     }
 
     // =====================

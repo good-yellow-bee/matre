@@ -70,7 +70,7 @@ class FileUploadServiceTest extends TestCase
 
     public function testFileExistsDelegatesToStorage(): void
     {
-        $uploads = $this->createStub(FilesystemOperator::class);
+        $uploads = $this->createMock(FilesystemOperator::class);
         $uploads->method('fileExists')->with('test/file.jpg')->willReturn(true);
 
         $this->assertTrue($this->createService(uploads: $uploads)->fileExists('test/file.jpg'));

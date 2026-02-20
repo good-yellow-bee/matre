@@ -7,7 +7,6 @@ namespace App\MessageHandler;
 use App\Entity\TestRun;
 use App\Entity\User;
 use App\Message\TestRunMessage;
-use App\Messenger\Stamp\LockRefreshStamp;
 use App\Repository\TestRunRepository;
 use App\Repository\UserRepository;
 use App\Service\NotificationService;
@@ -18,7 +17,6 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\Lock\Exception\LockAcquiringException;
 use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
-use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 #[AsMessageHandler]
@@ -37,7 +35,11 @@ class TestRunMessageHandler
     ) {
     }
 
-    public function __invoke(TestRunMessage $message, ?Envelope $envelope = null): void
+    public function __invoke(
+        TestRunMessage $message,
+        ?\Closure $receiverLockRefreshCallback = null,
+        ?\Closure $heartbeatCallback = null,
+    ): void
     {
         $runId = $message->testRunId;
         $phase = $message->phase;
@@ -54,15 +56,8 @@ class TestRunMessageHandler
             return;
         }
 
-        // Extract callbacks from stamp (receiver lock refresh + heartbeat)
-        $receiverLockRefreshCallback = null;
-        $heartbeatCallback = null;
-        $lockRefreshStamp = $envelope?->last(LockRefreshStamp::class);
-        if ($lockRefreshStamp) {
-            $receiverLockRefreshCallback = fn () => $lockRefreshStamp->refresh();
-            $heartbeatCallback = $lockRefreshStamp->getHeartbeatCallback();
-        } else {
-            $this->logger->debug('No LockRefreshStamp found, lock refresh and heartbeat disabled', [
+        if (null === $receiverLockRefreshCallback || null === $heartbeatCallback) {
+            $this->logger->debug('Receiver callbacks missing, transport heartbeat/lock refresh partially disabled', [
                 'runId' => $runId,
                 'phase' => $phase,
             ]);
@@ -115,7 +110,8 @@ class TestRunMessageHandler
                 'phase' => $phase,
                 'error' => $e->getMessage(),
             ]);
-            // Error handling is done in the service methods
+
+            throw $e;
         } finally {
             $lock->release();
         }

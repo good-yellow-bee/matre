@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Messenger\Transport;
 
 use App\Messenger\Stamp\DoctrineReceivedStamp;
-use App\Messenger\Stamp\LockRefreshStamp;
 use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Lock\LockInterface;
 use Symfony\Component\Messenger\Envelope;
+use Symfony\Component\Messenger\Stamp\HandlerArgumentsStamp;
 use Symfony\Component\Messenger\Transport\Receiver\ReceiverInterface;
 use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 
@@ -176,57 +176,69 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
             return null;
         }
 
+        $row = null;
+
         try {
-            // Get oldest message for this queue (FIFO), including stale redeliveries
-            $staleThreshold = new \DateTimeImmutable(sprintf('-%d seconds', self::REDELIVER_AFTER_SECONDS));
-            $row = $this->connection->fetchAssociative(
-                sprintf(
-                    'SELECT * FROM %s
-                     WHERE queue_name = :queue
-                     AND (delivered_at IS NULL OR delivered_at < :stale_threshold)
-                     AND available_at <= :now
-                     ORDER BY created_at ASC
-                     LIMIT 1
-                     FOR UPDATE SKIP LOCKED',
+            $this->connection->beginTransaction();
+            try {
+                // Get oldest message for this queue (FIFO), including stale redeliveries
+                $staleThreshold = new \DateTimeImmutable(sprintf('-%d seconds', self::REDELIVER_AFTER_SECONDS));
+                $row = $this->connection->fetchAssociative(
+                    sprintf(
+                        'SELECT * FROM %s
+                         WHERE queue_name = :queue
+                         AND (delivered_at IS NULL OR delivered_at < :stale_threshold)
+                         AND available_at <= :now
+                         ORDER BY created_at ASC
+                         LIMIT 1
+                         FOR UPDATE SKIP LOCKED',
+                        $this->tableName,
+                    ),
+                    [
+                        'queue' => $queueName,
+                        'stale_threshold' => $staleThreshold,
+                        'now' => new \DateTimeImmutable(),
+                    ],
+                    [
+                        'stale_threshold' => 'datetime_immutable',
+                        'now' => 'datetime_immutable',
+                    ],
+                );
+
+                if (!$row) {
+                    $this->connection->commit();
+                    $lock->release();
+
+                    return null;
+                }
+
+                // Log redelivery of stuck message
+                if (null !== $row['delivered_at']) {
+                    $this->logger->warning('Redelivering stuck message', [
+                        'id' => $row['id'],
+                        'queueName' => $queueName,
+                        'originalDeliveredAt' => $row['delivered_at'],
+                    ]);
+                }
+
+                // Mark as delivered
+                $this->connection->update(
                     $this->tableName,
-                ),
-                [
-                    'queue' => $queueName,
-                    'stale_threshold' => $staleThreshold,
-                    'now' => new \DateTimeImmutable(),
-                ],
-                [
-                    'stale_threshold' => 'datetime_immutable',
-                    'now' => 'datetime_immutable',
-                ],
-            );
+                    ['delivered_at' => new \DateTimeImmutable()],
+                    ['id' => $row['id']],
+                    ['delivered_at' => 'datetime_immutable'],
+                );
 
-            if (!$row) {
-                $lock->release();
+                $this->connection->commit();
+            } catch (\Throwable $e) {
+                if ($this->connection->isTransactionActive()) {
+                    $this->connection->rollBack();
+                }
 
-                return null;
+                throw $e;
             }
-
-            // Log redelivery of stuck message
-            if (null !== $row['delivered_at']) {
-                $this->logger->warning('Redelivering stuck message', [
-                    'id' => $row['id'],
-                    'queueName' => $queueName,
-                    'originalDeliveredAt' => $row['delivered_at'],
-                ]);
-            }
-
-            // Mark as delivered
-            $this->connection->update(
-                $this->tableName,
-                ['delivered_at' => new \DateTimeImmutable()],
-                ['id' => $row['id']],
-                ['delivered_at' => 'datetime_immutable'],
-            );
 
             // Store lock reference for ack/reject
-            $this->activeLocks[$row['id']] = $lock;
-
             $this->logger->debug('Message fetched', [
                 'id' => $row['id'],
                 'queueName' => $queueName,
@@ -249,10 +261,15 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
                 $this->updateHeartbeat($row['id']);
             };
 
+            $this->activeLocks[$row['id']] = $lock;
+
             return $envelope
                 ->with(new DoctrineReceivedStamp($row['id']))
-                ->with(new LockRefreshStamp($refreshCallback, $heartbeatCallback));
+                ->with(new HandlerArgumentsStamp([$refreshCallback, $heartbeatCallback]));
         } catch (\Throwable $e) {
+            if ($this->connection->isTransactionActive()) {
+                $this->connection->rollBack();
+            }
             $lock->release();
             $this->logger->error('Error fetching message', [
                 'queueName' => $queueName,

@@ -182,6 +182,28 @@ class CredentialEncryptionListenerTest extends TestCase
         $this->createListener($encryptionService)->postLoad($entity, $args);
     }
 
+    public function testPostLoadRethrowsWhenEnvironmentPasswordDecryptionFails(): void
+    {
+        $encryptionService = $this->createMock(CredentialEncryptionService::class);
+        $encryptionService->expects($this->once())
+            ->method('decryptSafe')
+            ->with('encrypted')
+            ->willThrowException(new \RuntimeException('Decryption failed'));
+
+        $entity = new TestEnvironment();
+        $entity->setAdminPassword('encrypted');
+
+        $uow = $this->createStub(UnitOfWork::class);
+        $uow->method('getOriginalEntityData')->willReturn(['adminPassword' => 'encrypted']);
+
+        $args = $this->createPostLoadArgs($entity, $uow);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Decryption failed');
+
+        $this->createListener($encryptionService)->postLoad($entity, $args);
+    }
+
     private function createListener(
         ?CredentialEncryptionService $encryptionService = null,
     ): CredentialEncryptionListener {
