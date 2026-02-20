@@ -10,11 +10,6 @@ use Symfony\Component\Messenger\Stamp\StampInterface;
 
 class EnvironmentQueueStampTest extends TestCase
 {
-    private static function create(?int $environmentId = null): EnvironmentQueueStamp
-    {
-        return new EnvironmentQueueStamp($environmentId ?? 1);
-    }
-
     public function testConstructorSetsEnvironmentId(): void
     {
         $stamp = self::create(environmentId: 42);
@@ -32,5 +27,10 @@ class EnvironmentQueueStampTest extends TestCase
     public function testImplementsStampInterface(): void
     {
         $this->assertInstanceOf(StampInterface::class, self::create());
+    }
+
+    private static function create(?int $environmentId = null): EnvironmentQueueStamp
+    {
+        return new EnvironmentQueueStamp($environmentId ?? 1);
     }
 }

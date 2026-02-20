@@ -9,6 +9,7 @@ use App\Entity\TestReport;
 use App\Entity\TestResult;
 use App\Entity\TestRun;
 use App\Entity\TestSuite;
+use App\Entity\User;
 use App\Repository\TestRunRepository;
 use App\Service\AllureReportService;
 use App\Service\AllureStepParserService;
@@ -1209,6 +1210,7 @@ class TestRunnerServiceTest extends TestCase
     {
         $env = $this->createTestEnvironment();
         $suite = $this->createTestSuite();
+        $user = $this->createTestUser();
         $em = $this->mockEntityManager();
 
         $originalRun = new TestRun();
@@ -1221,13 +1223,49 @@ class TestRunnerServiceTest extends TestCase
         $em->expects($this->once())->method('persist');
         $em->expects($this->once())->method('flush');
 
-        $newRun = $this->service->retryRun($originalRun);
+        $newRun = $this->service->retryRun($originalRun, $user);
 
         $this->assertSame($env, $newRun->getEnvironment());
         $this->assertEquals(TestRun::TYPE_BOTH, $newRun->getType());
         $this->assertEquals('SomeTest', $newRun->getTestFilter());
         $this->assertSame($suite, $newRun->getSuite());
         $this->assertEquals(TestRun::TRIGGER_MANUAL, $newRun->getTriggeredBy());
+        $this->assertSame($user, $newRun->getExecutedBy());
+    }
+
+    public function testCreateRunWithExecutedBy(): void
+    {
+        $env = $this->createTestEnvironment();
+        $user = $this->createTestUser();
+        $em = $this->mockEntityManager();
+
+        $em->expects($this->once())->method('persist');
+        $em->expects($this->once())->method('flush');
+
+        $result = $this->service->createRun(
+            $env,
+            TestRun::TYPE_MFTF,
+            null,
+            null,
+            TestRun::TRIGGER_MANUAL,
+            true,
+            $user,
+        );
+
+        $this->assertSame($user, $result->getExecutedBy());
+    }
+
+    public function testCreateRunWithoutExecutedByDefaultsToNull(): void
+    {
+        $env = $this->createTestEnvironment();
+        $em = $this->mockEntityManager();
+
+        $em->expects($this->once())->method('persist');
+        $em->expects($this->once())->method('flush');
+
+        $result = $this->service->createRun($env, TestRun::TYPE_MFTF);
+
+        $this->assertNull($result->getExecutedBy());
     }
 
     // =====================
@@ -1395,6 +1433,18 @@ class TestRunnerServiceTest extends TestCase
         $suite->setName($name);
 
         return $suite;
+    }
+
+    private function createTestUser(int $id = 1, string $username = 'testuser'): User
+    {
+        $user = new User();
+        $reflection = new \ReflectionClass($user);
+        $idProperty = $reflection->getProperty('id');
+        $idProperty->setValue($user, $id);
+        $user->setUsername($username);
+        $user->setEmail($username . '@test.com');
+
+        return $user;
     }
 
     private function createTestRun(

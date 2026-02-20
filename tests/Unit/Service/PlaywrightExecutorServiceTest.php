@@ -38,16 +38,6 @@ class PlaywrightExecutorServiceTest extends TestCase
         $this->rebuildService();
     }
 
-    private function rebuildService(): void
-    {
-        $this->service = new PlaywrightExecutorService(
-            $this->logger,
-            $this->envRepository,
-            $this->shellEscapeService,
-            '/app',
-        );
-    }
-
     // =====================
     // getOutputFilePath() Tests
     // =====================
@@ -415,6 +405,16 @@ class PlaywrightExecutorServiceTest extends TestCase
         rmdir($tmpDir . '/var/playwright-results');
         rmdir($tmpDir . '/var');
         rmdir($tmpDir);
+    }
+
+    private function rebuildService(): void
+    {
+        $this->service = new PlaywrightExecutorService(
+            $this->logger,
+            $this->envRepository,
+            $this->shellEscapeService,
+            '/app',
+        );
     }
 
     /**

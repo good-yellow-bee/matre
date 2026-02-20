@@ -49,11 +49,9 @@ jobs:
         with:
           path: vendor
           key: ${{ runner.os }}-php-${{ env.PHP_VERSION }}-composer-${{ hashFiles('composer.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-php-${{ env.PHP_VERSION }}-composer-
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-interaction --optimize-autoloader
+        run: composer install --prefer-dist --no-progress --no-interaction --optimize-autoloader --no-scripts
 
       - name: Run PHPStan static analysis
         run: vendor/bin/phpstan analyse --error-format=github --no-progress
@@ -113,24 +111,25 @@ jobs:
         with:
           path: vendor
           key: ${{ runner.os }}-php-${{ matrix.php-version }}-composer-${{ hashFiles('composer.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-php-${{ matrix.php-version }}-composer-
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-interaction --optimize-autoloader
+        run: composer install --prefer-dist --no-progress --no-interaction --optimize-autoloader --no-scripts
+
+      - name: Clear cache
+        run: php bin/console cache:clear --env=test --no-warmup || true
 
       - name: Create .env.test.local file
         run: |
           cat > .env.test.local <<EOF
-          APP_ENV=test
-          DB_HOST=127.0.0.1
-          DB_USER=root
-          DB_PASS=root
-          DB_NAME=matre_test
-          DB_VERSION=8.0
-          MAILER_DSN=null://null
-          MAIL_FROM=test@matre.local
-          EOF
+APP_ENV=test
+DB_HOST=127.0.0.1
+DB_USER=root
+DB_PASS=root
+DB_NAME=matre_test
+DB_VERSION=8.0
+MAILER_DSN=null://null
+MAIL_FROM=test@matre.local
+EOF
 
       - name: Wait for MySQL to be ready
         run: |
@@ -201,11 +200,9 @@ jobs:
         with:
           path: vendor
           key: ${{ runner.os }}-php-${{ env.PHP_VERSION }}-composer-${{ hashFiles('composer.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-php-${{ env.PHP_VERSION }}-composer-
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-interaction
+        run: composer install --prefer-dist --no-progress --no-interaction --no-scripts
 
       - name: Run Composer security audit
         run: composer audit --format=json || echo "Security vulnerabilities found"
@@ -249,17 +246,20 @@ jobs:
         run: cp .env.example .env
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-interaction
+        run: composer install --prefer-dist --no-progress --no-interaction --no-scripts
 
       - name: Create .env.test.local file
         run: |
           cat > .env.test.local <<EOF
-          DB_HOST=127.0.0.1
-          DB_USER=root
-          DB_PASS=root
-          DB_NAME=matre_test
-          DB_VERSION=8.0
-          EOF
+DB_HOST=127.0.0.1
+DB_USER=root
+DB_PASS=root
+DB_NAME=matre_test
+DB_VERSION=8.0
+EOF
+
+      - name: Clear cache
+        run: php bin/console cache:clear --env=test --no-warmup || true
 
       - name: Wait for MySQL
         run: |
@@ -308,7 +308,8 @@ jobs:
 
       - name: Lint Twig templates
         run: |
-          composer install --prefer-dist --no-progress --no-interaction
+          composer install --prefer-dist --no-progress --no-interaction --no-scripts
+          php bin/console cache:clear --env=test --no-warmup || true
           bin/console lint:twig templates/
         continue-on-error: true
 
@@ -364,7 +365,10 @@ jobs:
           sed -i 's/DB_PASS=$/DB_PASS=root/' .env
 
       - name: Install PHP dependencies
-        run: composer install --prefer-dist --no-progress --no-interaction --optimize-autoloader
+        run: composer install --prefer-dist --no-progress --no-interaction --optimize-autoloader --no-scripts
+
+      - name: Clear cache
+        run: php bin/console cache:clear --env=test --no-warmup || true
 
       - name: Install Node dependencies
         run: npm ci
@@ -378,15 +382,15 @@ jobs:
       - name: Create .env.test.local file
         run: |
           cat > .env.test.local <<EOF
-          APP_ENV=test
-          DB_HOST=127.0.0.1
-          DB_USER=root
-          DB_PASS=root
-          DB_NAME=matre_test
-          DB_VERSION=8.0
-          MAILER_DSN=null://null
-          MAIL_FROM=test@matre.local
-          EOF
+APP_ENV=test
+DB_HOST=127.0.0.1
+DB_USER=root
+DB_PASS=root
+DB_NAME=matre_test
+DB_VERSION=8.0
+MAILER_DSN=null://null
+MAIL_FROM=test@matre.local
+EOF
 
       - name: Wait for MySQL
         run: |

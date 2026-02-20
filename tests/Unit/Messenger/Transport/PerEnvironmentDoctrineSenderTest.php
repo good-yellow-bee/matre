@@ -25,17 +25,6 @@ class PerEnvironmentDoctrineSenderTest extends TestCase
         ]);
     }
 
-    private function createSender(
-        ?Connection $connection = null,
-        ?string $tableName = null,
-    ): PerEnvironmentDoctrineSender {
-        return new PerEnvironmentDoctrineSender(
-            $connection ?? $this->createStub(Connection::class),
-            $this->serializer,
-            $tableName ?? 'messenger_messages',
-        );
-    }
-
     public function testImplementsSenderInterface(): void
     {
         $this->assertInstanceOf(SenderInterface::class, $this->createSender());
@@ -132,5 +121,16 @@ class PerEnvironmentDoctrineSenderTest extends TestCase
             );
 
         $this->createSender(connection: $connection)->send($envelope);
+    }
+
+    private function createSender(
+        ?Connection $connection = null,
+        ?string $tableName = null,
+    ): PerEnvironmentDoctrineSender {
+        return new PerEnvironmentDoctrineSender(
+            $connection ?? $this->createStub(Connection::class),
+            $this->serializer,
+            $tableName ?? 'messenger_messages',
+        );
     }
 }

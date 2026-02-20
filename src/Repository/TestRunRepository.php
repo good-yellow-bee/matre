@@ -67,9 +67,10 @@ class TestRunRepository extends ServiceEntityRepository
         int $offset = 0,
     ): array {
         $qb = $this->createQueryBuilder('r')
-            ->addSelect('e', 's')
+            ->addSelect('e', 's', 'u')
             ->join('r.environment', 'e')
-            ->leftJoin('r.suite', 's');
+            ->leftJoin('r.suite', 's')
+            ->leftJoin('r.executedBy', 'u');
 
         foreach ($criteria as $field => $value) {
             if ('environment' === $field) {

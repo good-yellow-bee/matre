@@ -78,6 +78,7 @@
               <th style="width: 140px">Results</th>
               <th style="width: 100px">Duration</th>
               <th style="width: 140px">Created</th>
+              <th style="width: 120px">Executed By</th>
               <th class="text-end" style="width: 120px">Actions</th>
             </tr>
           </thead>
@@ -118,6 +119,7 @@
               </td>
               <td class="text-muted small">{{ run.duration || '—' }}</td>
               <td class="text-muted small">{{ formatDate(run.createdAt) }}</td>
+              <td class="text-muted small">{{ run.executedBy?.username ?? '—' }}</td>
               <td class="text-end">
                 <div class="btn-group btn-group-sm">
                   <a

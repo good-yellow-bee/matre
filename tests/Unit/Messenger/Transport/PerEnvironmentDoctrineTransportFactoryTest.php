@@ -16,18 +16,6 @@ use Symfony\Component\Messenger\Transport\TransportInterface;
 
 class PerEnvironmentDoctrineTransportFactoryTest extends TestCase
 {
-    private function createFactory(
-        ?Connection $connection = null,
-        ?LockFactory $lockFactory = null,
-        ?LoggerInterface $logger = null,
-    ): PerEnvironmentDoctrineTransportFactory {
-        return new PerEnvironmentDoctrineTransportFactory(
-            $connection ?? $this->createStub(Connection::class),
-            $lockFactory ?? new LockFactory(new InMemoryStore()),
-            $logger ?? $this->createStub(LoggerInterface::class),
-        );
-    }
-
     public function testImplementsTransportFactoryInterface(): void
     {
         $this->assertInstanceOf(TransportFactoryInterface::class, $this->createFactory());
@@ -68,5 +56,17 @@ class PerEnvironmentDoctrineTransportFactoryTest extends TestCase
         );
 
         $this->assertInstanceOf(TransportInterface::class, $transport);
+    }
+
+    private function createFactory(
+        ?Connection $connection = null,
+        ?LockFactory $lockFactory = null,
+        ?LoggerInterface $logger = null,
+    ): PerEnvironmentDoctrineTransportFactory {
+        return new PerEnvironmentDoctrineTransportFactory(
+            $connection ?? $this->createStub(Connection::class),
+            $lockFactory ?? new LockFactory(new InMemoryStore()),
+            $logger ?? $this->createStub(LoggerInterface::class),
+        );
     }
 }

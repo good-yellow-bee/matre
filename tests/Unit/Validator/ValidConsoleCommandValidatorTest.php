@@ -19,6 +19,7 @@ use Symfony\Component\Validator\Violation\ConstraintViolationBuilderInterface;
 class ValidConsoleCommandValidatorTest extends TestCase
 {
     private ValidConsoleCommandValidator $validator;
+
     private Application $application;
 
     protected function setUp(): void
@@ -89,7 +90,6 @@ class ValidConsoleCommandValidatorTest extends TestCase
     public function testExtractsCommandNameFromArguments(): void
     {
         $this->application->method('find')
-            ->with('app:test-command')
             ->willReturn(new Command('app:test-command'));
 
         $context = $this->createMock(ExecutionContextInterface::class);

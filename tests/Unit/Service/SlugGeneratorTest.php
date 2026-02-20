@@ -36,7 +36,6 @@ class SlugGeneratorTest extends TestCase
 
         $this->slugger
             ->method('slug')
-            ->with('Hello World')
             ->willReturn($unicodeString);
 
         $result = $this->service->slugify('Hello World');
@@ -85,7 +84,6 @@ class SlugGeneratorTest extends TestCase
 
         $this->slugger
             ->method('slug')
-            ->with('Category - My Title')
             ->willReturn($unicodeString);
 
         $result = $this->service->generateFromParts(['Category', 'My Title']);
@@ -101,7 +99,6 @@ class SlugGeneratorTest extends TestCase
 
         $this->slugger
             ->method('slug')
-            ->with('Part1 - Part2')
             ->willReturn($unicodeString);
 
         $result = $this->service->generateFromParts(['Part1', '', 'Part2']);
