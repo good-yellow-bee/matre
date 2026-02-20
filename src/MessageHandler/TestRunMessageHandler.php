@@ -39,8 +39,7 @@ class TestRunMessageHandler
         TestRunMessage $message,
         ?\Closure $receiverLockRefreshCallback = null,
         ?\Closure $heartbeatCallback = null,
-    ): void
-    {
+    ): void {
         $runId = $message->testRunId;
         $phase = $message->phase;
 
