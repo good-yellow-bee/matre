@@ -165,7 +165,7 @@ class ReportGenerationTest extends KernelTestCase
         // Second immediate call should be debounced (no exception = success)
         $service->generateIncrementalReport($run);
 
-        $this->assertTrue(true);
+        $this->addToAssertionCount(1);
     }
 
     // =====================
@@ -221,8 +221,9 @@ class ReportGenerationTest extends KernelTestCase
 
         $cleaned = $service->cleanupExpired();
 
-        // Old dir should be cleaned
-        $this->assertGreaterThanOrEqual(0, $cleaned);
+        $this->assertSame(1, $cleaned);
+        $this->assertDirectoryDoesNotExist($oldDir);
+        $this->assertDirectoryExists($newDir);
     }
 
     // =====================

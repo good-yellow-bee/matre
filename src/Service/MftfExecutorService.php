@@ -810,13 +810,22 @@ class MftfExecutorService
         }
 
         $size = filesize($path);
-        if ($size <= $maxBytes) {
-            return file_get_contents($path);
+        if (false === $size || $size <= $maxBytes) {
+            $content = @file_get_contents($path);
+            if (false === $content) {
+                $this->logger->error('Failed to read output file', ['path' => $path]);
+
+                return '';
+            }
+
+            return $content;
         }
 
         // Read last N bytes for large files
         $handle = fopen($path, 'r');
         if (false === $handle) {
+            $this->logger->error('Failed to open output file for reading', ['path' => $path]);
+
             return '';
         }
         fseek($handle, -$maxBytes, SEEK_END);
@@ -852,11 +861,20 @@ class MftfExecutorService
         }
 
         if ($size <= $headBytes + $tailBytes) {
-            return file_get_contents($path) ?: '';
+            $content = @file_get_contents($path);
+            if (false === $content) {
+                $this->logger->error('Failed to read output file for parsing', ['path' => $path]);
+
+                return '';
+            }
+
+            return $content;
         }
 
         $handle = fopen($path, 'r');
         if (false === $handle) {
+            $this->logger->error('Failed to open output file for parsing', ['path' => $path]);
+
             return '';
         }
 

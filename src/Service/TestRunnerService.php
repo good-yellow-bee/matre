@@ -144,20 +144,21 @@ class TestRunnerService
             $this->entityManager->flush();
 
             // Wrap heartbeat to refresh updatedAt during execution (prevents watchdog false positives)
-            $wrappedHeartbeat = $heartbeatCallback
-                ? function () use ($run, $heartbeatCallback): void {
-                    try {
-                        $run->setUpdatedAt(new \DateTimeImmutable());
-                        $this->entityManager->flush();
-                    } catch (\Throwable $e) {
-                        $this->logger->warning('Heartbeat DB flush failed, continuing execution', [
-                            'runId' => $run->getId(),
-                            'error' => $e->getMessage(),
-                        ]);
-                    }
+            $wrappedHeartbeat = function () use ($run, $heartbeatCallback): void {
+                try {
+                    $run->setUpdatedAt(new \DateTimeImmutable());
+                    $this->entityManager->flush();
+                } catch (\Throwable $e) {
+                    $this->logger->warning('Heartbeat DB flush failed, continuing execution', [
+                        'runId' => $run->getId(),
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+
+                if ($heartbeatCallback) {
                     $heartbeatCallback();
                 }
-            : null;
+            };
 
             // Check if this is a group run that should use sequential execution
             $suite = $run->getSuite();

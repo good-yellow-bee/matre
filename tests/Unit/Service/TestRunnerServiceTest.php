@@ -20,9 +20,7 @@ use App\Service\PlaywrightExecutorService;
 use App\Service\TestDiscoveryService;
 use App\Service\TestRunnerService;
 use Doctrine\ORM\EntityManagerInterface;
-use PHPUnit\Framework\Constraint\IsType;
 use PHPUnit\Framework\MockObject\MockObject;
-use PHPUnit\Framework\NativeType;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Lock\LockFactory;
@@ -537,7 +535,12 @@ class TestRunnerServiceTest extends TestCase
 
         $mftf->expects($this->once())
             ->method('executeSingleTest')
-            ->with($run, 'MOEC2609ES', new IsType(NativeType::Callable), null)
+            ->with(
+                $run,
+                'MOEC2609ES',
+                $this->callback(static fn (mixed $arg): bool => is_callable($arg)),
+                $this->callback(static fn (mixed $arg): bool => is_callable($arg)),
+            )
             ->willReturn([
                 'output' => 'single test output',
                 'exitCode' => 0,
@@ -922,10 +925,10 @@ class TestRunnerServiceTest extends TestCase
             ->method('getOutputFilePath')
             ->willReturn('/var/output.txt');
 
-        // Verify that a callable (lock refresh callback) is passed to the executor
+        // Verify that callables (lock refresh + heartbeat callback) are passed to the executor
         $mftf->expects($this->once())
             ->method('execute')
-            ->with($run, $this->isCallable())
+            ->with($run, $this->isCallable(), $this->isCallable())
             ->willReturn(['output' => 'test', 'exitCode' => 0]);
 
         $mftf->expects($this->once())

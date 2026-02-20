@@ -136,22 +136,54 @@ class PasswordResetServiceTest extends TestCase
         $this->assertTrue($service->createResetRequest('user@example.com'));
     }
 
+    public function testCreateResetRequestReturnsTrueWhenEmailSendingThrowsError(): void
+    {
+        $user = $this->createStub(User::class);
+        $user->method('isEnabled')->willReturn(true);
+        $user->method('getEmail')->willReturn('user@example.com');
+        $user->method('getUsername')->willReturn('testuser');
+
+        $userRepository = $this->createStub(UserRepository::class);
+        $userRepository->method('findOneBy')->willReturn($user);
+
+        $resetRequestRepository = $this->createStub(PasswordResetRequestRepository::class);
+        $resetRequestRepository->method('countActiveForUser')->willReturn(0);
+
+        $urlGenerator = $this->createStub(UrlGeneratorInterface::class);
+        $urlGenerator->method('generate')->willReturn('https://example.com/reset/token');
+
+        $emailService = $this->createStub(EmailService::class);
+        $emailService->method('sendPasswordResetEmail')
+            ->willThrowException(new \TypeError('Template rendering type mismatch'));
+
+        $service = $this->createService(
+            resetRequestRepository: $resetRequestRepository,
+            userRepository: $userRepository,
+            emailService: $emailService,
+            urlGenerator: $urlGenerator,
+        );
+
+        $this->assertTrue($service->createResetRequest('user@example.com'));
+    }
+
     public function testResetPasswordReturnsTrueWhenConfirmationEmailThrowsNonTransportException(): void
     {
         $user = $this->createStub(User::class);
         $user->method('getEmail')->willReturn('user@example.com');
         $user->method('getUsername')->willReturn('testuser');
 
-        $resetRequest = $this->createMock(PasswordResetRequest::class);
+        $resetRequest = $this->createStub(PasswordResetRequest::class);
         $resetRequest->method('getUser')->willReturn($user);
-        $resetRequest->expects($this->once())->method('setIsUsed')->with(true);
 
         $resetRequestRepository = $this->createMock(PasswordResetRequestRepository::class);
         $resetRequestRepository->method('findValidByToken')->willReturn($resetRequest);
         $resetRequestRepository->expects($this->once())->method('deleteForUser')->with($user);
 
-        $passwordHasher = $this->createStub(UserPasswordHasherInterface::class);
-        $passwordHasher->method('hashPassword')->willReturn('hashed_password');
+        $passwordHasher = $this->createMock(UserPasswordHasherInterface::class);
+        $passwordHasher->expects($this->once())
+            ->method('hashPassword')
+            ->with($user, 'newpass123')
+            ->willReturn('hashed_password');
 
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager->expects($this->once())->method('flush');
@@ -170,12 +202,49 @@ class PasswordResetServiceTest extends TestCase
         $this->assertTrue($service->resetPassword('valid-token', 'newpass123'));
     }
 
+    public function testResetPasswordReturnsTrueWhenConfirmationEmailThrowsError(): void
+    {
+        $user = $this->createStub(User::class);
+        $user->method('getEmail')->willReturn('user@example.com');
+        $user->method('getUsername')->willReturn('testuser');
+
+        $resetRequest = $this->createStub(PasswordResetRequest::class);
+        $resetRequest->method('getUser')->willReturn($user);
+
+        $resetRequestRepository = $this->createMock(PasswordResetRequestRepository::class);
+        $resetRequestRepository->method('findValidByToken')->willReturn($resetRequest);
+        $resetRequestRepository->expects($this->once())->method('deleteForUser')->with($user);
+
+        $passwordHasher = $this->createMock(UserPasswordHasherInterface::class);
+        $passwordHasher->expects($this->once())
+            ->method('hashPassword')
+            ->with($user, 'newpass123')
+            ->willReturn('hashed_password');
+
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects($this->once())->method('flush');
+
+        $emailService = $this->createMock(EmailService::class);
+        $emailService->expects($this->once())->method('sendPasswordChangedEmail')
+            ->willThrowException(new \TypeError('Mailer payload type mismatch'));
+
+        $service = $this->createService(
+            entityManager: $entityManager,
+            resetRequestRepository: $resetRequestRepository,
+            emailService: $emailService,
+            passwordHasher: $passwordHasher,
+        );
+
+        $this->assertTrue($service->resetPassword('valid-token', 'newpass123'));
+    }
+
     public function testValidateTokenDelegatesToRepository(): void
     {
         $resetRequest = $this->createStub(PasswordResetRequest::class);
 
-        $resetRequestRepository = $this->createStub(PasswordResetRequestRepository::class);
-        $resetRequestRepository->method('findValidByToken')
+        $resetRequestRepository = $this->createMock(PasswordResetRequestRepository::class);
+        $resetRequestRepository->expects($this->once())->method('findValidByToken')
+            ->with('abc123')
             ->willReturn($resetRequest);
 
         $service = $this->createService(resetRequestRepository: $resetRequestRepository);
@@ -193,22 +262,24 @@ class PasswordResetServiceTest extends TestCase
         $this->assertFalse($service->resetPassword('invalid-token', 'newpass'));
     }
 
-    public function testResetPasswordHashesPasswordMarksUsedAndDeletesOtherRequests(): void
+    public function testResetPasswordHashesPasswordAndDeletesOtherRequests(): void
     {
         $user = $this->createStub(User::class);
         $user->method('getEmail')->willReturn('user@example.com');
         $user->method('getUsername')->willReturn('testuser');
 
-        $resetRequest = $this->createMock(PasswordResetRequest::class);
+        $resetRequest = $this->createStub(PasswordResetRequest::class);
         $resetRequest->method('getUser')->willReturn($user);
-        $resetRequest->expects($this->once())->method('setIsUsed')->with(true);
 
         $resetRequestRepository = $this->createMock(PasswordResetRequestRepository::class);
         $resetRequestRepository->method('findValidByToken')->willReturn($resetRequest);
         $resetRequestRepository->expects($this->once())->method('deleteForUser')->with($user);
 
-        $passwordHasher = $this->createStub(UserPasswordHasherInterface::class);
-        $passwordHasher->method('hashPassword')->willReturn('hashed_password');
+        $passwordHasher = $this->createMock(UserPasswordHasherInterface::class);
+        $passwordHasher->expects($this->once())
+            ->method('hashPassword')
+            ->with($user, 'newpass123')
+            ->willReturn('hashed_password');
 
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager->expects($this->once())->method('flush');

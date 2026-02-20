@@ -104,17 +104,23 @@ class CredentialEncryptionServiceTest extends TestCase
         $this->assertSame($plaintext, $this->service->decrypt($result));
     }
 
-    public function testDecryptSafeReturnsOriginalOnFailure(): void
+    public function testDecryptSafeReturnsNonEncryptedValueAsIs(): void
     {
         $this->assertSame('not-encrypted', $this->service->decryptSafe('not-encrypted'));
     }
 
-    public function testDecryptSafeReturnsOriginalForBase64LikeLegacyPlaintext(): void
+    public function testDecryptSafeThrowsForBase64LikeNonDecryptableValue(): void
     {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('error');
+        $service = new CredentialEncryptionService('test-secret-key-for-testing', $logger);
+
         $base64LikePlaintext = base64_encode(str_repeat('A', 40));
 
-        $this->assertTrue($this->service->isEncrypted($base64LikePlaintext));
-        $this->assertSame($base64LikePlaintext, $this->service->decryptSafe($base64LikePlaintext));
+        $this->assertTrue($service->isEncrypted($base64LikePlaintext));
+
+        $this->expectException(\RuntimeException::class);
+        $service->decryptSafe($base64LikePlaintext);
     }
 
     public function testDifferentAppSecretsProduceDifferentCiphertexts(): void
