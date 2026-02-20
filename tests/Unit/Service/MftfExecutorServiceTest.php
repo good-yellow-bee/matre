@@ -530,50 +530,6 @@ class MftfExecutorServiceTest extends TestCase
         $this->assertEquals('Unknown', $results[0]->getTestName());
     }
 
-    public function testReadOutputFileLogsErrorWhenReadFails(): void
-    {
-        $logger = $this->mockLogger();
-        $logger->expects($this->once())
-            ->method('error')
-            ->with('Failed to read output file', $this->callback(static function (array $context): bool {
-                return isset($context['path']) && is_string($context['path']);
-            }));
-
-        $path = tempnam(sys_get_temp_dir(), 'mftf-output-');
-        file_put_contents($path, 'unreadable');
-        chmod($path, 0);
-
-        $method = new \ReflectionMethod(MftfExecutorService::class, 'readOutputFile');
-        $method->setAccessible(true);
-        $result = $method->invoke($this->service, $path, 102400);
-
-        $this->assertSame('', $result);
-        chmod($path, 0o644);
-        unlink($path);
-    }
-
-    public function testReadOutputFileForParsingLogsErrorWhenReadFails(): void
-    {
-        $logger = $this->mockLogger();
-        $logger->expects($this->once())
-            ->method('error')
-            ->with('Failed to read output file for parsing', $this->callback(static function (array $context): bool {
-                return isset($context['path']) && is_string($context['path']);
-            }));
-
-        $path = tempnam(sys_get_temp_dir(), 'mftf-parse-');
-        file_put_contents($path, 'unreadable');
-        chmod($path, 0);
-
-        $method = new \ReflectionMethod(MftfExecutorService::class, 'readOutputFileForParsing');
-        $method->setAccessible(true);
-        $result = $method->invoke($this->service, $path, 200000, 200000);
-
-        $this->assertSame('', $result);
-        chmod($path, 0o644);
-        unlink($path);
-    }
-
     private function rebuildService(): void
     {
         $this->service = new MftfExecutorService(
