@@ -198,8 +198,8 @@ class AdminConfigService
     /**
      * Check if a user has access to a specific menu item.
      *
-     * @param string $entityName The entity name
-     * @param array<string> $userRoles The user's roles
+     * @param string        $entityName The entity name
+     * @param array<string> $userRoles  The user's roles
      *
      * @return bool True if the user has access, false otherwise
      */
@@ -270,9 +270,9 @@ class AdminConfigService
     /**
      * Get breadcrumb trail for admin pages.
      *
-     * @param string $entityName The current entity
-     * @param string|null $action The current action (e.g., 'index', 'edit', 'new')
-     * @param string|null $title Optional title for the current page
+     * @param string      $entityName The current entity
+     * @param string|null $action     The current action (e.g., 'index', 'edit', 'new')
+     * @param string|null $title      Optional title for the current page
      *
      * @return array<array{label: string, url: string|null}> Breadcrumb items
      */

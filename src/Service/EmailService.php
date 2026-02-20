@@ -27,7 +27,7 @@ class EmailService
     /**
      * Send a welcome email to a new user.
      *
-     * @param string $toEmail The recipient's email address
+     * @param string $toEmail  The recipient's email address
      * @param string $userName The recipient's name
      *
      * @throws TransportExceptionInterface If sending fails
@@ -49,10 +49,10 @@ class EmailService
     /**
      * Send a password reset email.
      *
-     * @param string $toEmail The recipient's email address
-     * @param string $userName The recipient's name
+     * @param string $toEmail    The recipient's email address
+     * @param string $userName   The recipient's name
      * @param string $resetToken The password reset token
-     * @param string $resetUrl The password reset URL
+     * @param string $resetUrl   The password reset URL
      *
      * @throws TransportExceptionInterface If sending fails
      */
@@ -80,7 +80,7 @@ class EmailService
     /**
      * Send a password changed confirmation email.
      *
-     * @param string $toEmail The recipient's email address
+     * @param string $toEmail  The recipient's email address
      * @param string $userName The recipient's name
      *
      * @throws TransportExceptionInterface If sending fails
@@ -102,10 +102,10 @@ class EmailService
     /**
      * Send a generic notification email.
      *
-     * @param string $toEmail The recipient's email address
-     * @param string $subject The email subject
-     * @param string $templatePath The Twig template path
-     * @param array<string, mixed> $context Template context variables
+     * @param string               $toEmail      The recipient's email address
+     * @param string               $subject      The email subject
+     * @param string               $templatePath The Twig template path
+     * @param array<string, mixed> $context      Template context variables
      *
      * @throws TransportExceptionInterface If sending fails
      */
@@ -128,10 +128,10 @@ class EmailService
     /**
      * Send a contact form submission notification to admin.
      *
-     * @param string $adminEmail The admin's email address
-     * @param string $senderName The name of the person who submitted the form
+     * @param string $adminEmail  The admin's email address
+     * @param string $senderName  The name of the person who submitted the form
      * @param string $senderEmail The email of the person who submitted the form
-     * @param string $message The message content
+     * @param string $message     The message content
      *
      * @throws TransportExceptionInterface If sending fails
      */
