@@ -221,7 +221,7 @@ class NotificationWorkflowTest extends KernelTestCase
         $service->sendEmailNotification($run, ['test@example.com']);
 
         // Should not throw
-        $this->assertTrue(true);
+        $this->addToAssertionCount(1);
     }
 
     // =====================

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Messenger\Transport;
 
 use App\Messenger\Stamp\DoctrineReceivedStamp;
-use App\Messenger\Stamp\LockRefreshStamp;
 use App\Messenger\Transport\PerEnvironmentDoctrineReceiver;
 use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\TestCase;
@@ -14,6 +13,7 @@ use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Lock\LockInterface;
 use Symfony\Component\Lock\Store\InMemoryStore;
 use Symfony\Component\Messenger\Envelope;
+use Symfony\Component\Messenger\Stamp\HandlerArgumentsStamp;
 use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 
 class PerEnvironmentDoctrineReceiverTest extends TestCase
@@ -209,7 +209,47 @@ class PerEnvironmentDoctrineReceiverTest extends TestCase
         $this->assertCount(1, $envelopes);
         $this->assertNotNull($envelopes[0]->last(DoctrineReceivedStamp::class));
         $this->assertSame(42, $envelopes[0]->last(DoctrineReceivedStamp::class)->getId());
-        $this->assertNotNull($envelopes[0]->last(LockRefreshStamp::class));
+        $handlerArgsStamp = $envelopes[0]->last(HandlerArgumentsStamp::class);
+        $this->assertNotNull($handlerArgsStamp);
+        $args = $handlerArgsStamp->getAdditionalArguments();
+        $this->assertCount(2, $args);
+        $this->assertIsCallable($args[0]);
+        $this->assertIsCallable($args[1]);
+    }
+
+    public function testGetFetchesMessageWithinTransaction(): void
+    {
+        $row = [
+            'id' => 51,
+            'body' => '{"testRunId":1}',
+            'headers' => '{"type":"App\\\\Message\\\\TestRunMessage"}',
+            'queue_name' => 'test_runner_env_3',
+            'delivered_at' => null,
+        ];
+
+        $connection = $this->createMock(Connection::class);
+        $connection->expects($this->once())->method('beginTransaction');
+        $connection->expects($this->once())->method('commit');
+        $connection->expects($this->once())->method('fetchFirstColumn')->willReturn(['test_runner_env_3']);
+        $connection->expects($this->once())->method('fetchAssociative')->willReturn($row);
+        $connection->expects($this->once())
+            ->method('update')
+            ->with(
+                'messenger_messages',
+                $this->callback(fn (array $data): bool => $data['delivered_at'] instanceof \DateTimeImmutable),
+                ['id' => 51],
+                ['delivered_at' => 'datetime_immutable'],
+            );
+        $connection->expects($this->never())->method('rollBack');
+
+        $serializer = $this->createStub(SerializerInterface::class);
+        $serializer->method('decode')->willReturn(new Envelope(new \stdClass()));
+
+        $receiver = $this->createReceiver(connection: $connection, serializer: $serializer);
+        $envelopes = iterator_to_array($receiver->get());
+
+        $this->assertCount(1, $envelopes);
+        $this->assertSame(51, $envelopes[0]->last(DoctrineReceivedStamp::class)?->getId());
     }
 
     public function testGetSkipsLockedEnvironment(): void

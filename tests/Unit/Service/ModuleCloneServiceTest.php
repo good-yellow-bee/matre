@@ -117,7 +117,7 @@ class ModuleCloneServiceTest extends TestCase
         $service = $this->createService();
         $service->cleanup($this->tempDir . '/does-not-exist');
 
-        $this->assertTrue(true);
+        $this->addToAssertionCount(1);
     }
 
     public function testGetModuleRepoReturnsConfiguredValue(): void

@@ -1,7 +1,8 @@
-/* Google Fonts loaded via template <link> for better performance */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../../tailwind.config.js";
+@source "../**/*.js";
+@source "../**/*.vue";
+@source "../../templates/**/*.html.twig";
 
 @layer base {
     :root {

@@ -28,7 +28,7 @@ class ValidConsoleCommandValidatorTest extends TestCase
 
         $this->validator = new ValidConsoleCommandValidator($kernel);
 
-        $this->application = $this->createStub(Application::class);
+        $this->application = $this->createMock(Application::class);
 
         $ref = new \ReflectionClass($this->validator);
         $prop = $ref->getProperty('application');

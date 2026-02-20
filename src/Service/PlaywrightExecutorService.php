@@ -252,7 +252,14 @@ class PlaywrightExecutorService
 
         $size = filesize($path);
         if (false === $size || $size <= $maxBytes) {
-            return file_get_contents($path) ?: '';
+            $content = @file_get_contents($path);
+            if (false === $content) {
+                $this->logger->error('Failed to read Playwright output file', ['path' => $path]);
+
+                return '';
+            }
+
+            return $content;
         }
 
         // Read last N bytes for large files
@@ -281,13 +288,17 @@ class PlaywrightExecutorService
             return [];
         }
 
-        $contents = file_get_contents($jsonPath);
+        $contents = @file_get_contents($jsonPath);
         if (false === $contents) {
+            $this->logger->error('Failed to read Playwright JSON results file', ['path' => $jsonPath]);
+
             return [];
         }
 
         $data = json_decode($contents, true);
         if (!is_array($data) || !isset($data['suites'])) {
+            $this->logger->warning('Invalid Playwright JSON results format', ['path' => $jsonPath]);
+
             return [];
         }
 

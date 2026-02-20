@@ -386,6 +386,99 @@ class PlaywrightExecutorServiceTest extends TestCase
         );
     }
 
+    public function testReadOutputFileLogsErrorWhenReadFails(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())
+            ->method('error')
+            ->with('Failed to read Playwright output file', $this->callback(static function (array $context): bool {
+                return isset($context['path']) && is_string($context['path']);
+            }));
+
+        $service = new PlaywrightExecutorService(
+            $logger,
+            $this->createStub(GlobalEnvVariableRepository::class),
+            $this->createStub(ShellEscapeService::class),
+            '/app',
+        );
+
+        $path = tempnam(sys_get_temp_dir(), 'playwright-output-');
+        file_put_contents($path, 'unreadable');
+        chmod($path, 0);
+
+        $method = new \ReflectionMethod(PlaywrightExecutorService::class, 'readOutputFile');
+        $method->setAccessible(true);
+        $result = $method->invoke($service, $path, 102400);
+
+        $this->assertSame('', $result);
+        chmod($path, 0o644);
+        unlink($path);
+    }
+
+    public function testParseJsonResultsLogsErrorWhenFileCannotBeRead(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())
+            ->method('error')
+            ->with('Failed to read Playwright JSON results file', $this->callback(static function (array $context): bool {
+                return isset($context['path']) && str_ends_with($context['path'], '/results.json');
+            }));
+
+        $tmpDir = sys_get_temp_dir() . '/playwright-json-' . uniqid('', true);
+        mkdir($tmpDir . '/var/playwright-results', 0o755, true);
+        file_put_contents($tmpDir . '/var/playwright-results/results.json', 'unreadable');
+        chmod($tmpDir . '/var/playwright-results/results.json', 0);
+
+        $service = new PlaywrightExecutorService(
+            $logger,
+            $this->createStub(GlobalEnvVariableRepository::class),
+            $this->createStub(ShellEscapeService::class),
+            $tmpDir,
+        );
+
+        $method = new \ReflectionMethod(PlaywrightExecutorService::class, 'parseJsonResults');
+        $method->setAccessible(true);
+        $result = $method->invoke($service, $this->createTestRun());
+
+        $this->assertSame([], $result);
+        chmod($tmpDir . '/var/playwright-results/results.json', 0o644);
+        unlink($tmpDir . '/var/playwright-results/results.json');
+        rmdir($tmpDir . '/var/playwright-results');
+        rmdir($tmpDir . '/var');
+        rmdir($tmpDir);
+    }
+
+    public function testParseJsonResultsLogsWarningWhenFormatIsInvalid(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())
+            ->method('warning')
+            ->with('Invalid Playwright JSON results format', $this->callback(static function (array $context): bool {
+                return isset($context['path']) && str_ends_with($context['path'], '/results.json');
+            }));
+
+        $tmpDir = sys_get_temp_dir() . '/playwright-json-invalid-' . uniqid('', true);
+        mkdir($tmpDir . '/var/playwright-results', 0o755, true);
+        file_put_contents($tmpDir . '/var/playwright-results/results.json', '{"invalid":true}');
+
+        $service = new PlaywrightExecutorService(
+            $logger,
+            $this->createStub(GlobalEnvVariableRepository::class),
+            $this->createStub(ShellEscapeService::class),
+            $tmpDir,
+        );
+
+        $method = new \ReflectionMethod(PlaywrightExecutorService::class, 'parseJsonResults');
+        $method->setAccessible(true);
+        $result = $method->invoke($service, $this->createTestRun());
+
+        $this->assertSame([], $result);
+        unlink($tmpDir . '/var/playwright-results/results.json');
+        rmdir($tmpDir . '/var/playwright-results');
+        rmdir($tmpDir . '/var');
+        rmdir($tmpDir);
+    }
+
     /**
      * @return array{0: MockObject&GlobalEnvVariableRepository, 1: MockObject&ShellEscapeService}
      */
