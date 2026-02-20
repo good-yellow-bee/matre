@@ -10,6 +10,7 @@ use App\Entity\GlobalEnvVariable;
 use App\Entity\NotificationTemplate;
 use App\Entity\Settings;
 use App\Entity\TestEnvironment;
+use App\Entity\TestRun;
 use App\Entity\TestSuite;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsDoctrineListener;
@@ -36,6 +37,7 @@ class AuditLogEventListener
         Settings::class,
         NotificationTemplate::class,
         GlobalEnvVariable::class,
+        TestRun::class,
     ];
 
     private const SENSITIVE_FIELDS = [
@@ -107,6 +109,7 @@ class AuditLogEventListener
             $entityId = $entity->getId();
             if (null !== $entityId && $log->getEntityId() !== $entityId) {
                 $log->setEntityId($entityId);
+                $log->setEntityLabel($this->getEntityLabel($entity));
                 $updates[] = $log;
             }
         }
