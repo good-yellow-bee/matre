@@ -20,7 +20,9 @@ use App\Service\PlaywrightExecutorService;
 use App\Service\TestDiscoveryService;
 use App\Service\TestRunnerService;
 use Doctrine\ORM\EntityManagerInterface;
+use PHPUnit\Framework\Constraint\IsType;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\NativeType;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Lock\LockFactory;
@@ -535,7 +537,7 @@ class TestRunnerServiceTest extends TestCase
 
         $mftf->expects($this->once())
             ->method('executeSingleTest')
-            ->with($run, 'MOEC2609ES', $this->isType('callable'), null)
+            ->with($run, 'MOEC2609ES', new IsType(NativeType::Callable), null)
             ->willReturn([
                 'output' => 'single test output',
                 'exitCode' => 0,

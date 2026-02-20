@@ -89,7 +89,6 @@ class ValidConsoleCommandValidatorTest extends TestCase
     public function testExtractsCommandNameFromArguments(): void
     {
         $this->application->method('find')
-            ->with('app:test-command')
             ->willReturn(new Command('app:test-command'));
 
         $context = $this->createMock(ExecutionContextInterface::class);

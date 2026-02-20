@@ -151,7 +151,7 @@ class PasswordResetServiceTest extends TestCase
         $resetRequestRepository->expects($this->once())->method('deleteForUser')->with($user);
 
         $passwordHasher = $this->createStub(UserPasswordHasherInterface::class);
-        $passwordHasher->method('hashPassword')->with($user, 'newpass123')->willReturn('hashed_password');
+        $passwordHasher->method('hashPassword')->willReturn('hashed_password');
 
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager->expects($this->once())->method('flush');
@@ -176,7 +176,6 @@ class PasswordResetServiceTest extends TestCase
 
         $resetRequestRepository = $this->createStub(PasswordResetRequestRepository::class);
         $resetRequestRepository->method('findValidByToken')
-            ->with('abc123')
             ->willReturn($resetRequest);
 
         $service = $this->createService(resetRequestRepository: $resetRequestRepository);
@@ -209,7 +208,7 @@ class PasswordResetServiceTest extends TestCase
         $resetRequestRepository->expects($this->once())->method('deleteForUser')->with($user);
 
         $passwordHasher = $this->createStub(UserPasswordHasherInterface::class);
-        $passwordHasher->method('hashPassword')->with($user, 'newpass123')->willReturn('hashed_password');
+        $passwordHasher->method('hashPassword')->willReturn('hashed_password');
 
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager->expects($this->once())->method('flush');
