@@ -388,6 +388,18 @@ class MftfExecutorService
             $wd['request_timeout'] = %d;
             $wd['pageload_timeout'] = %d;
             $wd['wait'] = %d;
+            if (!isset($wd['capabilities']) || !is_array($wd['capabilities'])) {
+                $wd['capabilities'] = [];
+            }
+            if (!isset($wd['capabilities']['goog:chromeOptions']) || !is_array($wd['capabilities']['goog:chromeOptions'])) {
+                $wd['capabilities']['goog:chromeOptions'] = [];
+            }
+            if (!isset($wd['capabilities']['goog:chromeOptions']['prefs']) || !is_array($wd['capabilities']['goog:chromeOptions']['prefs'])) {
+                $wd['capabilities']['goog:chromeOptions']['prefs'] = [];
+            }
+            $wd['capabilities']['goog:chromeOptions']['prefs']['download.default_directory'] = '/home/seluser/Downloads';
+            $wd['capabilities']['goog:chromeOptions']['prefs']['download.prompt_for_download'] = false;
+            $wd['capabilities']['goog:chromeOptions']['prefs']['download.directory_upgrade'] = true;
             file_put_contents($path, Symfony\Component\Yaml\Yaml::dump($config, 10, 2));
             PHP;
         $parts[] = sprintf(
@@ -474,6 +486,10 @@ class MftfExecutorService
         // (codeception.yml outputDirectory is set via sed earlier in this command)
         $allureOutputPath = $this->magentoRoot . '/dev/tests/acceptance/allure-results/run-' . $runId;
         $parts[] = sprintf('mkdir -p %s', escapeshellarg($allureOutputPath));
+
+        // Clean downloads directory before each run (shared volume with Chrome nodes)
+        $downloadsPath = $this->magentoRoot . '/dev/tests/acceptance/tests/_data/downloads';
+        $parts[] = sprintf('rm -rf %s/* && mkdir -p %s', escapeshellarg($downloadsPath), escapeshellarg($downloadsPath));
 
         // Generate credentials file from env variables (MFTF requires this for _CREDS references)
         $credentialsFile = $envConfigDir . '/.credentials';

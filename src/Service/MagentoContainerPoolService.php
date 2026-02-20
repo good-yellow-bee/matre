@@ -147,6 +147,7 @@ class MagentoContainerPoolService
         // Use host paths for docker bind mounts (not container /app path)
         $testModulePath = $this->hostProjectDir . '/var/test-modules/current';
         $mftfResultsPath = $this->hostProjectDir . '/var/mftf-results';
+        $mftfDownloadsPath = $this->hostProjectDir . '/var/mftf-downloads';
         $abbModulePath = $this->hostProjectDir . '/abb-custom-mftf';
 
         $process = new Process([
@@ -161,6 +162,8 @@ class MagentoContainerPoolService
             '-v', $mftfResultsPath . ':/var/www/html/dev/tests/acceptance/tests/_output',
             // Allure results (writable)
             '-v', $mftfResultsPath . '/allure-results:/var/www/html/dev/tests/acceptance/allure-results',
+            // Downloads directory (shared with Chrome nodes for file download tests)
+            '-v', $mftfDownloadsPath . ':/var/www/html/dev/tests/acceptance/tests/_data/downloads',
             // Dev mode module mount
             '-v', $abbModulePath . ':/app/abb-custom-mftf:ro',
             // Per-environment tmpfs for .env isolation (prevents shared volume race condition)

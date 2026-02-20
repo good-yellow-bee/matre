@@ -187,6 +187,8 @@ services:
     shm_size: 2gb
     ports:
       - "7900"  # noVNC web viewer (dynamic host port for replica support)
+    volumes:
+      - ./var/mftf-downloads:/home/seluser/Downloads
     depends_on:
       - selenium-hub
     environment:
@@ -265,6 +267,7 @@ services:
       - ${DEV_MODULE_PATH:-./var/test-modules/current}:/var/www/html/app/code/TestModule:ro
       - ./var/mftf-results:/var/www/html/dev/tests/acceptance/tests/_output
       - ./var/mftf-results/allure-results:/var/www/html/dev/tests/acceptance/allure-results
+      - ./var/mftf-downloads:/var/www/html/dev/tests/acceptance/tests/_data/downloads
     env_file: .env
     environment:
       MAGENTO_RUN_MODE: developer
