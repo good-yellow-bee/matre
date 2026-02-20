@@ -24,6 +24,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ORM\Index(name: 'IDX_TEST_RUN_CREATED', columns: ['created_at'])]
 #[ORM\Index(name: 'IDX_TEST_RUN_ENV_STATUS', columns: ['environment_id', 'status'])]
 #[ORM\Index(name: 'IDX_TEST_RUN_SUITE', columns: ['suite_id'])]
+#[ORM\Index(name: 'IDX_TEST_RUN_EXECUTED_BY', columns: ['executed_by_id'])]
 #[ORM\HasLifecycleCallbacks]
 class TestRun
 {
@@ -81,6 +82,10 @@ class TestRun
     #[ORM\ManyToOne(targetEntity: TestSuite::class)]
     #[ORM\JoinColumn(name: 'suite_id', nullable: true, onDelete: 'SET NULL')]
     private ?TestSuite $suite = null;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(name: 'executed_by_id', nullable: true, onDelete: 'SET NULL')]
+    private ?User $executedBy = null;
 
     #[ORM\Column(type: Types::STRING, length: 20)]
     #[Assert\NotBlank]
@@ -208,6 +213,18 @@ class TestRun
     public function setSuite(?TestSuite $suite): static
     {
         $this->suite = $suite;
+
+        return $this;
+    }
+
+    public function getExecutedBy(): ?User
+    {
+        return $this->executedBy;
+    }
+
+    public function setExecutedBy(?User $executedBy): static
+    {
+        $this->executedBy = $executedBy;
 
         return $this;
     }

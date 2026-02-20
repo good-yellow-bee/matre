@@ -76,6 +76,18 @@
                         <td>{{ run.triggeredBy|title }}</td>
                     </tr>
                     <tr>
+                        <th>Executed By</th>
+                        <td>
+                            {% if run.executedBy %}
+                                <a href="{{ path('admin_user_show', {id: run.executedBy.id}) }}" class="text-primary">
+                                    {{ run.executedBy.username }}
+                                </a>
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
                         <th>Created</th>
                         <td>{{ run.createdAt|date('Y-m-d H:i:s') }}</td>
                     </tr>

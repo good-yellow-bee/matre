@@ -9,6 +9,7 @@ use App\Entity\TestReport;
 use App\Entity\TestResult;
 use App\Entity\TestRun;
 use App\Entity\TestSuite;
+use App\Entity\User;
 use App\Repository\TestRunRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -44,6 +45,7 @@ class TestRunnerService
         ?TestSuite $suite = null,
         string $triggeredBy = TestRun::TRIGGER_MANUAL,
         bool $sendNotifications = true,
+        ?User $executedBy = null,
     ): TestRun {
         $run = new TestRun();
         $run->setEnvironment($environment);
@@ -52,6 +54,7 @@ class TestRunnerService
         $run->setSuite($suite);
         $run->setTriggeredBy($triggeredBy);
         $run->setSendNotifications($sendNotifications);
+        $run->setExecutedBy($executedBy);
         $run->setStatus(TestRun::STATUS_PENDING);
 
         $this->entityManager->persist($run);
@@ -398,7 +401,7 @@ class TestRunnerService
     /**
      * Retry a failed test run.
      */
-    public function retryRun(TestRun $originalRun): TestRun
+    public function retryRun(TestRun $originalRun, ?User $executedBy = null): TestRun
     {
         return $this->createRun(
             $originalRun->getEnvironment(),
@@ -406,6 +409,8 @@ class TestRunnerService
             $originalRun->getTestFilter(),
             $originalRun->getSuite(),
             TestRun::TRIGGER_MANUAL,
+            $originalRun->isSendNotifications(),
+            $executedBy,
         );
     }
 

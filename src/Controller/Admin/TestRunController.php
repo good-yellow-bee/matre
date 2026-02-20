@@ -79,6 +79,7 @@ class TestRunController extends AbstractController
                 $suite,
                 TestRun::TRIGGER_MANUAL,
                 filter_var($request->request->all('test_run')['sendNotifications'] ?? '1', FILTER_VALIDATE_BOOLEAN),
+                $this->getUser(),
             );
 
             // Dispatch async execution
@@ -186,7 +187,7 @@ class TestRunController extends AbstractController
         }
 
         if ($this->isCsrfTokenValid('retry' . $run->getId(), $request->request->get('_token'))) {
-            $newRun = $this->testRunnerService->retryRun($run);
+            $newRun = $this->testRunnerService->retryRun($run, $this->getUser());
 
             // Dispatch async execution
             $this->messageBus->dispatch(new TestRunMessage(

@@ -9,6 +9,7 @@ use App\Entity\TestReport;
 use App\Entity\TestResult;
 use App\Entity\TestRun;
 use App\Entity\TestSuite;
+use App\Entity\User;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -52,6 +53,18 @@ class TestRunTest extends TestCase
 
         $run->setSuite(null);
         $this->assertNull($run->getSuite());
+    }
+
+    public function testExecutedByGetterAndSetter(): void
+    {
+        $run = new TestRun();
+        $user = $this->createStub(User::class);
+
+        $run->setExecutedBy($user);
+        $this->assertSame($user, $run->getExecutedBy());
+
+        $run->setExecutedBy(null);
+        $this->assertNull($run->getExecutedBy());
     }
 
     public function testTypeGetterAndSetter(): void

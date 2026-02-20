@@ -112,7 +112,7 @@ class TestRunApiController extends AbstractController
             return $this->json(['error' => 'Invalid CSRF token'], 403);
         }
 
-        $newRun = $this->testRunnerService->retryRun($run);
+        $newRun = $this->testRunnerService->retryRun($run, $this->getUser());
 
         $this->messageBus->dispatch(new TestRunMessage(
             $newRun->getId(),
@@ -152,6 +152,10 @@ class TestRunApiController extends AbstractController
             'suite' => $run->getSuite() ? [
                 'id' => $run->getSuite()->getId(),
                 'name' => $run->getSuite()->getName(),
+            ] : null,
+            'executedBy' => $run->getExecutedBy() ? [
+                'id' => $run->getExecutedBy()->getId(),
+                'username' => $run->getExecutedBy()->getUsername(),
             ] : null,
             // Use pre-fetched counts if provided, otherwise fall back to entity method
             'resultCounts' => $resultCounts ?? $run->getResultCounts(),
