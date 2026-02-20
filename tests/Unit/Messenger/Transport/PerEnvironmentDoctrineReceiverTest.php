@@ -18,29 +18,6 @@ use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 
 class PerEnvironmentDoctrineReceiverTest extends TestCase
 {
-    private function createReceiver(
-        ?Connection $connection = null,
-        ?SerializerInterface $serializer = null,
-        ?LockFactory $lockFactory = null,
-        ?LoggerInterface $logger = null,
-        string $tableName = 'messenger_messages',
-    ): PerEnvironmentDoctrineReceiver {
-        return new PerEnvironmentDoctrineReceiver(
-            $connection ?? $this->createStub(Connection::class),
-            $serializer ?? $this->createStub(SerializerInterface::class),
-            $lockFactory ?? new LockFactory(new InMemoryStore()),
-            $logger ?? $this->createStub(LoggerInterface::class),
-            $tableName,
-        );
-    }
-
-    private function setActiveLocks(PerEnvironmentDoctrineReceiver $receiver, array $locks): void
-    {
-        $ref = new \ReflectionClass($receiver);
-        $prop = $ref->getProperty('activeLocks');
-        $prop->setValue($receiver, $locks);
-    }
-
     public function testGetLockKeyForEnvReturnsCorrectFormat(): void
     {
         $this->assertSame('test_runner_env_processing_42', PerEnvironmentDoctrineReceiver::getLockKeyForEnv(42));
@@ -264,5 +241,28 @@ class PerEnvironmentDoctrineReceiverTest extends TestCase
         $receiver = $this->createReceiver(connection: $connection, lockFactory: $lockFactory);
 
         $this->assertSame([], iterator_to_array($receiver->get()));
+    }
+
+    private function createReceiver(
+        ?Connection $connection = null,
+        ?SerializerInterface $serializer = null,
+        ?LockFactory $lockFactory = null,
+        ?LoggerInterface $logger = null,
+        string $tableName = 'messenger_messages',
+    ): PerEnvironmentDoctrineReceiver {
+        return new PerEnvironmentDoctrineReceiver(
+            $connection ?? $this->createStub(Connection::class),
+            $serializer ?? $this->createStub(SerializerInterface::class),
+            $lockFactory ?? new LockFactory(new InMemoryStore()),
+            $logger ?? $this->createStub(LoggerInterface::class),
+            $tableName,
+        );
+    }
+
+    private function setActiveLocks(PerEnvironmentDoctrineReceiver $receiver, array $locks): void
+    {
+        $ref = new \ReflectionClass($receiver);
+        $prop = $ref->getProperty('activeLocks');
+        $prop->setValue($receiver, $locks);
     }
 }

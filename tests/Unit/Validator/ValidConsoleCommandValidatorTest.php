@@ -19,6 +19,7 @@ use Symfony\Component\Validator\Violation\ConstraintViolationBuilderInterface;
 class ValidConsoleCommandValidatorTest extends TestCase
 {
     private ValidConsoleCommandValidator $validator;
+
     private Application $application;
 
     protected function setUp(): void

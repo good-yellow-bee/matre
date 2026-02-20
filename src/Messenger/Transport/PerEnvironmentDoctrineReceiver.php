@@ -180,6 +180,7 @@ final class PerEnvironmentDoctrineReceiver implements ReceiverInterface
 
         try {
             $this->connection->beginTransaction();
+
             try {
                 // Get oldest message for this queue (FIFO), including stale redeliveries
                 $staleThreshold = new \DateTimeImmutable(sprintf('-%d seconds', self::REDELIVER_AFTER_SECONDS));

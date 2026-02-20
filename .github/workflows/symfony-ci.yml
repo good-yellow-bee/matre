@@ -121,15 +121,15 @@ jobs:
       - name: Create .env.test.local file
         run: |
           cat > .env.test.local <<EOF
-          APP_ENV=test
-          DB_HOST=127.0.0.1
-          DB_USER=root
-          DB_PASS=root
-          DB_NAME=matre_test
-          DB_VERSION=8.0
-          MAILER_DSN=null://null
-          MAIL_FROM=test@matre.local
-          EOF
+APP_ENV=test
+DB_HOST=127.0.0.1
+DB_USER=root
+DB_PASS=root
+DB_NAME=matre_test
+DB_VERSION=8.0
+MAILER_DSN=null://null
+MAIL_FROM=test@matre.local
+EOF
 
       - name: Wait for MySQL to be ready
         run: |
@@ -251,12 +251,12 @@ jobs:
       - name: Create .env.test.local file
         run: |
           cat > .env.test.local <<EOF
-          DB_HOST=127.0.0.1
-          DB_USER=root
-          DB_PASS=root
-          DB_NAME=matre_test
-          DB_VERSION=8.0
-          EOF
+DB_HOST=127.0.0.1
+DB_USER=root
+DB_PASS=root
+DB_NAME=matre_test
+DB_VERSION=8.0
+EOF
 
       - name: Clear cache
         run: php bin/console cache:clear --env=test --no-warmup || true
@@ -382,15 +382,15 @@ jobs:
       - name: Create .env.test.local file
         run: |
           cat > .env.test.local <<EOF
-          APP_ENV=test
-          DB_HOST=127.0.0.1
-          DB_USER=root
-          DB_PASS=root
-          DB_NAME=matre_test
-          DB_VERSION=8.0
-          MAILER_DSN=null://null
-          MAIL_FROM=test@matre.local
-          EOF
+APP_ENV=test
+DB_HOST=127.0.0.1
+DB_USER=root
+DB_PASS=root
+DB_NAME=matre_test
+DB_VERSION=8.0
+MAILER_DSN=null://null
+MAIL_FROM=test@matre.local
+EOF
 
       - name: Wait for MySQL
         run: |

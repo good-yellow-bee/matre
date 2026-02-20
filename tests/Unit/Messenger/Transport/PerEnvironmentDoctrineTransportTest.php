@@ -19,30 +19,13 @@ use Symfony\Component\Messenger\Transport\TransportInterface;
 class PerEnvironmentDoctrineTransportTest extends TestCase
 {
     private Connection $connection;
+
     private SerializerInterface $serializer;
 
     protected function setUp(): void
     {
         $this->connection = $this->createStub(Connection::class);
         $this->serializer = $this->createStub(SerializerInterface::class);
-    }
-
-    private function createTransport(
-        ?Connection $connection = null,
-        ?SerializerInterface $serializer = null,
-    ): PerEnvironmentDoctrineTransport {
-        $conn = $connection ?? $this->connection;
-        $ser = $serializer ?? $this->serializer;
-
-        return new PerEnvironmentDoctrineTransport(
-            new PerEnvironmentDoctrineReceiver(
-                $conn,
-                $ser,
-                new LockFactory(new InMemoryStore()),
-                $this->createStub(LoggerInterface::class),
-            ),
-            new PerEnvironmentDoctrineSender($conn, $ser),
-        );
     }
 
     public function testImplementsTransportInterface(): void
@@ -94,5 +77,23 @@ class PerEnvironmentDoctrineTransportTest extends TestCase
         $this->createTransport()->reject($envelope);
 
         $this->addToAssertionCount(1);
+    }
+
+    private function createTransport(
+        ?Connection $connection = null,
+        ?SerializerInterface $serializer = null,
+    ): PerEnvironmentDoctrineTransport {
+        $conn = $connection ?? $this->connection;
+        $ser = $serializer ?? $this->serializer;
+
+        return new PerEnvironmentDoctrineTransport(
+            new PerEnvironmentDoctrineReceiver(
+                $conn,
+                $ser,
+                new LockFactory(new InMemoryStore()),
+                $this->createStub(LoggerInterface::class),
+            ),
+            new PerEnvironmentDoctrineSender($conn, $ser),
+        );
     }
 }

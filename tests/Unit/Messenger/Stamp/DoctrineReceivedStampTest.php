@@ -10,11 +10,6 @@ use Symfony\Component\Messenger\Stamp\StampInterface;
 
 class DoctrineReceivedStampTest extends TestCase
 {
-    private static function create(?int $id = null): DoctrineReceivedStamp
-    {
-        return new DoctrineReceivedStamp($id ?? 1);
-    }
-
     public function testGetIdReturnsConstructorValue(): void
     {
         $stamp = self::create(id: 99);
@@ -25,5 +20,10 @@ class DoctrineReceivedStampTest extends TestCase
     public function testImplementsStampInterface(): void
     {
         $this->assertInstanceOf(StampInterface::class, self::create());
+    }
+
+    private static function create(?int $id = null): DoctrineReceivedStamp
+    {
+        return new DoctrineReceivedStamp($id ?? 1);
     }
 }

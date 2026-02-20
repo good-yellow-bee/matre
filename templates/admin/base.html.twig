@@ -58,7 +58,7 @@
             <div class="px-3 mb-2 text-xs font-medium text-slate-400 dark:text-charcoal-400 uppercase tracking-wider">Platform</div>
 
             <a href="{{ path('admin_dashboard') }}"
-               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.get('_route') starts with 'admin_dashboard' ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-charcoal-400 hover:bg-slate-100 dark:hover:bg-charcoal-700 hover:text-slate-900 dark:hover:text-white' }}">
+               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.attributes.get('_route') starts with 'admin_dashboard' ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-charcoal-400 hover:bg-slate-100 dark:hover:bg-charcoal-700 hover:text-slate-900 dark:hover:text-white' }}">
                 <i class="bi bi-house-door text-base"></i>
                 Dashboard
             </a>
@@ -66,31 +66,31 @@
             <div class="px-3 mt-6 mb-2 text-xs font-medium text-slate-400 dark:text-charcoal-400 uppercase tracking-wider">Test Automation</div>
 
             <a href="{{ path('admin_test_run_index') }}"
-               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.get('_route') starts with 'admin_test_run' ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-charcoal-400 hover:bg-slate-100 dark:hover:bg-charcoal-700 hover:text-slate-900 dark:hover:text-white' }}">
+               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.attributes.get('_route') starts with 'admin_test_run' ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-charcoal-400 hover:bg-slate-100 dark:hover:bg-charcoal-700 hover:text-slate-900 dark:hover:text-white' }}">
                 <i class="bi bi-play-circle text-base"></i>
                 Test Runs
             </a>
 
             <a href="{{ path('admin_test_history') }}"
-               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.get('_route') starts with 'admin_test_history' ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-charcoal-400 hover:bg-slate-100 dark:hover:bg-charcoal-700 hover:text-slate-900 dark:hover:text-white' }}">
+               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.attributes.get('_route') starts with 'admin_test_history' ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-charcoal-400 hover:bg-slate-100 dark:hover:bg-charcoal-700 hover:text-slate-900 dark:hover:text-white' }}">
                 <i class="bi bi-clock-history text-base"></i>
                 Test History
             </a>
 
             <a href="{{ path('admin_test_environment_index') }}"
-               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.get('_route') starts with 'admin_test_environment' ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-charcoal-400 hover:bg-slate-100 dark:hover:bg-charcoal-700 hover:text-slate-900 dark:hover:text-white' }}">
+               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.attributes.get('_route') starts with 'admin_test_environment' ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-charcoal-400 hover:bg-slate-100 dark:hover:bg-charcoal-700 hover:text-slate-900 dark:hover:text-white' }}">
                 <i class="bi bi-server text-base"></i>
                 Environments
             </a>
 
             <a href="{{ path('admin_test_suite_index') }}"
-               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.get('_route') starts with 'admin_test_suite' ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-charcoal-400 hover:bg-slate-100 dark:hover:bg-charcoal-700 hover:text-slate-900 dark:hover:text-white' }}">
+               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.attributes.get('_route') starts with 'admin_test_suite' ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-charcoal-400 hover:bg-slate-100 dark:hover:bg-charcoal-700 hover:text-slate-900 dark:hover:text-white' }}">
                 <i class="bi bi-collection text-base"></i>
                 Test Suites
             </a>
 
             <a href="{{ path('admin_env_variable_index') }}"
-               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.get('_route') starts with 'admin_env_variable' ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-charcoal-400 hover:bg-slate-100 dark:hover:bg-charcoal-700 hover:text-slate-900 dark:hover:text-white' }}">
+               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.attributes.get('_route') starts with 'admin_env_variable' ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-charcoal-400 hover:bg-slate-100 dark:hover:bg-charcoal-700 hover:text-slate-900 dark:hover:text-white' }}">
                 <i class="bi bi-braces text-base"></i>
                 Env Variables
             </a>
@@ -99,13 +99,13 @@
             <div class="px-3 mt-6 mb-2 text-xs font-medium text-slate-400 dark:text-charcoal-400 uppercase tracking-wider">Administration</div>
 
             <a href="{{ path('admin_user_index') }}"
-               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.get('_route') starts with 'admin_user' ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-charcoal-400 hover:bg-slate-100 dark:hover:bg-charcoal-700 hover:text-slate-900 dark:hover:text-white' }}">
+               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.attributes.get('_route') starts with 'admin_user' ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-charcoal-400 hover:bg-slate-100 dark:hover:bg-charcoal-700 hover:text-slate-900 dark:hover:text-white' }}">
                 <i class="bi bi-people text-base"></i>
                 Users
             </a>
 
             <a href="{{ path('admin_notification_template_index') }}"
-               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.get('_route') starts with 'admin_notification_template' ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-charcoal-400 hover:bg-slate-100 dark:hover:bg-charcoal-700 hover:text-slate-900 dark:hover:text-white' }}">
+               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.attributes.get('_route') starts with 'admin_notification_template' ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-charcoal-400 hover:bg-slate-100 dark:hover:bg-charcoal-700 hover:text-slate-900 dark:hover:text-white' }}">
                 <i class="bi bi-chat-square-text text-base"></i>
                 Notification Templates
             </a>
@@ -114,19 +114,19 @@
             <div class="px-3 mt-6 mb-2 text-xs font-medium text-slate-400 dark:text-charcoal-400 uppercase tracking-wider">System</div>
 
             <a href="{{ path('admin_settings_edit') }}"
-               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.get('_route') starts with 'admin_settings' ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-charcoal-400 hover:bg-slate-100 dark:hover:bg-charcoal-700 hover:text-slate-900 dark:hover:text-white' }}">
+               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.attributes.get('_route') starts with 'admin_settings' ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-charcoal-400 hover:bg-slate-100 dark:hover:bg-charcoal-700 hover:text-slate-900 dark:hover:text-white' }}">
                 <i class="bi bi-gear text-base"></i>
                 Settings
             </a>
 
             <a href="{{ path('admin_cron_job_index') }}"
-               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.get('_route') starts with 'admin_cron_job' ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-charcoal-400 hover:bg-slate-100 dark:hover:bg-charcoal-700 hover:text-slate-900 dark:hover:text-white' }}">
+               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.attributes.get('_route') starts with 'admin_cron_job' ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-charcoal-400 hover:bg-slate-100 dark:hover:bg-charcoal-700 hover:text-slate-900 dark:hover:text-white' }}">
                 <i class="bi bi-clock-history text-base"></i>
                 Cron Jobs
             </a>
 
             <a href="{{ path('admin_audit_log_index') }}"
-               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.get('_route') starts with 'admin_audit_log' ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-charcoal-400 hover:bg-slate-100 dark:hover:bg-charcoal-700 hover:text-slate-900 dark:hover:text-white' }}">
+               class="flex items-center gap-3 px-3 py-2 rounded-lg font-medium no-underline transition-colors {{ app.request.attributes.get('_route') starts with 'admin_audit_log' ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-charcoal-400 hover:bg-slate-100 dark:hover:bg-charcoal-700 hover:text-slate-900 dark:hover:text-white' }}">
                 <i class="bi bi-journal-text text-base"></i>
                 Audit Logs
             </a>
@@ -166,16 +166,16 @@
                     <span>Admin</span>
                     <span class="mx-2 text-slate-300 dark:text-slate-600">/</span>
                     <span class="text-slate-900 dark:text-white font-medium">
-                        {% if app.request.get('_route') == 'admin_dashboard' %}Dashboard
-                        {% elseif app.request.get('_route') starts with 'admin_page' %}Pages
-                        {% elseif app.request.get('_route') starts with 'admin_category' %}Categories
-                        {% elseif app.request.get('_route') starts with 'admin_user' %}Users
-                        {% elseif app.request.get('_route') starts with 'admin_settings' %}Settings
-                        {% elseif app.request.get('_route') starts with 'admin_cron_job' %}Cron Jobs
-                        {% elseif app.request.get('_route') starts with 'admin_env_variable' %}Env Variables
-                        {% elseif app.request.get('_route') starts with 'admin_profile' %}Profile
-                        {% elseif app.request.get('_route') starts with 'admin_notification_template' %}Notification Templates
-                        {% elseif app.request.get('_route') starts with 'admin_audit_log' %}Audit Logs
+                        {% if app.request.attributes.get('_route') == 'admin_dashboard' %}Dashboard
+                        {% elseif app.request.attributes.get('_route') starts with 'admin_page' %}Pages
+                        {% elseif app.request.attributes.get('_route') starts with 'admin_category' %}Categories
+                        {% elseif app.request.attributes.get('_route') starts with 'admin_user' %}Users
+                        {% elseif app.request.attributes.get('_route') starts with 'admin_settings' %}Settings
+                        {% elseif app.request.attributes.get('_route') starts with 'admin_cron_job' %}Cron Jobs
+                        {% elseif app.request.attributes.get('_route') starts with 'admin_env_variable' %}Env Variables
+                        {% elseif app.request.attributes.get('_route') starts with 'admin_profile' %}Profile
+                        {% elseif app.request.attributes.get('_route') starts with 'admin_notification_template' %}Notification Templates
+                        {% elseif app.request.attributes.get('_route') starts with 'admin_audit_log' %}Audit Logs
                         {% else %}Overview{% endif %}
                     </span>
                 </div>
