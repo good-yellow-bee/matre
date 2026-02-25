@@ -128,13 +128,6 @@ class ImportEnvironmentsCommand extends Command
             $environment->setBaseUrl($envData['MAGENTO_BASE_URL']);
             $environment->setBackendName($envData['MAGENTO_BACKEND_NAME'] ?? 'admin');
 
-            if (isset($envData['MAGENTO_ADMIN_USERNAME'])) {
-                $environment->setAdminUsername($envData['MAGENTO_ADMIN_USERNAME']);
-            }
-            if (isset($envData['MAGENTO_ADMIN_PASSWORD'])) {
-                $environment->setAdminPassword($envData['MAGENTO_ADMIN_PASSWORD']);
-            }
-
             $environment->setIsActive(true);
 
             $io->table(

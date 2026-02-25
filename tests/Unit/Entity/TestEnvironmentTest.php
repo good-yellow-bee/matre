@@ -69,20 +69,6 @@ class TestEnvironmentTest extends TestCase
         $this->assertEquals('backend', $env->getBackendName());
     }
 
-    public function testAdminCredentials(): void
-    {
-        $env = new TestEnvironment();
-
-        $this->assertNull($env->getAdminUsername());
-        $this->assertNull($env->getAdminPassword());
-
-        $env->setAdminUsername('admin');
-        $env->setAdminPassword('secret123');
-
-        $this->assertEquals('admin', $env->getAdminUsername());
-        $this->assertEquals('secret123', $env->getAdminPassword());
-    }
-
     public function testEnvVariablesOldFormat(): void
     {
         $env = new TestEnvironment();
@@ -174,16 +160,14 @@ class TestEnvironmentTest extends TestCase
         $env = new TestEnvironment();
         $env->setBaseUrl('https://example.com');
         $env->setBackendName('admin');
-        $env->setAdminUsername('user');
-        $env->setAdminPassword('pass');
         $env->setEnvVariables(['CUSTOM_VAR' => 'custom_value']);
 
         $content = $env->buildEnvContent();
 
         $this->assertStringContainsString('MAGENTO_BASE_URL=https://example.com/', $content);
         $this->assertStringContainsString('MAGENTO_BACKEND_NAME=admin', $content);
-        $this->assertStringContainsString('MAGENTO_ADMIN_USERNAME=user', $content);
-        $this->assertStringContainsString('MAGENTO_ADMIN_PASSWORD=pass', $content);
+        $this->assertStringNotContainsString('MAGENTO_ADMIN_USERNAME', $content);
+        $this->assertStringNotContainsString('MAGENTO_ADMIN_PASSWORD', $content);
         $this->assertStringContainsString('CUSTOM_VAR=custom_value', $content);
     }
 

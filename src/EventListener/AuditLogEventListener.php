@@ -41,7 +41,6 @@ class AuditLogEventListener
     private const SENSITIVE_FIELDS = [
         'password',
         'plainPassword',
-        'adminPassword',
         'totpSecret',
         'apiKey',
         'secretKey',

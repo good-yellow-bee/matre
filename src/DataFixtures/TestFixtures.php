@@ -26,8 +26,6 @@ class TestFixtures extends Fixture implements DependentFixtureInterface
         $staging->setRegion('US');
         $staging->setBaseUrl('https://staging.example.com');
         $staging->setBackendName('admin');
-        $staging->setAdminUsername('admin');
-        $staging->setAdminPassword('Admin123!');
         $staging->setDescription('Staging environment for US region');
         $manager->persist($staging);
 
@@ -37,8 +35,6 @@ class TestFixtures extends Fixture implements DependentFixtureInterface
         $preprod->setRegion('EU');
         $preprod->setBaseUrl('https://preprod.example.com');
         $preprod->setBackendName('admin');
-        $preprod->setAdminUsername('admin');
-        $preprod->setAdminPassword('Admin123!');
         $preprod->setIsActive(false);
         $preprod->setDescription('Pre-production EU environment');
         $manager->persist($preprod);

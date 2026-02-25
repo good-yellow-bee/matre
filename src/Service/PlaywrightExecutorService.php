@@ -162,13 +162,6 @@ class PlaywrightExecutorService
         // SECURITY: Use secure export building for all values
         $parts[] = $this->shellEscapeService->buildExportStatement('BASE_URL', $env->getBaseUrl());
 
-        if ($env->getAdminUsername()) {
-            $parts[] = $this->shellEscapeService->buildExportStatement('ADMIN_USERNAME', $env->getAdminUsername());
-        }
-        if ($env->getAdminPassword()) {
-            $parts[] = $this->shellEscapeService->buildExportStatement('ADMIN_PASSWORD', $env->getAdminPassword());
-        }
-
         // Build Playwright command
         $playwrightParts = ['npx', 'playwright', 'test'];
 

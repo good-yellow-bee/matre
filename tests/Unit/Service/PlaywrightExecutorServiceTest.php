@@ -172,28 +172,6 @@ class PlaywrightExecutorServiceTest extends TestCase
         $this->assertStringContainsString('export BASE_URL=', $command);
     }
 
-    public function testBuildCommandExportsAdminCredentials(): void
-    {
-        $env = $this->createTestEnvironment();
-        $env->setAdminUsername('admin_user');
-        $env->setAdminPassword('admin_pass');
-        $run = $this->createTestRun('test', 1, $env);
-        [$envRepo, $shellEscape] = $this->setupBuildCommandMocks();
-
-        $envRepo->expects($this->once())
-            ->method('getAllAsKeyValue')
-            ->willReturn([]);
-
-        $shellEscape->expects($this->exactly(3))
-            ->method('buildExportStatement')
-            ->willReturnCallback(fn ($k, $v) => "export {$k}=\"{$v}\"");
-
-        $command = $this->service->buildCommand($run);
-
-        $this->assertStringContainsString('ADMIN_USERNAME', $command);
-        $this->assertStringContainsString('ADMIN_PASSWORD', $command);
-    }
-
     public function testBuildCommandIncludesGlobalEnvVariables(): void
     {
         $run = $this->createTestRun();

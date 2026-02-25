@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\EventListener;
 
-use App\Entity\TestEnvironment;
 use App\Entity\User;
 use App\EventListener\CredentialEncryptionListener;
 use App\Service\Security\CredentialEncryptionService;
@@ -17,20 +16,6 @@ use PHPUnit\Framework\TestCase;
 
 class CredentialEncryptionListenerTest extends TestCase
 {
-    public function testPrePersistEncryptsTestEnvironmentPassword(): void
-    {
-        $encryptionService = $this->createStub(CredentialEncryptionService::class);
-        $encryptionService->method('encryptIfNeeded')->willReturn('encrypted');
-
-        $entity = new TestEnvironment();
-        $entity->setAdminPassword('plain');
-
-        $this->createListener($encryptionService)
-            ->prePersist($entity, $this->createPrePersistArgs($entity));
-
-        $this->assertSame('encrypted', $entity->getAdminPassword());
-    }
-
     public function testPrePersistEncryptsUserTotpSecret(): void
     {
         $encryptionService = $this->createStub(CredentialEncryptionService::class);
@@ -45,58 +30,27 @@ class CredentialEncryptionListenerTest extends TestCase
         $this->assertSame('encrypted', $entity->getTotpSecret());
     }
 
-    public function testPrePersistSkipsNullPassword(): void
+    public function testPrePersistSkipsNullTotpSecret(): void
     {
         $encryptionService = $this->createMock(CredentialEncryptionService::class);
         $encryptionService->expects($this->never())->method('encryptIfNeeded');
 
-        $entity = new TestEnvironment();
+        $entity = new User();
 
         $this->createListener($encryptionService)
             ->prePersist($entity, $this->createPrePersistArgs($entity));
     }
 
-    public function testPrePersistSkipsEmptyPassword(): void
+    public function testPrePersistSkipsEmptyTotpSecret(): void
     {
         $encryptionService = $this->createMock(CredentialEncryptionService::class);
         $encryptionService->expects($this->never())->method('encryptIfNeeded');
 
-        $entity = new TestEnvironment();
-        $entity->setAdminPassword('');
+        $entity = new User();
+        $entity->setTotpSecret('');
 
         $this->createListener($encryptionService)
             ->prePersist($entity, $this->createPrePersistArgs($entity));
-    }
-
-    public function testPreUpdateEncryptsChangedPassword(): void
-    {
-        $encryptionService = $this->createStub(CredentialEncryptionService::class);
-        $encryptionService->method('encryptIfNeeded')->willReturn('encrypted');
-
-        $args = $this->createStub(PreUpdateEventArgs::class);
-        $args->method('hasChangedField')->willReturnCallback(
-            fn (string $field) => 'adminPassword' === $field,
-        );
-        $args->method('getNewValue')->willReturn('newpass');
-
-        $entity = new TestEnvironment();
-
-        $this->createListener($encryptionService)->preUpdate($entity, $args);
-
-        $this->assertSame('encrypted', $entity->getAdminPassword());
-    }
-
-    public function testPreUpdateSkipsUnchangedPassword(): void
-    {
-        $encryptionService = $this->createMock(CredentialEncryptionService::class);
-        $encryptionService->expects($this->never())->method('encryptIfNeeded');
-
-        $args = $this->createStub(PreUpdateEventArgs::class);
-        $args->method('hasChangedField')->willReturn(false);
-
-        $entity = new TestEnvironment();
-
-        $this->createListener($encryptionService)->preUpdate($entity, $args);
     }
 
     public function testPreUpdateEncryptsChangedTotpSecret(): void
@@ -117,6 +71,19 @@ class CredentialEncryptionListenerTest extends TestCase
         $this->assertSame('encrypted', $entity->getTotpSecret());
     }
 
+    public function testPreUpdateSkipsUnchangedTotpSecret(): void
+    {
+        $encryptionService = $this->createMock(CredentialEncryptionService::class);
+        $encryptionService->expects($this->never())->method('encryptIfNeeded');
+
+        $args = $this->createStub(PreUpdateEventArgs::class);
+        $args->method('hasChangedField')->willReturn(false);
+
+        $entity = new User();
+
+        $this->createListener($encryptionService)->preUpdate($entity, $args);
+    }
+
     public function testPreUpdateSkipsNullNewValue(): void
     {
         $encryptionService = $this->createMock(CredentialEncryptionService::class);
@@ -126,27 +93,9 @@ class CredentialEncryptionListenerTest extends TestCase
         $args->method('hasChangedField')->willReturn(true);
         $args->method('getNewValue')->willReturn(null);
 
-        $entity = new TestEnvironment();
+        $entity = new User();
 
         $this->createListener($encryptionService)->preUpdate($entity, $args);
-    }
-
-    public function testPostLoadDecryptsTestEnvironmentPassword(): void
-    {
-        $encryptionService = $this->createStub(CredentialEncryptionService::class);
-        $encryptionService->method('decryptSafe')->willReturn('decrypted');
-
-        $entity = new TestEnvironment();
-        $entity->setAdminPassword('encrypted');
-
-        $uow = $this->createStub(UnitOfWork::class);
-        $uow->method('getOriginalEntityData')->willReturn(['adminPassword' => 'encrypted']);
-
-        $args = $this->createPostLoadArgs($entity, $uow);
-
-        $this->createListener($encryptionService)->postLoad($entity, $args);
-
-        $this->assertSame('decrypted', $entity->getAdminPassword());
     }
 
     public function testPostLoadDecryptsUserTotpSecret(): void
@@ -167,39 +116,17 @@ class CredentialEncryptionListenerTest extends TestCase
         $this->assertSame('decrypted', $entity->getTotpSecret());
     }
 
-    public function testPostLoadSkipsNullPassword(): void
+    public function testPostLoadSkipsNullTotpSecret(): void
     {
         $encryptionService = $this->createMock(CredentialEncryptionService::class);
         $encryptionService->expects($this->never())->method('decryptSafe');
 
-        $entity = new TestEnvironment();
+        $entity = new User();
 
         $uow = $this->createStub(UnitOfWork::class);
         $uow->method('getOriginalEntityData')->willReturn([]);
 
         $args = $this->createPostLoadArgs($entity, $uow);
-
-        $this->createListener($encryptionService)->postLoad($entity, $args);
-    }
-
-    public function testPostLoadRethrowsWhenEnvironmentPasswordDecryptionFails(): void
-    {
-        $encryptionService = $this->createMock(CredentialEncryptionService::class);
-        $encryptionService->expects($this->once())
-            ->method('decryptSafe')
-            ->with('encrypted')
-            ->willThrowException(new \RuntimeException('Decryption failed'));
-
-        $entity = new TestEnvironment();
-        $entity->setAdminPassword('encrypted');
-
-        $uow = $this->createStub(UnitOfWork::class);
-        $uow->method('getOriginalEntityData')->willReturn(['adminPassword' => 'encrypted']);
-
-        $args = $this->createPostLoadArgs($entity, $uow);
-
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Decryption failed');
 
         $this->createListener($encryptionService)->postLoad($entity, $args);
     }

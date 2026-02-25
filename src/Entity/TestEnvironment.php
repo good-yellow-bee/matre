@@ -63,12 +63,6 @@ class TestEnvironment
     #[Assert\Length(max: 100)]
     private string $backendName = 'admin';
 
-    #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
-    private ?string $adminUsername = null;
-
-    #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
-    private ?string $adminPassword = null;
-
     /**
      * Additional environment variables as JSON.
      * Stores all variables from .env file that don't have dedicated fields.
@@ -162,30 +156,6 @@ class TestEnvironment
     public function setBackendName(string $backendName): static
     {
         $this->backendName = $backendName;
-
-        return $this;
-    }
-
-    public function getAdminUsername(): ?string
-    {
-        return $this->adminUsername;
-    }
-
-    public function setAdminUsername(?string $adminUsername): static
-    {
-        $this->adminUsername = $adminUsername;
-
-        return $this;
-    }
-
-    public function getAdminPassword(): ?string
-    {
-        return $this->adminPassword;
-    }
-
-    public function setAdminPassword(?string $adminPassword): static
-    {
-        $this->adminPassword = $adminPassword;
 
         return $this;
     }
@@ -363,14 +333,6 @@ class TestEnvironment
             "MAGENTO_BASE_URL={$this->baseUrl}",
             "MAGENTO_BACKEND_NAME={$this->backendName}",
         ];
-
-        if ($this->adminUsername) {
-            $lines[] = "MAGENTO_ADMIN_USERNAME={$this->adminUsername}";
-        }
-
-        if ($this->adminPassword) {
-            $lines[] = "MAGENTO_ADMIN_PASSWORD={$this->adminPassword}";
-        }
 
         // Use getEnvVariables() to normalize both old and new formats
         foreach ($this->getEnvVariables() as $key => $value) {

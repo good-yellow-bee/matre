@@ -52,8 +52,6 @@ class TestEnvironmentApiController extends AbstractController
             'region' => $env->getRegion(),
             'baseUrl' => $env->getBaseUrl(),
             'backendName' => $env->getBackendName(),
-            'adminUsername' => $env->getAdminUsername(),
-            'adminPassword' => $env->getAdminPassword(),
             'description' => $env->getDescription(),
             'isActive' => $env->getIsActive(),
             'createdAt' => $env->getCreatedAt()->format('c'),
@@ -353,8 +351,6 @@ class TestEnvironmentApiController extends AbstractController
         $env->setRegion($data['region']);
         $env->setBaseUrl($data['baseUrl']);
         $env->setBackendName($data['backendName']);
-        $env->setAdminUsername($data['adminUsername'] ?? null);
-        $env->setAdminPassword($data['adminPassword'] ?? null);
         $env->setDescription($data['description'] ?? null);
         $env->setIsActive($data['isActive'] ?? true);
     }
