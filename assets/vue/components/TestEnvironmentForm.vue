@@ -124,49 +124,6 @@
         </div>
       </div>
 
-      <!-- Admin Credentials -->
-      <div class="form-section">
-        <h3 class="section-title">Admin Credentials</h3>
-        <p class="text-muted mb-3">Optional: Used for admin panel tests</p>
-
-        <div class="form-grid-2">
-          <!-- Admin Username -->
-          <div class="mb-3">
-            <label for="env-admin-user" class="form-label">Admin Username</label>
-            <input
-              id="env-admin-user"
-              v-model="form.adminUsername"
-              type="text"
-              class="form-control"
-              placeholder="admin"
-            />
-          </div>
-
-          <!-- Admin Password -->
-          <div class="mb-3">
-            <label for="env-admin-pass" class="form-label">Admin Password</label>
-            <div class="password-input-group">
-              <input
-                id="env-admin-pass"
-                v-model="form.adminPassword"
-                :type="showPassword ? 'text' : 'password'"
-                class="form-control"
-                placeholder="Password"
-                autocomplete="new-password"
-              />
-              <button
-                type="button"
-                class="btn btn-outline-secondary"
-                @click="showPassword = !showPassword"
-                tabindex="-1"
-              >
-                <i :class="['bi', showPassword ? 'bi-eye-slash' : 'bi-eye']"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Additional Info -->
       <div class="form-section">
         <h3 class="section-title">Additional Info</h3>
@@ -271,8 +228,6 @@ const form = reactive({
   region: '',
   baseUrl: '',
   backendName: 'admin',
-  adminUsername: '',
-  adminPassword: '',
   description: '',
   isActive: true,
 });
@@ -280,7 +235,6 @@ const form = reactive({
 const errors = reactive({});
 const submitting = ref(false);
 const originalData = ref(null);
-const showPassword = ref(false);
 const nameValid = ref(false);
 const codeValid = ref(false);
 
@@ -294,8 +248,6 @@ const hasChanges = computed(() => {
     form.region !== originalData.value.region ||
     form.baseUrl !== originalData.value.baseUrl ||
     form.backendName !== originalData.value.backendName ||
-    form.adminUsername !== originalData.value.adminUsername ||
-    form.adminPassword !== originalData.value.adminPassword ||
     form.description !== originalData.value.description ||
     form.isActive !== originalData.value.isActive
   );
@@ -396,8 +348,6 @@ const fetchEnvironment = async () => {
     form.region = data.region || '';
     form.baseUrl = data.baseUrl || '';
     form.backendName = data.backendName || 'admin';
-    form.adminUsername = data.adminUsername || '';
-    form.adminPassword = data.adminPassword || '';
     form.description = data.description || '';
     form.isActive = data.isActive ?? true;
 
@@ -456,8 +406,6 @@ const handleSubmit = async () => {
         region: form.region,
         baseUrl: form.baseUrl,
         backendName: form.backendName,
-        adminUsername: form.adminUsername,
-        adminPassword: form.adminPassword,
         description: form.description,
         isActive: form.isActive,
       }),
@@ -594,31 +542,6 @@ onMounted(async () => {
 .test-env-form :deep(.form-control.is-invalid) {
   border-color: var(--danger);
   background-image: none;
-}
-
-.password-input-group {
-  display: flex;
-  gap: 0;
-}
-
-.password-input-group input {
-  border-top-right-radius: 0 !important;
-  border-bottom-right-radius: 0 !important;
-}
-
-.password-input-group button {
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
-  border-left: 0;
-  border: 1px solid var(--slate-200);
-  background: var(--slate-50);
-  color: var(--slate-600);
-  padding: 0.625rem 1rem;
-}
-
-.password-input-group button:hover {
-  background: var(--slate-100);
-  color: var(--slate-900);
 }
 
 .toggle-row {
