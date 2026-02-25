@@ -46,8 +46,6 @@ class ImportEnvironmentsCommand extends Command
                     Expected variables in each file:
                       - MAGENTO_BASE_URL (required)
                       - MAGENTO_BACKEND_NAME (optional, defaults to 'admin')
-                      - MAGENTO_ADMIN_USERNAME (optional)
-                      - MAGENTO_ADMIN_PASSWORD (optional)
 
                     Note: Other variables are ignored. Use app:env:import to import env variables.
                     HELP
