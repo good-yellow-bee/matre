@@ -42,15 +42,46 @@ class MagentoContainerPoolService
         }
 
         $containerName = self::CONTAINER_PREFIX . $env->getId();
+        $expectedEnvFile = sprintf('/var/www/html/app/code/TestModule/Cron/data/.env.%s', $env->getCode());
 
         $lock = $this->lockFactory->createLock('container_' . $containerName, 60);
         $lock->acquire(true);
 
         try {
-            if (!$this->containerExists($containerName)) {
+            $recreated = false;
+
+            while (true) {
+                if (!$this->containerExists($containerName)) {
+                    $this->createContainer($containerName);
+                } elseif (!$this->containerRunning($containerName)) {
+                    $this->startContainer($containerName);
+                }
+
+                $healthCheck = $this->checkModuleEnvFileHealth($containerName, $expectedEnvFile);
+                if ($healthCheck['healthy']) {
+                    break;
+                }
+
+                $this->logger->warning('Magento pool container failed module env health check', [
+                    'container' => $containerName,
+                    'environmentId' => $env->getId(),
+                    'environmentCode' => $env->getCode(),
+                    'expectedFile' => $expectedEnvFile,
+                    'reason' => $healthCheck['reason'],
+                ]);
+
+                if ($recreated) {
+                    throw new \RuntimeException(sprintf(
+                        'Container %s is missing required environment file after recreation: %s (%s)',
+                        $containerName,
+                        $expectedEnvFile,
+                        $healthCheck['reason'],
+                    ));
+                }
+
+                $this->removeContainer($containerName);
                 $this->createContainer($containerName);
-            } elseif (!$this->containerRunning($containerName)) {
-                $this->startContainer($containerName);
+                $recreated = true;
             }
         } finally {
             $lock->release();
@@ -214,5 +245,36 @@ class MagentoContainerPoolService
                 'error' => $process->getErrorOutput(),
             ]);
         }
+    }
+
+    /**
+     * Verify required module .env file exists inside a pool container.
+     *
+     * @return array{healthy: bool, reason: string}
+     */
+    private function checkModuleEnvFileHealth(string $containerName, string $expectedEnvFile): array
+    {
+        $process = new Process([
+            'docker', 'exec',
+            $containerName,
+            'sh', '-lc',
+            'test -s ' . escapeshellarg($expectedEnvFile),
+        ]);
+        $process->setTimeout(15);
+        $process->run();
+
+        if ($process->isSuccessful()) {
+            return ['healthy' => true, 'reason' => 'ok'];
+        }
+
+        $reason = trim($process->getErrorOutput());
+        if ('' === $reason) {
+            $reason = trim($process->getOutput());
+        }
+        if ('' === $reason) {
+            $reason = 'module env file missing or empty';
+        }
+
+        return ['healthy' => false, 'reason' => $reason];
     }
 }

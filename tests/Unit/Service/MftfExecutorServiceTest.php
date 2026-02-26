@@ -214,10 +214,26 @@ class MftfExecutorServiceTest extends TestCase
 
         $command = $this->service->buildCommand($run);
 
-        // Should have artifact move command at the end with ; separator
+        // Should have artifact move command at the end and preserve main exit code
+        $this->assertStringContainsString('main_rc=$?', $command);
         $this->assertStringContainsString('; mkdir -p', $command);
+        $this->assertStringContainsString('exit $main_rc', $command);
         $this->assertStringContainsString('tests/_output/run-42', $command);
         $this->assertStringContainsString('-name "*.png"', $command);
+    }
+
+    public function testBuildCommandIncludesModuleEnvFilePreflight(): void
+    {
+        $run = $this->createTestRun('MOEC5157Cest', 1);
+
+        $this->mockEnvRepository()->expects($this->once())
+            ->method('getAllAsKeyValue')
+            ->willReturn([]);
+
+        $command = $this->service->buildCommand($run);
+
+        $this->assertStringContainsString("test -s '/var/www/html/app/code/TestModule/Cron/data/.env.stage-us'", $command);
+        $this->assertStringContainsString('Missing module environment file:', $command);
     }
 
     public function testBuildCommandIncludesAllureExtensionFix(): void

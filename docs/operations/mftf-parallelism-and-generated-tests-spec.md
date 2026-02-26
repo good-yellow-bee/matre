@@ -64,6 +64,33 @@ docker rm -f $(docker ps -a --filter "name=matre_magento_env_" -q)
 # Containers will be recreated on next run
 ```
 
+#### 2a. Missing Module Env File in Pool Container
+**Symptom:**
+```text
+cat: can't open '/var/www/html/app/code/TestModule/Cron/data/.env.preprod-us': No such file or directory
+```
+
+**Problem:** Long-lived `matre_magento_env_*` containers can keep a stale bind mount where
+`/var/www/html/app/code/TestModule` appears empty, even though `var/test-modules/current` on host has files.
+
+**Fix (safe sequence):**
+```bash
+# 1) Stop consumers to avoid interrupting active runs
+docker compose stop scheduler test-worker
+
+# 2) Remove pooled Magento env containers
+docker rm -f $(docker ps -a --filter "name=matre_magento_env_" -q)
+
+# 3) Start consumers (containers will be recreated on demand)
+docker compose up -d scheduler test-worker
+```
+
+**Verify inside recreated pool container (example preprod-us):**
+```bash
+docker exec matre_magento_env_1 sh -lc \
+  'test -s /var/www/html/app/code/TestModule/Cron/data/.env.preprod-us && echo OK'
+```
+
 #### 3. LOCK_DSN Not Set to Redis
 **Problem:** Using default `flock` lock which doesn't work across containers.
 

@@ -444,6 +444,11 @@ class MftfExecutorService
         // Create env-config dir and symlink to expected .env location
         $parts[] = sprintf('mkdir -p %s', escapeshellarg($envConfigDir));
         $parts[] = sprintf('ln -sf %s %s', escapeshellarg($mftfEnvFile), escapeshellarg($acceptanceDir . '/.env'));
+        $parts[] = sprintf(
+            'test -s %1$s || (echo %2$s >&2; exit 1)',
+            escapeshellarg($moduleEnvFile),
+            escapeshellarg(sprintf('Missing module environment file: %s', $moduleEnvFile)),
+        );
 
         // Layer 1: Start with global + environment-specific variables from database
         // SECURITY: Validate and escape all variables to prevent command injection
@@ -528,8 +533,8 @@ class MftfExecutorService
             'rm -f ' . escapeshellarg($pidFile) . ' || true',
         ];
 
-        // Append move commands with ; so they run regardless of test result
-        return $mainCommand . ' ; ' . implode(' && ', $moveCommands);
+        // Run cleanup regardless of MFTF result, but preserve original command exit code.
+        return sprintf('(%s); main_rc=$?; %s; exit $main_rc', $mainCommand, implode(' && ', $moveCommands));
     }
 
     /**
