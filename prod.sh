@@ -24,7 +24,7 @@ case "${1:-help}" in
         log_info "Running migrations..."
         docker exec ${PROJECT_NAME}_php php bin/console doctrine:migrations:migrate --no-interaction
         log_info "Warming cache..."
-        docker exec ${PROJECT_NAME}_php php bin/console cache:warmup --env=prod
+        docker exec -u www-data ${PROJECT_NAME}_php php bin/console cache:warmup --env=prod
         log_info "Production started successfully!"
         docker compose $COMPOSE_FILES ps
         ;;
@@ -85,7 +85,7 @@ case "${1:-help}" in
         log_info "Running migrations..."
         docker exec ${PROJECT_NAME}_php php bin/console doctrine:migrations:migrate --no-interaction
         log_info "Clearing cache..."
-        docker exec ${PROJECT_NAME}_php php bin/console cache:clear --env=prod
+        docker exec -u www-data ${PROJECT_NAME}_php php bin/console cache:clear --env=prod
         log_info "Update complete!"
         docker compose $COMPOSE_FILES ps
         ;;
@@ -263,8 +263,8 @@ case "${1:-help}" in
         # Cache clear - verify container exists first, no silent fallback
         if ! docker ps --format '{{.Names}}' | grep -q "^${PROJECT_NAME}_php$"; then
             log_warn "Container ${PROJECT_NAME}_php not running - cache clear skipped"
-            log_warn "Run manually: docker exec <php-container> php bin/console cache:clear --env=prod"
-        elif ! docker exec ${PROJECT_NAME}_php php bin/console cache:clear --env=prod 2>&1; then
+            log_warn "Run manually: docker exec -u www-data <php-container> php bin/console cache:clear --env=prod"
+        elif ! docker exec -u www-data ${PROJECT_NAME}_php php bin/console cache:clear --env=prod 2>&1; then
             log_error "Cache clear failed in ${PROJECT_NAME}_php"
             log_warn "Check container: docker logs ${PROJECT_NAME}_php"
         else
@@ -312,8 +312,8 @@ case "${1:-help}" in
         # Cache clear - verify container exists first, no silent fallback
         if ! docker ps --format '{{.Names}}' | grep -q "^${PROJECT_NAME}_php$"; then
             log_warn "Container ${PROJECT_NAME}_php not running - cache clear skipped"
-            log_warn "Run manually: docker exec <php-container> php bin/console cache:clear --env=prod"
-        elif ! docker exec ${PROJECT_NAME}_php php bin/console cache:clear --env=prod 2>&1; then
+            log_warn "Run manually: docker exec -u www-data <php-container> php bin/console cache:clear --env=prod"
+        elif ! docker exec -u www-data ${PROJECT_NAME}_php php bin/console cache:clear --env=prod 2>&1; then
             log_error "Cache clear failed in ${PROJECT_NAME}_php"
             log_warn "Check container: docker logs ${PROJECT_NAME}_php"
         else
