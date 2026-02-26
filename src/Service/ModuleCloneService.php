@@ -110,27 +110,24 @@ class ModuleCloneService
             'target' => $targetPath,
         ]);
 
-        // Ensure target directory exists and is empty
-        if ($this->filesystem->exists($targetPath)) {
-            $this->filesystem->remove($targetPath);
-        }
-        $this->filesystem->mkdir($targetPath);
+        // Clone into temp directory first, then move contents into target
+        // to preserve the target directory's inode (critical for Docker bind mounts)
+        $tempPath = \dirname($targetPath) . '/.clone-tmp-' . uniqid();
 
-        // Clone repository
         $process = new Process([
             'git', 'clone',
             '--branch', $this->moduleBranch,
             '--depth', '1',
             '--single-branch',
             $repoUrl,
-            $targetPath,
+            $tempPath,
         ]);
         $process->setTimeout(300);
 
         try {
             $process->mustRun();
-            $this->logger->info('Module cloned successfully');
         } catch (ProcessFailedException $e) {
+            $this->filesystem->remove($tempPath);
             $this->logger->error('Failed to clone module', [
                 'error' => $e->getMessage(),
                 'output' => $this->sanitizeOutput($process->getErrorOutput()),
@@ -138,6 +135,18 @@ class ModuleCloneService
 
             throw $e;
         }
+
+        // Preserve inode: clear contents of existing dir, or create new dir
+        if ($this->filesystem->exists($targetPath)) {
+            $this->clearDirectoryContents($targetPath);
+        } else {
+            $this->filesystem->mkdir($targetPath);
+        }
+
+        $this->moveDirectoryContents($tempPath, $targetPath);
+        $this->filesystem->remove($tempPath);
+
+        $this->logger->info('Module cloned successfully');
     }
 
     /**
@@ -263,6 +272,32 @@ class ModuleCloneService
     public function getModuleBranch(): string
     {
         return $this->moduleBranch;
+    }
+
+    /**
+     * Remove all contents of a directory without removing the directory itself.
+     */
+    private function clearDirectoryContents(string $directory): void
+    {
+        $iterator = new \FilesystemIterator($directory, \FilesystemIterator::SKIP_DOTS);
+        $items = [];
+        foreach ($iterator as $item) {
+            $items[] = $item->getPathname();
+        }
+        if ($items) {
+            $this->filesystem->remove($items);
+        }
+    }
+
+    /**
+     * Move all contents from source directory into target directory.
+     */
+    private function moveDirectoryContents(string $source, string $target): void
+    {
+        $iterator = new \FilesystemIterator($source, \FilesystemIterator::SKIP_DOTS);
+        foreach ($iterator as $item) {
+            $this->filesystem->rename($item->getPathname(), $target . '/' . $item->getFilename());
+        }
     }
 
     /**
