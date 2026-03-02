@@ -65,7 +65,7 @@ class SecurityHeadersListener
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com",
             "img-src 'self' data: blob:",
             "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com",
-            "connect-src 'self' ws: wss:",
+            "connect-src 'self' ws: wss: https://cdn.jsdelivr.net",
             "frame-ancestors 'self'",
             "base-uri 'self'",
             "form-action 'self'",
