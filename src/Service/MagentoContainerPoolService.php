@@ -71,12 +71,7 @@ class MagentoContainerPoolService
                 ]);
 
                 if ($recreated) {
-                    throw new \RuntimeException(sprintf(
-                        'Container %s is missing required environment file after recreation: %s (%s)',
-                        $containerName,
-                        $expectedEnvFile,
-                        $healthCheck['reason'],
-                    ));
+                    throw new \RuntimeException(sprintf('Container %s is missing required environment file after recreation: %s (%s)', $containerName, $expectedEnvFile, $healthCheck['reason']));
                 }
 
                 $this->removeContainer($containerName);
@@ -180,6 +175,15 @@ class MagentoContainerPoolService
         $mftfResultsPath = $this->hostProjectDir . '/var/mftf-results';
         $mftfDownloadsPath = $this->hostProjectDir . '/var/mftf-downloads';
         $abbModulePath = $this->hostProjectDir . '/abb-custom-mftf';
+
+        // Ensure host directories exist before docker run (prevents Docker creating them as root)
+        foreach ([$mftfResultsPath, $mftfDownloadsPath] as $dir) {
+            if (!is_dir($dir)) {
+                if (!mkdir($dir, 0o777, true) && !is_dir($dir)) {
+                    throw new \RuntimeException(sprintf('Failed to create host directory: %s', $dir));
+                }
+            }
+        }
 
         $process = new Process([
             'docker', 'run', '-d',
