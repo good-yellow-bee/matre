@@ -3,6 +3,11 @@
    Design System: Light, Clean, Spacious
    ============================================ */
 
+/* Override Bootstrap's underlined links (Bootstrap is unlayered, so it beats Tailwind v4's @layer base preflight) */
+a {
+    text-decoration: none;
+}
+
 /* ============================================
    1. Design System Variables
    ============================================ */
