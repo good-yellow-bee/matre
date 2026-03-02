@@ -5,6 +5,7 @@
 
 /* Override Bootstrap's underlined links (Bootstrap is unlayered, so it beats Tailwind v4's @layer base preflight) */
 a {
+    color: inherit;
     text-decoration: none;
 }
 

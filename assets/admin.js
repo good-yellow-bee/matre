@@ -325,32 +325,29 @@ class DropdownToggle {
 
     initUserMenu() {
         const userToggle = document.querySelector('.user-menu .user-toggle');
-        console.log('🔍 User toggle found:', userToggle);
+        if (!userToggle) {
+            return;
+        }
 
-        if (userToggle) {
-            userToggle.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('👆 User menu clicked');
+        userToggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
 
-                const userMenu = userToggle.closest('.user-menu');
-                console.log('📋 User menu element:', userMenu);
+            const userMenu = userToggle.closest('.user-menu');
+            if (!userMenu) {
+                return;
+            }
 
-                // Close nav dropdowns
-                document.querySelectorAll('.admin-navbar .nav-item').forEach(item => {
-                    item.classList.remove('show');
-                });
-
-                // Toggle user menu
-                const isShowing = userMenu.classList.toggle('show');
-                console.log('✨ User menu show state:', isShowing);
+            // Close nav dropdowns
+            document.querySelectorAll('.admin-navbar .nav-item').forEach(item => {
+                item.classList.remove('show');
             });
 
-            userToggle.style.cursor = 'pointer';
-            console.log('✅ User menu click handler attached');
-        } else {
-            console.error('❌ User toggle not found!');
-        }
+            // Toggle user menu
+            userMenu.classList.toggle('show');
+        });
+
+        userToggle.style.cursor = 'pointer';
     }
 
     initOutsideClick() {
