@@ -126,6 +126,29 @@ class TestDiscoveryApiControllerTest extends WebTestCase
         $this->assertStringContainsString('not implemented', $data['message']);
     }
 
+    public function testListPostMethodNotAllowed(): void
+    {
+        $client = self::createClient();
+        $this->loginAsUser($client);
+
+        $this->jsonRequest($client, 'POST', self::BASE_URL, [
+            'type' => TestSuite::TYPE_MFTF_TEST,
+            'refresh' => false,
+        ]);
+
+        $this->assertResponseStatusCodeSame(405);
+    }
+
+    public function testRefreshGetMethodNotAllowed(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+
+        $client->request('GET', self::BASE_URL . '/refresh');
+
+        $this->assertResponseStatusCodeSame(405);
+    }
+
     // =====================
     // Status Tests
     // =====================

@@ -516,6 +516,26 @@ const handleKeydown = (event) => {
   }
 };
 
+const getDiscoveryBaseUrl = () => props.testDiscoveryUrl.replace(/\/$/, '');
+
+const mapPatternItems = (items = []) => {
+  return items.map(item => ({
+    value: item?.value || item,
+    label: item?.label || item?.value || item,
+  }));
+};
+
+const parseJsonResponse = async (response) => {
+  const text = await response.text();
+
+  try {
+    return { data: JSON.parse(text), isJson: true };
+  } catch {
+    console.error('Non-JSON response body:', text.substring(0, 500));
+    return { data: null, isJson: false };
+  }
+};
+
 const refreshPatterns = async () => {
   if (!form.type || isPlaywrightType.value) return;
 
@@ -523,69 +543,71 @@ const refreshPatterns = async () => {
   patternMessage.value = '';
 
   try {
-    const response = await fetch(props.testDiscoveryUrl, {
+    const response = await fetch(`${getDiscoveryBaseUrl()}/refresh`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Accept': 'application/json',
         'X-CSRF-Token': props.csrfToken,
       },
-      body: JSON.stringify({
-        type: form.type,
-        refresh: true,
-      }),
     });
+    const { data, isJson } = await parseJsonResponse(response);
 
-    if (!response.ok) {
-      patternMessage.value = 'Failed to refresh test list';
+    if (!response.ok || !isJson || data?.success === false) {
+      patternMessage.value = data?.error || data?.message || 'Failed to refresh test list';
       return;
     }
 
-    const data = await response.json();
-    patternItems.value = (data.items || []).map(item => ({
-      value: item.value || item,
-      label: item.label || item.value || item,
-    }));
-    patternCached.value = true;
-    patternLastUpdated.value = data.lastUpdated || new Date().toISOString();
-    patternMessage.value = `Loaded ${patternItems.value.length} items`;
+    const loaded = await loadCachedPatterns({ showLoadedMessage: true });
+    if (!loaded && !patternMessage.value) {
+      patternMessage.value = 'Failed to load refreshed test list';
+    }
   } catch (error) {
-    patternMessage.value = 'Error loading test list';
+    console.error('Error refreshing patterns:', error);
+    patternMessage.value = 'Error refreshing test list';
   } finally {
     patternRefreshing.value = false;
   }
 };
 
-const loadCachedPatterns = async () => {
-  if (!form.type || isPlaywrightType.value) return;
+const loadCachedPatterns = async ({ showLoadedMessage = false } = {}) => {
+  if (!form.type || isPlaywrightType.value) return false;
 
   patternLoading.value = true;
 
   try {
-    const response = await fetch(props.testDiscoveryUrl, {
-      method: 'POST',
+    const response = await fetch(`${getDiscoveryBaseUrl()}?type=${encodeURIComponent(form.type)}`, {
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': props.csrfToken,
+        'Accept': 'application/json',
       },
-      body: JSON.stringify({
-        type: form.type,
-        refresh: false,
-      }),
     });
+    const { data, isJson } = await parseJsonResponse(response);
 
-    if (!response.ok) return;
-
-    const data = await response.json();
-    if (data.cached && data.items?.length > 0) {
-      patternItems.value = data.items.map(item => ({
-        value: item.value || item,
-        label: item.label || item.value || item,
-      }));
-      patternCached.value = true;
-      patternLastUpdated.value = data.lastUpdated;
+    if (!response.ok || !isJson || data?.success === false) {
+      patternMessage.value = data?.error || data?.message || 'Failed to load test list';
+      return false;
     }
+
+    if (!data?.items) {
+      patternMessage.value = 'Response missing items data';
+      return false;
+    }
+
+    patternItems.value = mapPatternItems(data.items);
+    patternCached.value = Boolean(data?.cached);
+    patternLastUpdated.value = data?.lastUpdated || null;
+
+    if (showLoadedMessage) {
+      patternMessage.value = `Loaded ${patternItems.value.length} items`;
+    } else {
+      patternMessage.value = data?.message || '';
+    }
+
+    return true;
   } catch (error) {
     console.error('Error loading cached patterns:', error);
+    patternMessage.value = 'Error loading test list';
+    return false;
   } finally {
     patternLoading.value = false;
   }
