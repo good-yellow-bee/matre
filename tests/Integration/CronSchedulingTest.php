@@ -16,6 +16,7 @@ use App\Scheduler\TestRunScheduleProvider;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Scheduler\Generator\MessageContext;
+use Symfony\Contracts\Cache\CacheInterface;
 
 /**
  * Integration test for cron scheduling: schedule → execute → log.
@@ -46,7 +47,7 @@ class CronSchedulingTest extends KernelTestCase
         $this->createCronJob('Inactive Job ' . uniqid(), '0 * * * *', 'app:cleanup-tests', false);
 
         $repo = static::getContainer()->get(CronJobRepository::class);
-        $provider = new CronJobScheduleProvider($repo);
+        $provider = new CronJobScheduleProvider($repo, static::getContainer()->get(CacheInterface::class));
 
         $schedule = $provider->getSchedule();
         $messages = $schedule->getRecurringMessages();
@@ -68,7 +69,7 @@ class CronSchedulingTest extends KernelTestCase
         $inactive = $this->createCronJob('Only Inactive ' . uniqid(), '*/10 * * * *', 'app:cleanup-tests', false);
 
         $repo = static::getContainer()->get(CronJobRepository::class);
-        $provider = new CronJobScheduleProvider($repo);
+        $provider = new CronJobScheduleProvider($repo, static::getContainer()->get(CacheInterface::class));
 
         $schedule = $provider->getSchedule();
         $messages = $schedule->getRecurringMessages();
@@ -93,7 +94,7 @@ class CronSchedulingTest extends KernelTestCase
         $suite = $this->createTestSuiteWithCron($env, '0 */6 * * *');
 
         $repo = static::getContainer()->get(TestSuiteRepository::class);
-        $provider = new TestRunScheduleProvider($repo);
+        $provider = new TestRunScheduleProvider($repo, static::getContainer()->get(CacheInterface::class));
 
         $schedule = $provider->getSchedule();
         $messages = $schedule->getRecurringMessages();
@@ -124,7 +125,7 @@ class CronSchedulingTest extends KernelTestCase
         $this->entityManager->flush();
 
         $repo = static::getContainer()->get(TestSuiteRepository::class);
-        $provider = new TestRunScheduleProvider($repo);
+        $provider = new TestRunScheduleProvider($repo, static::getContainer()->get(CacheInterface::class));
 
         $schedule = $provider->getSchedule();
         $messages = $schedule->getRecurringMessages();

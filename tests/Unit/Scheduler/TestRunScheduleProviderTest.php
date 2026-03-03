@@ -9,6 +9,7 @@ use App\Repository\TestSuiteRepository;
 use App\Scheduler\TestRunScheduleProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Scheduler\ScheduleProviderInterface;
+use Symfony\Contracts\Cache\CacheInterface;
 
 class TestRunScheduleProviderTest extends TestCase
 {
@@ -63,6 +64,7 @@ class TestRunScheduleProviderTest extends TestCase
     {
         return new TestRunScheduleProvider(
             $testSuiteRepository ?? $this->createStub(TestSuiteRepository::class),
+            $this->createStub(CacheInterface::class),
         );
     }
 }

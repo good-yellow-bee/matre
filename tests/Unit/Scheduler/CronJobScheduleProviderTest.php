@@ -9,6 +9,7 @@ use App\Repository\CronJobRepository;
 use App\Scheduler\CronJobScheduleProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Scheduler\ScheduleProviderInterface;
+use Symfony\Contracts\Cache\CacheInterface;
 
 class CronJobScheduleProviderTest extends TestCase
 {
@@ -49,6 +50,7 @@ class CronJobScheduleProviderTest extends TestCase
     {
         return new CronJobScheduleProvider(
             $cronJobRepository ?? $this->createStub(CronJobRepository::class),
+            $this->createStub(CacheInterface::class),
         );
     }
 }
