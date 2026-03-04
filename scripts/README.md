@@ -103,3 +103,76 @@ ssh abb "sudo cp /path/to/report/data/behaviors.json.bak /path/to/report/data/be
 ssh abb "sudo cp /path/to/report/data/suites.json.bak /path/to/report/data/suites.json"
 ssh abb "sudo cp /path/to/report/history/history.json.bak /path/to/report/history/history.json"
 ```
+
+---
+
+## Host Ops Scripts (`scripts/ops`)
+
+Operational scripts for ABB host maintenance and disk safety.
+
+### Install / Remove Host Cron Entries
+
+Install idempotent cron entries (marker: `matre-host-ops`):
+
+```bash
+bash scripts/ops/install-host-ops-cron.sh
+```
+
+Remove only MATRE host-ops entries:
+
+```bash
+bash scripts/ops/remove-host-ops-cron.sh
+```
+
+### `safe-docker-prune.sh`
+
+Safe Docker cleanup (excludes volumes) with lock protection.
+
+```bash
+# Preview only
+bash scripts/ops/safe-docker-prune.sh --dry-run
+
+# Execute cleanup
+bash scripts/ops/safe-docker-prune.sh
+```
+
+Actions:
+- `docker builder prune -af --filter until=168h`
+- `docker image prune -af --filter until=168h`
+- `docker container prune -f --filter until=168h`
+- `docker network prune -f --filter until=168h`
+
+### `artifact-retention.sh`
+
+Runs Symfony artifact/report cleanup inside the `php` container.
+
+```bash
+# Preview only
+bash scripts/ops/artifact-retention.sh --dry-run
+
+# Execute cleanup (default retention 14 days)
+bash scripts/ops/artifact-retention.sh
+```
+
+Optional env overrides:
+- `PROJECT_DIR=/home/ubuntu/matre`
+- `RETENTION_DAYS=14`
+
+### `disk-monitor-alert.sh`
+
+Monitors `/` disk usage and sends Slack alerts on threshold transitions.
+
+```bash
+bash scripts/ops/disk-monitor-alert.sh
+```
+
+Defaults:
+- Warning threshold: `85%`
+- Critical threshold: `92%`
+- State file: `/tmp/matre-disk-alert.state`
+- Slack webhook source: `/home/ubuntu/matre/.env` (`SLACK_WEBHOOK_URL`)
+
+Optional env overrides:
+- `WARN_THRESHOLD=85`
+- `CRIT_THRESHOLD=92`
+- `ENV_FILE=/home/ubuntu/matre/.env`

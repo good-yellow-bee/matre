@@ -175,6 +175,46 @@ Quick solutions organized by symptom.
    docker-compose exec php php bin/console app:cron:list --active-only
    ```
 
+### "Scheduler stopped after disk filled up"
+
+**Symptom:** Scheduler container exits and does not restart, scheduled runs stop triggering.
+
+**How to confirm:**
+```bash
+docker inspect -f '{{.State.Error}}' matre_scheduler
+df -h /
+```
+
+If inspect shows `no space left on device`, follow this order:
+
+1. Use safe host cleanup scripts:
+   ```bash
+   bash scripts/ops/safe-docker-prune.sh
+   bash scripts/ops/artifact-retention.sh
+   ```
+2. Verify free space has recovered:
+   ```bash
+   df -h /
+   docker system df
+   ```
+3. Start or restart scheduler only:
+   ```bash
+   docker compose up -d scheduler
+   ```
+4. Confirm schedule processing resumed:
+   ```bash
+   docker compose logs --tail=100 scheduler
+   docker compose exec -T php php bin/console dbal:run-sql \
+     "SELECT id, triggered_by, status, created_at FROM matre_test_runs ORDER BY id DESC LIMIT 10"
+   ```
+
+**Prevention:**
+```bash
+bash scripts/ops/install-host-ops-cron.sh
+```
+
+This installs disk monitoring + periodic cleanup cron entries tagged `matre-host-ops`.
+
 ### "Job stuck in 'locked' status"
 
 **Cause:** Previous run didn't release lock (crash or timeout).
