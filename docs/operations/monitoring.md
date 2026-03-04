@@ -189,6 +189,57 @@ docker-compose exec php php bin/console messenger:failed:retry {id}
 
 ---
 
+## Host Disk Monitoring {#host-disk}
+
+For ABB production, use the host ops scripts under `scripts/ops`:
+
+```bash
+# Install host cron entries (idempotent)
+bash scripts/ops/install-host-ops-cron.sh
+
+# Remove host cron entries
+bash scripts/ops/remove-host-ops-cron.sh
+```
+
+Installed jobs (host cron timezone, UTC on ABB):
+- Every 10 minutes: disk monitor and Slack alert transitions
+- Daily 02:25: artifact retention cleanup (`app:test:cleanup --days=14`)
+- Sunday 03:40: safe Docker prune (no volume prune)
+
+### Alert Thresholds
+
+- Warning: `85%`
+- Critical: `92%`
+
+Thresholds can be overridden via environment variables:
+- `WARN_THRESHOLD`
+- `CRIT_THRESHOLD`
+- `ENV_FILE` (for alternate `.env` path)
+
+### Manual Verification
+
+```bash
+# Check root disk usage
+df -h /
+
+# Run monitor script once
+bash scripts/ops/disk-monitor-alert.sh
+
+# View monitor logs
+tail -n 100 /home/ubuntu/matre/var/log/disk-monitor.log
+
+# Show current Docker footprint
+docker system df
+```
+
+### Expected Alert Behavior
+
+- Sends alert only on state transition (`ok -> warning`, `warning -> critical`, etc.)
+- Sends recovery alert on transition back to `ok`
+- Does not send repeated alerts while state is unchanged
+
+---
+
 ## Container Status
 
 ### Quick Status
