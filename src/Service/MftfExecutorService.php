@@ -49,7 +49,7 @@ class MftfExecutorService
      * Output is streamed to a file to prevent memory bloat on long-running tests.
      *
      * @param callable|null $lockRefreshCallback Optional callback to refresh environment lock during execution
-     * @param callable|null $heartbeatCallback   Optional callback to extend message redelivery window
+     * @param callable|null $heartbeatCallback Optional callback to extend message redelivery window
      *
      * @return array{output: string, exitCode: int}
      */
@@ -182,7 +182,7 @@ class MftfExecutorService
      * Used for sequential group execution where each test gets its own output.
      *
      * @param callable|null $lockRefreshCallback Optional callback to refresh environment lock during execution
-     * @param callable|null $heartbeatCallback   Optional callback to extend message redelivery window
+     * @param callable|null $heartbeatCallback Optional callback to extend message redelivery window
      *
      * @return array{output: string, exitCode: int, outputFilePath: string}
      */
@@ -775,8 +775,7 @@ class MftfExecutorService
 
         // Exclude known infrastructure/cleanup exceptions that don't indicate test failure
         $excludedPatterns = [
-            '/AllureHelper.*unlink/s',                   // Allure cleanup race condition
-            '/unlink\(.*_generated.*Cest\.php\)/s',     // Generated test file cleanup
+            '/In AllureHelper\.php.*?unlink\(.*?Cest\.php\).*?(?=\nrun \[)/s', // Entire AllureHelper unlink block + stack trace
         ];
 
         foreach ($excludedPatterns as $pattern) {
