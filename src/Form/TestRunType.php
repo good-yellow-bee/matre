@@ -10,6 +10,7 @@ use App\Repository\TestEnvironmentRepository;
 use App\Repository\TestSuiteRepository;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\Extension\Core\Type\HiddenType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Validator\Constraints\NotBlank;
@@ -42,6 +43,10 @@ class TestRunType extends AbstractType
                 'placeholder' => 'Select test suite',
                 'attr' => ['class' => 'form-control'],
                 'constraints' => [new NotBlank()],
+            ])
+            ->add('sendNotifications', HiddenType::class, [
+                'required' => false,
+                'mapped' => false,
             ])
         ;
     }
