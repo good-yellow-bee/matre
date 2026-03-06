@@ -51,6 +51,20 @@ class AllureReportServiceTest extends TestCase
         $this->assertSame('MOEC7212US', $testId);
     }
 
+    public function testExtractAllureTestIdPrefersFullNameOverName(): void
+    {
+        $service = $this->createService();
+
+        // MOEC6301: name has testCaseId "MOEC6301US" but fullName has Cest class "MOEC6301"
+        // fullName should win because it matches MATRE's DB testId from Cest class extraction
+        $testId = $this->callPrivate($service, 'extractAllureTestId', [[
+            'name' => 'MOEC6301US: Verify the Download orders button in My Order page',
+            'fullName' => 'Magento\\AcceptanceTest\\_default\\Backend\\MOEC6301Cest::MOEC6301',
+        ]]);
+
+        $this->assertSame('MOEC6301', $testId);
+    }
+
     public function testNormalizeTestIdPreservesSuffix(): void
     {
         $service = $this->createService();

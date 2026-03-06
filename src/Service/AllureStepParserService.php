@@ -204,10 +204,10 @@ class AllureStepParserService
                 continue;
             }
 
-            // Extract testId from this Allure file
-            $allureTestId = $this->extractTestId($data['name'] ?? '');
+            // Extract testId - prefer fullName (Cest class name, matches MATRE DB)
+            $allureTestId = $this->extractTestId($data['fullName'] ?? '');
             if (!$allureTestId) {
-                $allureTestId = $this->extractTestId($data['fullName'] ?? '');
+                $allureTestId = $this->extractTestId($data['name'] ?? '');
             }
 
             // Skip if this Allure file matches a known testId
@@ -299,8 +299,8 @@ class AllureStepParserService
         $fullName = $allureData['fullName'] ?? '';
         $allureName = $allureData['name'] ?? '';
 
-        // Extract testId from Allure data
-        $testId = $this->extractTestId($allureName) ?? $this->extractTestId($fullName);
+        // Extract testId - prefer fullName (Cest class name, matches MATRE DB)
+        $testId = $this->extractTestId($fullName) ?? $this->extractTestId($allureName);
 
         // Extract Cest class and method from fullName
         // Format: "Magento\AcceptanceTest\_default\Backend\MOEC2606Cest::MOEC2606"
