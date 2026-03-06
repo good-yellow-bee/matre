@@ -591,9 +591,15 @@ class AllureReportService
         $name = (string) ($data['name'] ?? '');
         $fullName = (string) ($data['fullName'] ?? '');
 
-        $testId = $this->extractStrictTestId($name);
-        if (null === $testId && '' !== $fullName) {
+        // Prefer fullName (contains Cest class name) over name (may contain testCaseId).
+        // The Cest class name is deterministic and always matches MATRE's DB testId,
+        // while testCaseId in name can diverge (e.g. MOEC6301 vs MOEC6301US).
+        $testId = null;
+        if ('' !== $fullName) {
             $testId = $this->extractStrictTestId($fullName);
+        }
+        if (null === $testId) {
+            $testId = $this->extractStrictTestId($name);
         }
 
         return $testId;
