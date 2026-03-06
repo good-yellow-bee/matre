@@ -246,13 +246,17 @@ class MftfExecutorServiceTest extends TestCase
 
         $command = $this->service->buildCommand($run);
 
-        // Should include command to ensure AllureCodeception is enabled
-        $this->assertStringContainsString('grep -q', $command);
-        $this->assertStringContainsString('sed -i', $command);
-        $this->assertStringContainsString('AllureCodeception', $command);
+        // Should bootstrap codeception.yml to per-container tmpfs with .base creation
+        $this->assertStringContainsString('mkdir -p codeception-config', $command);
+        $this->assertStringContainsString('cp codeception.yml codeception.yml.base', $command);
+        $this->assertStringContainsString('codeception-config/codeception.yml', $command);
 
-        // Should set per-run outputDirectory for Allure result isolation
-        $this->assertStringContainsString("sed -i 's|outputDirectory: allure-results.*|outputDirectory: allure-results/run-1|'", $command);
+        // PHP patch should enable AllureCodeception and set per-run outputDirectory
+        $this->assertStringContainsString('AllureCodeception', $command);
+        $this->assertStringContainsString('allure-results/run-1', $command);
+
+        // Should symlink shared-volume codeception.yml to tmpfs copy
+        $this->assertStringContainsString('ln -sf codeception-config/codeception.yml codeception.yml', $command);
     }
 
     // =====================

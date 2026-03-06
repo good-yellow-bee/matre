@@ -205,6 +205,8 @@ class MagentoContainerPoolService
             '--mount', 'type=tmpfs,destination=/var/www/html/dev/tests/acceptance/env-config',
             // Per-environment tmpfs for generated tests (prevents concurrent run race condition)
             '--mount', 'type=tmpfs,destination=/var/www/html/dev/tests/acceptance/tests/functional/Magento/_generated',
+            // Per-environment tmpfs for codeception.yml isolation (prevents Allure result cross-contamination)
+            '--mount', 'type=tmpfs,destination=/var/www/html/dev/tests/acceptance/codeception-config',
             // Environment
             '-e', 'MAGENTO_RUN_MODE=developer',
             $this->magentoImage,
@@ -218,6 +220,23 @@ class MagentoContainerPoolService
 
         // Wait for container to be ready
         $this->waitForContainer($name);
+
+        // Backup clean codeception.yml before any test run mutates it (runs under creation lock)
+        $acceptanceDir = '/var/www/html/dev/tests/acceptance';
+        $backupProcess = new Process([
+            'docker', 'exec', $name,
+            'sh', '-c',
+            sprintf(
+                'if [ ! -f %1$s/codeception.yml.base ]; then cp %1$s/codeception.yml %1$s/codeception.yml.base; fi',
+                $acceptanceDir,
+            ),
+        ]);
+        $backupProcess->setTimeout(10);
+        $backupProcess->run();
+
+        if (!$backupProcess->isSuccessful()) {
+            throw new \RuntimeException(sprintf('Failed to backup codeception.yml.base in container %s (exit %d): %s', $name, $backupProcess->getExitCode(), $backupProcess->getErrorOutput()));
+        }
     }
 
     private function waitForContainer(string $name, int $timeoutSeconds = 30): void
