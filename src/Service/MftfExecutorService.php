@@ -49,7 +49,7 @@ class MftfExecutorService
      * Output is streamed to a file to prevent memory bloat on long-running tests.
      *
      * @param callable|null $lockRefreshCallback Optional callback to refresh environment lock during execution
-     * @param callable|null $heartbeatCallback Optional callback to extend message redelivery window
+     * @param callable|null $heartbeatCallback   Optional callback to extend message redelivery window
      *
      * @return array{output: string, exitCode: int}
      */
@@ -182,7 +182,7 @@ class MftfExecutorService
      * Used for sequential group execution where each test gets its own output.
      *
      * @param callable|null $lockRefreshCallback Optional callback to refresh environment lock during execution
-     * @param callable|null $heartbeatCallback Optional callback to extend message redelivery window
+     * @param callable|null $heartbeatCallback   Optional callback to extend message redelivery window
      *
      * @return array{output: string, exitCode: int, outputFilePath: string}
      */
@@ -356,19 +356,32 @@ class MftfExecutorService
         $acceptanceDir = $this->magentoRoot . '/dev/tests/acceptance';
         $parts[] = 'cd ' . escapeshellarg($acceptanceDir);
 
+        // Bootstrap: copy clean codeception.yml to per-container tmpfs (isolated per environment)
+        // 1. Create .base from the real file on first run (works in all modes: pool, local dev, reused containers)
+        // 2. Copy .base to per-container config dir for isolated patching
+        $parts[] = 'mkdir -p codeception-config';
+        $parts[] = 'if [ ! -f codeception.yml.base ] && [ -f codeception.yml ] && [ ! -L codeception.yml ]; then'
+            . ' cp codeception.yml codeception.yml.base; fi';
+        $parts[] = 'if [ -f codeception.yml.base ]; then cp codeception.yml.base codeception-config/codeception.yml'
+            . '; else echo "ERROR: No clean codeception.yml found (no .base and no real codeception.yml)" >&2; exit 1; fi';
+
         // Ensure WebDriver timeouts are applied in codeception.yml (per-run, safe defaults)
+        $perRunOutputDir = 'allure-results/run-' . $runId;
         $codeceptionPatch = <<<'PHP'
-            $path = getcwd() . '/codeception.yml';
+            $path = getcwd() . '/codeception-config/codeception.yml';
             if (!is_file($path)) {
-                return;
+                fwrite(STDERR, "ERROR: codeception-config/codeception.yml not found at $path\n");
+                exit(1);
             }
             $autoload = getcwd() . '/../../vendor/autoload.php';
             if (!is_file($autoload)) {
-                return;
+                fwrite(STDERR, "ERROR: Magento vendor/autoload.php not found at $autoload\n");
+                exit(1);
             }
             require $autoload;
             if (!class_exists('Symfony\Component\Yaml\Yaml')) {
-                return;
+                fwrite(STDERR, "ERROR: Symfony YAML component not installed in Magento vendor\n");
+                exit(1);
             }
             $config = Symfony\Component\Yaml\Yaml::parseFile($path);
             if (!is_array($config)) {
@@ -400,6 +413,20 @@ class MftfExecutorService
             $wd['capabilities']['goog:chromeOptions']['prefs']['download.default_directory'] = '/home/seluser/Downloads';
             $wd['capabilities']['goog:chromeOptions']['prefs']['download.prompt_for_download'] = false;
             $wd['capabilities']['goog:chromeOptions']['prefs']['download.directory_upgrade'] = true;
+            if (!isset($config['extensions']) || !is_array($config['extensions'])) {
+                $config['extensions'] = [];
+            }
+            if (!isset($config['extensions']['enabled']) || !is_array($config['extensions']['enabled'])) {
+                $config['extensions']['enabled'] = [];
+            }
+            $allureClass = 'Qameta\Allure\Codeception\AllureCodeception';
+            if (!in_array($allureClass, $config['extensions']['enabled'])) {
+                $config['extensions']['enabled'][] = $allureClass;
+            }
+            if (!isset($config['extensions']['config']) || !is_array($config['extensions']['config'])) {
+                $config['extensions']['config'] = [];
+            }
+            $config['extensions']['config'][$allureClass]['outputDirectory'] = '%s';
             file_put_contents($path, Symfony\Component\Yaml\Yaml::dump($config, 10, 2));
             PHP;
         $parts[] = sprintf(
@@ -410,23 +437,12 @@ class MftfExecutorService
                 $this->webDriverRequestTimeout,
                 $this->webDriverPageLoadTimeout,
                 $this->webDriverWaitTimeout,
+                $perRunOutputDir,
             )),
         );
 
-        // MFTF fix: Ensure AllureCodeception is in the enabled extensions list.
-        // Some Magento installations have it only in config section but not enabled.
-        // Without this, Allure output directory is never set and screenshots fail.
-        // Check for "- Qameta" with 8-space indent (enabled list format), add if missing.
-        $parts[] = "grep -q '^        - Qameta' codeception.yml || sed -i '/Subscriber.Console/a\\        - Qameta\\\\Allure\\\\Codeception\\\\AllureCodeception' codeception.yml";
-
-        // MFTF fix: Set per-run outputDirectory for Allure result isolation.
-        // allure-framework/allure-codeception doesn't support ALLURE_OUTPUT_PATH env var,
-        // so we must modify codeception.yml directly to use per-run subdirectory.
-        $perRunOutputDir = 'allure-results/run-' . $runId;
-        $parts[] = sprintf(
-            "sed -i 's|outputDirectory: allure-results.*|outputDirectory: %s|' codeception.yml",
-            $perRunOutputDir,
-        );
+        // Symlink shared-volume codeception.yml to per-container tmpfs copy
+        $parts[] = 'ln -sf codeception-config/codeception.yml codeception.yml';
 
         // Build .env file with layered configuration:
         // 1. Global variables (shared across all environments)
@@ -488,7 +504,7 @@ class MftfExecutorService
         $parts[] = sprintf('echo %s >> %s', escapeshellarg($waitTimeoutLine), escapeshellarg($mftfEnvFile));
 
         // Create per-run Allure output directory before MFTF runs
-        // (codeception.yml outputDirectory is set via sed earlier in this command)
+        // (codeception.yml outputDirectory is set via PHP patch earlier in this command)
         $allureOutputPath = $this->magentoRoot . '/dev/tests/acceptance/allure-results/run-' . $runId;
         $parts[] = sprintf('mkdir -p %s', escapeshellarg($allureOutputPath));
 
@@ -529,7 +545,7 @@ class MftfExecutorService
         $runOutputDir = 'tests/_output/run-' . $runId;
         $moveCommands = [
             'mkdir -p ' . escapeshellarg($runOutputDir),
-            'find tests/_output -maxdepth 1 -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.gif" -o -name "*.html" \) -exec mv {} ' . escapeshellarg($runOutputDir) . '/ \; 2>/dev/null || true',
+            'find tests/_output -maxdepth 1 -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.gif" -o -name "*.html" \) -exec mv {} ' . escapeshellarg($runOutputDir) . '/ \; || true',
             'rm -f ' . escapeshellarg($pidFile) . ' || true',
         ];
 
