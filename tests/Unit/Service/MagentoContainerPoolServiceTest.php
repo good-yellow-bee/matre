@@ -41,9 +41,26 @@ class MagentoContainerPoolServiceTest extends TestCase
         $this->assertSame('matre_magento_env_1', $service->getContainerNameForEnvironment($this->createEnvironment(1)));
     }
 
-    private function createEnvironment(int $id): TestEnvironment
+    public function testExpectedHealthCheckFilesIncludeMagentoCoreAndModuleEnv(): void
+    {
+        $service = $this->createService(useContainerPool: true);
+        $env = $this->createEnvironment(5, 'preprod-es');
+
+        $reflection = new \ReflectionClass($service);
+        $method = $reflection->getMethod('getExpectedHealthCheckFiles');
+        $files = $method->invoke($service, $env);
+
+        $this->assertSame([
+            '/var/www/html/vendor/autoload.php',
+            '/var/www/html/dev/tests/acceptance/codeception.yml',
+            '/var/www/html/app/code/TestModule/Cron/data/.env.preprod-es',
+        ], $files);
+    }
+
+    private function createEnvironment(int $id, string $code = 'stage-us'): TestEnvironment
     {
         $env = new TestEnvironment();
+        $env->setCode($code);
         $ref = new \ReflectionClass($env);
         $idProp = $ref->getProperty('id');
         $idProp->setValue($env, $id);

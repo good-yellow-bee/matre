@@ -49,7 +49,7 @@ class MftfExecutorService
      * Output is streamed to a file to prevent memory bloat on long-running tests.
      *
      * @param callable|null $lockRefreshCallback Optional callback to refresh environment lock during execution
-     * @param callable|null $heartbeatCallback Optional callback to extend message redelivery window
+     * @param callable|null $heartbeatCallback   Optional callback to extend message redelivery window
      *
      * @return array{output: string, exitCode: int}
      */
@@ -182,7 +182,7 @@ class MftfExecutorService
      * Used for sequential group execution where each test gets its own output.
      *
      * @param callable|null $lockRefreshCallback Optional callback to refresh environment lock during execution
-     * @param callable|null $heartbeatCallback Optional callback to extend message redelivery window
+     * @param callable|null $heartbeatCallback   Optional callback to extend message redelivery window
      *
      * @return array{output: string, exitCode: int, outputFilePath: string}
      */
@@ -373,7 +373,7 @@ class MftfExecutorService
                 fwrite(STDERR, "ERROR: codeception-config/codeception.yml not found at $path\n");
                 exit(1);
             }
-            $autoload = getcwd() . '/../../vendor/autoload.php';
+            $autoload = getcwd() . '/../../../vendor/autoload.php';
             if (!is_file($autoload)) {
                 fwrite(STDERR, "ERROR: Magento vendor/autoload.php not found at $autoload\n");
                 exit(1);
@@ -620,6 +620,7 @@ class MftfExecutorService
                     $result->setTestId($testId);
                 }
                 $result->setStatus(TestResult::STATUS_BROKEN);
+                $result->setErrorMessage($this->extractErrorSummary($cleanOutput));
                 $results[] = $result;
             } elseif (preg_match('/OK\s*\(\d+\s*test/', $cleanOutput)) {
                 // Definitive success: "OK (X tests..." - test passed
@@ -818,6 +819,47 @@ class MftfExecutorService
         }
 
         return false;
+    }
+
+    public function extractErrorSummary(string $output, int $maxLines = 5): string
+    {
+        $cleanOutput = preg_replace('/\x1b\[[0-9;]*m|\[[0-9;]*m/', '', $output) ?? $output;
+        $lines = preg_split('/\R/', $cleanOutput) ?: [];
+
+        $interesting = [];
+        $interestingPattern = '/ERROR:|Missing module environment file:|Fatal error:|Uncaught exception|failed to generate|not available under|\[.*Exception\]/i';
+
+        foreach ($lines as $index => $line) {
+            $trimmed = trim($line);
+            if ('' === $trimmed || !preg_match($interestingPattern, $trimmed)) {
+                continue;
+            }
+
+            $interesting[] = $trimmed;
+
+            if (preg_match('/^\[.*Exception\]$/', $trimmed) && isset($lines[$index + 1])) {
+                $nextLine = trim($lines[$index + 1]);
+                if ('' !== $nextLine) {
+                    $interesting[] = $nextLine;
+                }
+            }
+
+            if (count($interesting) >= $maxLines) {
+                break;
+            }
+        }
+
+        if (empty($interesting)) {
+            $interesting = array_values(array_filter(array_map(
+                static fn (string $line): string => trim($line),
+                $lines,
+            )));
+            $interesting = array_slice($interesting, 0, $maxLines);
+        }
+
+        $summary = implode("\n", array_slice($interesting, 0, $maxLines));
+
+        return mb_substr($summary, 0, 2000);
     }
 
     /**

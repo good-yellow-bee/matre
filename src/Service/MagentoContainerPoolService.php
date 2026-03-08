@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Entity\TestEnvironment;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Lock\LockFactory;
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\Process;
 
 /**
@@ -42,9 +43,9 @@ class MagentoContainerPoolService
         }
 
         $containerName = self::CONTAINER_PREFIX . $env->getId();
-        $expectedEnvFile = sprintf('/var/www/html/app/code/TestModule/Cron/data/.env.%s', $env->getCode());
+        $expectedFiles = $this->getExpectedHealthCheckFiles($env);
 
-        $lock = $this->lockFactory->createLock('container_' . $containerName, 60);
+        $lock = $this->lockFactory->createLock('container_' . $containerName, 400);
         $lock->acquire(true);
 
         try {
@@ -57,7 +58,7 @@ class MagentoContainerPoolService
                     $this->startContainer($containerName);
                 }
 
-                $healthCheck = $this->checkModuleEnvFileHealth($containerName, $expectedEnvFile);
+                $healthCheck = $this->waitForContainerHealth($containerName, $expectedFiles);
                 if ($healthCheck['healthy']) {
                     break;
                 }
@@ -66,12 +67,12 @@ class MagentoContainerPoolService
                     'container' => $containerName,
                     'environmentId' => $env->getId(),
                     'environmentCode' => $env->getCode(),
-                    'expectedFile' => $expectedEnvFile,
+                    'expectedFiles' => $expectedFiles,
                     'reason' => $healthCheck['reason'],
                 ]);
 
                 if ($recreated) {
-                    throw new \RuntimeException(sprintf('Container %s is missing required environment file after recreation: %s (%s)', $containerName, $expectedEnvFile, $healthCheck['reason']));
+                    throw new \RuntimeException(sprintf('Container %s failed Magento readiness checks after recreation: %s', $containerName, $healthCheck['reason']));
                 }
 
                 $this->removeContainer($containerName);
@@ -271,33 +272,92 @@ class MagentoContainerPoolService
     }
 
     /**
-     * Verify required module .env file exists inside a pool container.
+     * @return list<string>
+     */
+    private function getExpectedHealthCheckFiles(TestEnvironment $env): array
+    {
+        return [
+            '/var/www/html/vendor/autoload.php',
+            '/var/www/html/dev/tests/acceptance/codeception.yml',
+            sprintf('/var/www/html/app/code/TestModule/Cron/data/.env.%s', $env->getCode()),
+        ];
+    }
+
+    /**
+     * Wait for required Magento files to appear inside a pool container.
+     *
+     * @param list<string> $expectedFiles
      *
      * @return array{healthy: bool, reason: string}
      */
-    private function checkModuleEnvFileHealth(string $containerName, string $expectedEnvFile): array
+    private function waitForContainerHealth(string $containerName, array $expectedFiles, int $timeoutSeconds = 90): array
     {
-        $process = new Process([
-            'docker', 'exec',
-            $containerName,
-            'sh', '-lc',
-            'test -s ' . escapeshellarg($expectedEnvFile),
-        ]);
-        $process->setTimeout(15);
-        $process->run();
+        $start = time();
+        $deadline = $start + $timeoutSeconds;
+        $lastFailure = ['healthy' => false, 'reason' => 'container readiness timed out'];
+        $lastLogAt = 0;
 
-        if ($process->isSuccessful()) {
-            return ['healthy' => true, 'reason' => 'ok'];
+        do {
+            $lastFailure = $this->checkContainerHealth($containerName, $expectedFiles);
+            if ($lastFailure['healthy']) {
+                return $lastFailure;
+            }
+
+            $elapsed = time() - $start;
+            if ($elapsed - $lastLogAt >= 10) {
+                $this->logger->debug('Waiting for container health', [
+                    'container' => $containerName,
+                    'elapsed' => $elapsed,
+                    'reason' => $lastFailure['reason'],
+                ]);
+                $lastLogAt = $elapsed;
+            }
+
+            usleep(500000);
+        } while (time() < $deadline);
+
+        return $lastFailure;
+    }
+
+    /**
+     * Verify required Magento files exist inside a pool container.
+     *
+     * @param list<string> $expectedFiles
+     *
+     * @return array{healthy: bool, reason: string}
+     */
+    private function checkContainerHealth(string $containerName, array $expectedFiles): array
+    {
+        foreach ($expectedFiles as $expectedFile) {
+            $process = new Process([
+                'docker', 'exec',
+                $containerName,
+                'sh', '-lc',
+                'test -s ' . escapeshellarg($expectedFile),
+            ]);
+            $process->setTimeout(15);
+
+            try {
+                $process->run();
+            } catch (ProcessTimedOutException) {
+                return ['healthy' => false, 'reason' => sprintf('docker exec timed out checking: %s', $expectedFile)];
+            }
+
+            if ($process->isSuccessful()) {
+                continue;
+            }
+
+            $reason = trim($process->getErrorOutput());
+            if ('' === $reason) {
+                $reason = trim($process->getOutput());
+            }
+            if ('' === $reason) {
+                $reason = sprintf('required file missing or empty: %s', $expectedFile);
+            }
+
+            return ['healthy' => false, 'reason' => $reason];
         }
 
-        $reason = trim($process->getErrorOutput());
-        if ('' === $reason) {
-            $reason = trim($process->getOutput());
-        }
-        if ('' === $reason) {
-            $reason = 'module env file missing or empty';
-        }
-
-        return ['healthy' => false, 'reason' => $reason];
+        return ['healthy' => true, 'reason' => 'ok'];
     }
 }

@@ -375,7 +375,6 @@ class PlaywrightExecutorServiceTest extends TestCase
         );
 
         $method = new \ReflectionMethod(PlaywrightExecutorService::class, 'parseJsonResults');
-        $method->setAccessible(true);
         $result = $method->invoke($service, $this->createTestRun());
 
         $this->assertSame([], $result);

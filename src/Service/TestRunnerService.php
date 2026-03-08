@@ -613,11 +613,12 @@ class TestRunnerService
                     $this->logger->warning('No results parsed for test, creating broken result', [
                         'testName' => $testName,
                     ]);
+                    $errorMessage = $this->mftfExecutor->extractErrorSummary($result['output']);
                     $testResult = new TestResult();
                     $testResult->setTestRun($run);
                     $testResult->setTestName($testName);
                     $testResult->setStatus(TestResult::STATUS_BROKEN);
-                    $testResult->setErrorMessage('Failed to parse test output');
+                    $testResult->setErrorMessage($errorMessage);
                     $testResult->setOutputFilePath($result['outputFilePath'] ?? null);
                     $run->addResult($testResult);
                     $this->entityManager->persist($testResult);

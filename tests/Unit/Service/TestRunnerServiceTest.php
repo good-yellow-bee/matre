@@ -590,6 +590,85 @@ class TestRunnerServiceTest extends TestCase
         $this->assertCount(1, $run->getResults());
     }
 
+    public function testExecuteRunGroupPreservesInfrastructureErrorWhenParsingFails(): void
+    {
+        $run = $this->createTestRun(TestRun::TYPE_MFTF);
+        $run->setTestFilter('us');
+
+        $suite = $this->createTestSuite('US Group Suite');
+        $suite->setType(TestSuite::TYPE_MFTF_GROUP);
+        $run->setSuite($suite);
+
+        $this->setupLockMock();
+        $em = $this->mockEntityManager();
+        $mftf = $this->mockMftfExecutor();
+        $clone = $this->mockModuleCloneService();
+        $discovery = $this->mockTestDiscovery();
+        $allure = $this->mockAllureReportService();
+        $artifacts = $this->mockArtifactCollector();
+
+        $rawOutput = <<<'OUTPUT'
+            ERROR: Magento vendor/autoload.php not found at /var/www/html/vendor/autoload.php
+            Missing module environment file: /var/www/html/app/code/TestModule/Cron/data/.env.preprod-es
+            OUTPUT;
+
+        $mftf->expects($this->once())
+            ->method('getOutputFilePath')
+            ->willReturn('/var/output.txt');
+
+        $clone->expects($this->once())
+            ->method('getDefaultTargetPath')
+            ->willReturn('/var/test-modules/current');
+
+        $discovery->expects($this->once())
+            ->method('resolveGroupToTests')
+            ->with('us', '/var/test-modules/current')
+            ->willReturn(['MOEC13338']);
+
+        $mftf->expects($this->once())
+            ->method('executeSingleTest')
+            ->willReturn([
+                'output' => $rawOutput,
+                'exitCode' => 1,
+                'outputFilePath' => '/var/test-output/run-1/MOEC13338.log',
+            ]);
+
+        $mftf->expects($this->once())
+            ->method('parseResults')
+            ->with($run, $rawOutput, '/var/test-output/run-1/MOEC13338.log')
+            ->willReturn([]);
+
+        $mftf->expects($this->once())
+            ->method('extractErrorSummary')
+            ->with($rawOutput)
+            ->willReturn("ERROR: Magento vendor/autoload.php not found at /var/www/html/vendor/autoload.php\nMissing module environment file: /var/www/html/app/code/TestModule/Cron/data/.env.preprod-es");
+
+        $allure->expects($this->once())
+            ->method('copyTestAllureResults')
+            ->with(1, 'MOEC13338');
+
+        $allure->expects($this->once())
+            ->method('generateIncrementalReport')
+            ->with($run);
+
+        $artifacts->expects($this->once())
+            ->method('collectArtifacts')
+            ->with($run)
+            ->willReturn(['screenshots' => [], 'html' => []]);
+
+        $em->expects($this->atLeast(4))->method('flush');
+
+        $this->service->executeRun($run);
+
+        $this->assertCount(1, $run->getResults());
+        $result = $run->getResults()->first();
+        $this->assertInstanceOf(TestResult::class, $result);
+        $this->assertSame('MOEC13338', $result->getTestName());
+        $this->assertSame(TestResult::STATUS_BROKEN, $result->getStatus());
+        $this->assertStringContainsString('Magento vendor/autoload.php not found', (string) $result->getErrorMessage());
+        $this->assertStringContainsString('Missing module environment file', (string) $result->getErrorMessage());
+    }
+
     // =====================
     // executeRun() Tests - Playwright Only
     // =====================

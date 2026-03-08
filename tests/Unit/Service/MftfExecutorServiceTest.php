@@ -236,6 +236,20 @@ class MftfExecutorServiceTest extends TestCase
         $this->assertStringContainsString('Missing module environment file:', $command);
     }
 
+    public function testBuildCommandUsesCorrectAutoloadPath(): void
+    {
+        $run = $this->createTestRun('MOEC5157Cest', 1);
+
+        $this->mockEnvRepository()->expects($this->once())
+            ->method('getAllAsKeyValue')
+            ->willReturn([]);
+
+        $command = $this->service->buildCommand($run);
+
+        // Must use ../../../ (3 levels up from /var/www/html/dev/tests/acceptance)
+        $this->assertStringContainsString('/../../../vendor/autoload.php', $command);
+    }
+
     public function testBuildCommandIncludesAllureExtensionFix(): void
     {
         $run = $this->createTestRun('MOEC5157Cest', 1);
@@ -534,6 +548,8 @@ class MftfExecutorServiceTest extends TestCase
 
         $this->assertCount(1, $results);
         $this->assertEquals(TestResult::STATUS_BROKEN, $results[0]->getStatus());
+        $this->assertStringContainsString('ERROR: 2 Test(s) failed to generate', (string) $results[0]->getErrorMessage());
+        $this->assertStringContainsString('Module_Something is not available', (string) $results[0]->getErrorMessage());
     }
 
     public function testParseResultsDoesNotUseNonMatchingFilterAsTestId(): void
