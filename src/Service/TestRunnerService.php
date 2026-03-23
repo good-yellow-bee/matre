@@ -657,11 +657,17 @@ class TestRunnerService
                 $this->entityManager->persist($testResult);
             }
 
-            // Copy Allure results immediately so Steps are available in real-time
-            $this->allureReportService->copyTestAllureResults($run->getId(), $testName);
-
-            // Generate incremental Allure report (debounced)
-            $this->allureReportService->generateIncrementalReport($run);
+            // Copy Allure results + generate report (inside try so failures don't crash the run)
+            try {
+                $this->allureReportService->copyTestAllureResults($run->getId(), $testName);
+                $this->allureReportService->generateIncrementalReport($run);
+            } catch (\Exception $e) {
+                $this->logger->warning('Allure result processing failed, continuing', [
+                    'runId' => $run->getId(),
+                    'testName' => $testName,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             // Collect screenshot immediately so it's visible in UI during execution
             $latestResults = array_filter($run->getResults()->toArray(), fn ($r) => $r->getTestName() === $testName || $r->getTestId() === $testName);

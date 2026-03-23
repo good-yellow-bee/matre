@@ -157,40 +157,37 @@ class AllureReportService
             return;
         }
 
-        // Find all result files in per-run directory
+        // Only process result files matching the current test (not all files in the run dir).
+        // Previously this globbed ALL *-result.json files, re-reading every prior test's results
+        // on each call — O(n²) reads across the run, causing OOM on long suites (40+ tests).
         $resultFiles = glob($runDir . '/*-result.json') ?: [];
         $attachmentsCopied = 0;
 
         foreach ($resultFiles as $resultFile) {
             $content = file_get_contents($resultFile);
-            if (false === $content) {
-                $this->logger->warning('Failed to read Allure result file', [
-                    'file' => $resultFile,
-                    'runId' => $runId,
-                ]);
-
-                continue;
-            }
-            if ('' === $content) {
+            if (false === $content || '' === $content) {
                 continue;
             }
 
             $data = json_decode($content, true);
             if (null === $data && JSON_ERROR_NONE !== json_last_error()) {
-                $this->logger->warning('Failed to parse Allure result JSON', [
-                    'file' => $resultFile,
-                    'runId' => $runId,
-                    'jsonError' => json_last_error_msg(),
-                ]);
-
                 continue;
             }
             if (empty($data)) {
                 continue;
             }
 
+            // Skip result files that don't belong to the current test
+            $fullName = $data['fullName'] ?? '';
+            if ('' !== $testName && !str_contains($fullName, $testName)) {
+                unset($data, $content);
+
+                continue;
+            }
+
             // Extract all attachment sources from result (including nested steps)
             $attachmentSources = $this->extractAllAttachmentSources($data);
+            unset($data, $content);
 
             foreach ($attachmentSources as $source) {
                 $sourceFile = $rootDir . '/' . $source;
@@ -210,6 +207,8 @@ class AllureReportService
                     }
                 }
             }
+
+            break; // Found and processed the matching test — done
         }
 
         if ($attachmentsCopied > 0) {
