@@ -26,6 +26,9 @@ services:
       ALLURE_URL: http://allure:5050
       ALLURE_PUBLIC_URL: ${ALLURE_PUBLIC_URL:-http://matre.local:5050}
       GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /home/www-data/.ssh/id_ed25519"
+    extra_hosts:
+      - "magento-redis:172.21.0.100"
+      - "db:172.21.0.101"
     depends_on:
       - db
     networks:
@@ -67,7 +70,8 @@ services:
       retries: 3
       start_period: 30s
     networks:
-      - matre_network
+      matre_network:
+        ipv4_address: 172.21.0.101
 
   mailpit:
     image: axllent/mailpit:latest
@@ -104,6 +108,9 @@ services:
       DB_NAME: matre
       DB_USER: matre
       DB_PASS: matre
+    extra_hosts:
+      - "magento-redis:172.21.0.100"
+      - "db:172.21.0.101"
     depends_on:
       db:
         condition: service_healthy
@@ -323,7 +330,8 @@ services:
     image: redis:7-alpine
     container_name: matre_magento_redis
     networks:
-      - matre_network
+      matre_network:
+        ipv4_address: 172.21.0.100
 
   # Test Worker - Consumes per-environment test_runner queue
   # Supports parallel execution: docker-compose up -d --scale test-worker=N
@@ -354,6 +362,9 @@ services:
       ALLURE_URL: http://allure:5050
       ALLURE_PUBLIC_URL: ${ALLURE_PUBLIC_URL:-http://matre.local:5050}
       GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /home/www-data/.ssh/id_ed25519"
+    extra_hosts:
+      - "magento-redis:172.21.0.100"
+      - "db:172.21.0.101"
     depends_on:
       db:
         condition: service_healthy
@@ -376,5 +387,8 @@ volumes:
 networks:
   matre_network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
   traefik:
     driver: bridge
