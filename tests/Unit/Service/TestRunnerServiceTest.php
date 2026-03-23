@@ -669,6 +669,92 @@ class TestRunnerServiceTest extends TestCase
         $this->assertStringContainsString('Missing module environment file', (string) $result->getErrorMessage());
     }
 
+    public function testExecuteRunGroupContinuesWhenAllureCopyThrowsError(): void
+    {
+        $run = $this->createTestRun(TestRun::TYPE_MFTF);
+        $run->setTestFilter('us');
+
+        $suite = $this->createTestSuite('US Group Suite');
+        $suite->setType(TestSuite::TYPE_MFTF_GROUP);
+        $run->setSuite($suite);
+
+        $this->setupLockMock();
+        $em = $this->mockEntityManager();
+        $logger = $this->mockLogger();
+        $mftf = $this->mockMftfExecutor();
+        $clone = $this->mockModuleCloneService();
+        $discovery = $this->mockTestDiscovery();
+        $allure = $this->mockAllureReportService();
+        $artifacts = $this->mockArtifactCollector();
+        $stepParser = $this->mockAllureStepParser();
+
+        $clone->expects($this->once())
+            ->method('getDefaultTargetPath')
+            ->willReturn('/var/test-modules/current');
+
+        $discovery->expects($this->once())
+            ->method('resolveGroupToTests')
+            ->with('us', '/var/test-modules/current')
+            ->willReturn(['MOEC2609ES']);
+
+        $mftf->expects($this->once())
+            ->method('executeSingleTest')
+            ->willReturn([
+                'output' => 'single test output',
+                'exitCode' => 0,
+                'outputFilePath' => '/var/test-output/run-1/MOEC2609ES.log',
+            ]);
+
+        $parsedResult = new TestResult();
+        $parsedResult->setTestName('MOEC2609ES');
+        $parsedResult->setStatus(TestResult::STATUS_PASSED);
+
+        $mftf->expects($this->once())
+            ->method('parseResults')
+            ->with($run, 'single test output', '/var/test-output/run-1/MOEC2609ES.log')
+            ->willReturn([$parsedResult]);
+
+        $em->expects($this->once())
+            ->method('persist')
+            ->with($parsedResult);
+
+        $allure->expects($this->once())
+            ->method('copyTestAllureResults')
+            ->with(1, 'MOEC2609ES')
+            ->willThrowException(new \Error('Allure parser blew up'));
+
+        $allure->expects($this->never())
+            ->method('generateIncrementalReport');
+
+        $logger->expects($this->once())
+            ->method('warning')
+            ->with(
+                'Allure result processing failed, continuing',
+                $this->callback(static fn (array $context): bool => 'Allure parser blew up' === $context['error']),
+            );
+
+        $artifacts->expects($this->once())
+            ->method('collectTestScreenshot')
+            ->with($run, $parsedResult);
+
+        $stepParser->expects($this->once())
+            ->method('getDurationForResult')
+            ->with($parsedResult)
+            ->willReturn(null);
+
+        $artifacts->expects($this->once())
+            ->method('collectArtifacts')
+            ->with($run)
+            ->willReturn(['screenshots' => [], 'html' => []]);
+
+        $em->expects($this->atLeast(4))->method('flush');
+
+        $this->service->executeRun($run);
+
+        $this->assertEquals(TestRun::STATUS_COMPLETED, $run->getStatus());
+        $this->assertCount(1, $run->getResults());
+    }
+
     // =====================
     // executeRun() Tests - Playwright Only
     // =====================

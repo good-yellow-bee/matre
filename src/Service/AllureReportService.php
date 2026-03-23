@@ -161,6 +161,14 @@ class AllureReportService
         // Previously this globbed ALL *-result.json files, re-reading every prior test's results
         // on each call — O(n²) reads across the run, causing OOM on long suites (40+ tests).
         $resultFiles = glob($runDir . '/*-result.json') ?: [];
+        usort($resultFiles, static function (string $left, string $right): int {
+            $leftMtime = filemtime($left) ?: 0;
+            $rightMtime = filemtime($right) ?: 0;
+
+            return $rightMtime <=> $leftMtime;
+        });
+
+        $normalizedRequestedTestId = '' !== $testName ? $this->normalizeTestId($testName) : '';
         $attachmentsCopied = 0;
 
         foreach ($resultFiles as $resultFile) {
@@ -178,8 +186,8 @@ class AllureReportService
             }
 
             // Skip result files that don't belong to the current test
-            $fullName = $data['fullName'] ?? '';
-            if ('' !== $testName && !str_contains($fullName, $testName)) {
+            $resultTestId = $this->extractAllureTestId($data);
+            if ('' !== $normalizedRequestedTestId && $normalizedRequestedTestId !== $resultTestId) {
                 unset($data, $content);
 
                 continue;

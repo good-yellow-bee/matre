@@ -2,6 +2,18 @@
 
 declare(strict_types=1);
 
+namespace App\Service;
+
+function time(): int
+{
+    return \App\Tests\Unit\Service\HeartbeatClock::now();
+}
+
+function usleep(int $microseconds): void
+{
+    \App\Tests\Unit\Service\HeartbeatClock::sleep($microseconds);
+}
+
 namespace App\Tests\Unit\Service;
 
 use App\Entity\TestEnvironment;
@@ -18,6 +30,7 @@ use Symfony\Component\Process\Process;
 /**
  * Tests for the pollProcessWithHeartbeat() lock refresh resilience.
  */
+#[\PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations]
 class MftfExecutorServicePollTest extends TestCase
 {
     private LoggerInterface&\PHPUnit\Framework\MockObject\MockObject $logger;
@@ -28,6 +41,7 @@ class MftfExecutorServicePollTest extends TestCase
 
     protected function setUp(): void
     {
+        HeartbeatClock::disable();
         $this->logger = $this->createMock(LoggerInterface::class);
         $this->entityManager = $this->createStub(EntityManagerInterface::class);
 
@@ -45,6 +59,11 @@ class MftfExecutorServicePollTest extends TestCase
             4444,
             '/var/www/html',
         );
+    }
+
+    protected function tearDown(): void
+    {
+        HeartbeatClock::disable();
     }
 
     public function testNoLockRefreshWhenIntervalNotElapsed(): void
@@ -152,6 +171,34 @@ class MftfExecutorServicePollTest extends TestCase
             $lockCallback,
             null,
         );
+    }
+
+    public function testHeartbeatFailureDoesNotRetryAgainBeforeIntervalElapses(): void
+    {
+        HeartbeatClock::enable([300_000_000, 500_000], 0);
+
+        $heartbeatCalls = 0;
+        $heartbeatCallback = function () use (&$heartbeatCalls): void {
+            ++$heartbeatCalls;
+
+            if (1 === $heartbeatCalls) {
+                throw new \RuntimeException('heartbeat failed');
+            }
+        };
+
+        $process = $this->createProcessMock(2);
+        $handle = tmpfile();
+        $run = $this->createTestRun();
+
+        $this->service->exposedPollProcessWithHeartbeat(
+            $process,
+            $run,
+            $handle,
+            null,
+            $heartbeatCallback,
+        );
+
+        $this->assertSame(1, $heartbeatCalls);
     }
 
     public function testHandleClosedOnCancellation(): void
@@ -344,5 +391,60 @@ class TestableMftfExecutorService extends MftfExecutorService
         $reflection = new \ReflectionProperty(MftfExecutorService::class, 'logger');
 
         return $reflection->getValue($this);
+    }
+}
+
+final class HeartbeatClock
+{
+    /**
+     * @var array<int, int>
+     */
+    private static array $sleepAdvances = [];
+
+    private static int $currentTimeMicros = 0;
+
+    private static int $sleepCalls = 0;
+
+    private static bool $enabled = false;
+
+    /**
+     * @param array<int, int> $sleepAdvances
+     */
+    public static function enable(array $sleepAdvances, int $initialTimeSeconds = 0): void
+    {
+        self::$enabled = true;
+        self::$sleepAdvances = array_values($sleepAdvances);
+        self::$currentTimeMicros = $initialTimeSeconds * 1_000_000;
+        self::$sleepCalls = 0;
+    }
+
+    public static function disable(): void
+    {
+        self::$enabled = false;
+        self::$sleepAdvances = [];
+        self::$currentTimeMicros = 0;
+        self::$sleepCalls = 0;
+    }
+
+    public static function now(): int
+    {
+        if (!self::$enabled) {
+            return \time();
+        }
+
+        return intdiv(self::$currentTimeMicros, 1_000_000);
+    }
+
+    public static function sleep(int $microseconds): void
+    {
+        if (!self::$enabled) {
+            \usleep($microseconds);
+
+            return;
+        }
+
+        $advance = self::$sleepAdvances[self::$sleepCalls] ?? $microseconds;
+        self::$currentTimeMicros += $advance;
+        ++self::$sleepCalls;
     }
 }

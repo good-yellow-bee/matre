@@ -661,10 +661,11 @@ class TestRunnerService
             try {
                 $this->allureReportService->copyTestAllureResults($run->getId(), $testName);
                 $this->allureReportService->generateIncrementalReport($run);
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 $this->logger->warning('Allure result processing failed, continuing', [
                     'runId' => $run->getId(),
                     'testName' => $testName,
+                    'type' => $e::class,
                     'error' => $e->getMessage(),
                 ]);
             }

@@ -199,6 +199,79 @@ class ReportGenerationTest extends KernelTestCase
         $this->assertFileExists($runDir . '/screenshot.png');
     }
 
+    public function testCopyTestAllureResultsDistinguishesBaseAndSuffixIds(): void
+    {
+        $run = $this->createTestRunWithResults();
+        $service = $this->buildAllureService();
+
+        $runDir = $service->getAllureResultsPath($run->getId());
+        $rootDir = $this->tempDir . '/var/mftf-results/allure-results';
+
+        $this->filesystem->mkdir([$runDir, $rootDir]);
+
+        $baseResult = [
+            'name' => 'MOEC7212: Base test',
+            'attachments' => [
+                ['source' => 'base.png', 'name' => 'Base Screenshot'],
+            ],
+        ];
+        file_put_contents($runDir . '/base-result.json', json_encode($baseResult));
+
+        $suffixResult = [
+            'name' => 'MOEC7212US: US variant',
+            'attachments' => [
+                ['source' => 'suffix.png', 'name' => 'Suffix Screenshot'],
+            ],
+        ];
+        file_put_contents($runDir . '/suffix-result.json', json_encode($suffixResult));
+
+        file_put_contents($rootDir . '/base.png', 'base-image');
+        file_put_contents($rootDir . '/suffix.png', 'suffix-image');
+
+        $service->copyTestAllureResults($run->getId(), 'MOEC7212US');
+
+        $this->assertFileExists($runDir . '/suffix.png');
+        $this->assertFileDoesNotExist($runDir . '/base.png');
+    }
+
+    public function testCopyTestAllureResultsPrefersNewestMatchingResult(): void
+    {
+        $run = $this->createTestRunWithResults();
+        $service = $this->buildAllureService();
+
+        $runDir = $service->getAllureResultsPath($run->getId());
+        $rootDir = $this->tempDir . '/var/mftf-results/allure-results';
+
+        $this->filesystem->mkdir([$runDir, $rootDir]);
+
+        $oldResultFile = $runDir . '/older-result.json';
+        $newResultFile = $runDir . '/newer-result.json';
+
+        file_put_contents($oldResultFile, json_encode([
+            'name' => 'MOEC2609',
+            'attachments' => [
+                ['source' => 'old.png', 'name' => 'Old Screenshot'],
+            ],
+        ]));
+        file_put_contents($newResultFile, json_encode([
+            'name' => 'MOEC2609',
+            'attachments' => [
+                ['source' => 'new.png', 'name' => 'New Screenshot'],
+            ],
+        ]));
+
+        touch($oldResultFile, 1_700_000_000);
+        touch($newResultFile, 1_700_000_100);
+
+        file_put_contents($rootDir . '/old.png', 'old-image');
+        file_put_contents($rootDir . '/new.png', 'new-image');
+
+        $service->copyTestAllureResults($run->getId(), 'MOEC2609');
+
+        $this->assertFileExists($runDir . '/new.png');
+        $this->assertFileDoesNotExist($runDir . '/old.png');
+    }
+
     // =====================
     // Cleanup
     // =====================

@@ -647,9 +647,10 @@ class MftfExecutorService
 
                 // Heartbeat: extend message redelivery window during long-running tests
                 if ($heartbeatCallback && (time() - $lastHeartbeat) >= $heartbeatInterval) {
+                    $lastHeartbeat = time(); // Always update — prevents immediate re-attempt on failure
+
                     try {
                         $heartbeatCallback();
-                        $lastHeartbeat = time();
                         $heartbeatFailures = 0;
                     } catch (\Exception $e) {
                         ++$heartbeatFailures;
