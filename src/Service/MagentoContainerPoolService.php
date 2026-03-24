@@ -238,6 +238,19 @@ class MagentoContainerPoolService
         if (!$backupProcess->isSuccessful()) {
             throw new \RuntimeException(sprintf('Failed to backup codeception.yml.base in container %s (exit %d): %s', $name, $backupProcess->getExitCode(), $backupProcess->getErrorOutput()));
         }
+
+        // Restore codeception.yml if it's a dangling symlink (tmpfs was wiped on recreation)
+        $restoreProcess = new Process([
+            'docker', 'exec', $name,
+            'sh', '-c',
+            sprintf(
+                'cd %1$s && if [ -L codeception.yml ] && [ ! -e codeception.yml ] && [ -f codeception.yml.base ]; then'
+                . ' rm codeception.yml && cp codeception.yml.base codeception.yml; fi',
+                $acceptanceDir,
+            ),
+        ]);
+        $restoreProcess->setTimeout(10);
+        $restoreProcess->run();
     }
 
     private function waitForContainer(string $name, int $timeoutSeconds = 30): void

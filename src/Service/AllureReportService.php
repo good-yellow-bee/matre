@@ -22,6 +22,9 @@ class AllureReportService
 
     private ?float $lastIncrementalReportTime = null;
 
+    /** @var array<string> Files already sent to Allure during incremental reports */
+    private array $sentFiles = [];
+
     private readonly Filesystem $filesystem;
 
     public function __construct(
@@ -247,7 +250,7 @@ class AllureReportService
         }
 
         try {
-            $this->triggerReportGeneration($run);
+            $this->triggerReportGeneration($run, incrementalOnly: true);
             $this->lastIncrementalReportTime = microtime(true);
 
             $this->logger->info('Incremental Allure report generated', [
@@ -491,7 +494,7 @@ class AllureReportService
     /**
      * Trigger report generation via Allure Docker service.
      */
-    private function triggerReportGeneration(TestRun $run): string
+    private function triggerReportGeneration(TestRun $run, bool $incrementalOnly = false): string
     {
         // Use environment code as project ID for per-environment reports
         $projectId = $run->getEnvironment()->getCode();
@@ -515,7 +518,7 @@ class AllureReportService
         $hasResults = false;
 
         if ($this->filesystem->exists($resultsPath)) {
-            $hasResults = $this->sendResultsToAllure($projectId, $resultsPath, $run);
+            $hasResults = $this->sendResultsToAllure($projectId, $resultsPath, $run, $incrementalOnly);
         }
 
         // Only generate report if we actually sent result files
@@ -711,12 +714,28 @@ class AllureReportService
      *
      * @return bool True if result/container files were sent, false if only attachments or nothing
      */
-    private function sendResultsToAllure(string $projectId, string $resultsPath, TestRun $run): bool
+    private function sendResultsToAllure(string $projectId, string $resultsPath, TestRun $run, bool $incrementalOnly = false): bool
     {
         // Collect all file paths (without loading content yet)
         $resultFiles = glob($resultsPath . '/*-result.json') ?: [];
         $containerFiles = glob($resultsPath . '/*-container.json') ?: [];
         $attachmentFiles = glob($resultsPath . '/*-attachment') ?: [];
+
+        // Incremental mode: only send files not yet sent (prevents O(n²) re-reads + OOM)
+        if ($incrementalOnly) {
+            $resultFiles = array_values(array_diff($resultFiles, $this->sentFiles));
+            $containerFiles = array_values(array_diff($containerFiles, $this->sentFiles));
+            $attachmentFiles = array_values(array_diff($attachmentFiles, $this->sentFiles));
+
+            if (empty($resultFiles) && empty($containerFiles) && empty($attachmentFiles)) {
+                $this->logger->debug('No new files to send incrementally', [
+                    'projectId' => $projectId,
+                    'runId' => $run->getId(),
+                ]);
+
+                return false;
+            }
+        }
 
         if (TestRun::TYPE_MFTF === $run->getType()) {
             $resultFileCount = count($resultFiles);
@@ -852,6 +871,19 @@ class AllureReportService
             unset($results);
         }
 
+        // Track sent files so incremental calls skip them
+        if ($incrementalOnly) {
+            array_push($this->sentFiles, ...$allFiles);
+        }
+
         return $hasResultFiles;
+    }
+
+    /**
+     * Reset incremental send tracking (call between runs or for final report).
+     */
+    public function resetSentFiles(): void
+    {
+        $this->sentFiles = [];
     }
 }
