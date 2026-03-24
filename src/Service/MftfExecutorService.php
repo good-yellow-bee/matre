@@ -285,6 +285,7 @@ class MftfExecutorService
             $wd['capabilities']['goog:chromeOptions']['prefs']['download.default_directory'] = '/home/seluser/Downloads';
             $wd['capabilities']['goog:chromeOptions']['prefs']['download.prompt_for_download'] = false;
             $wd['capabilities']['goog:chromeOptions']['prefs']['download.directory_upgrade'] = true;
+            $wd['capabilities']['goog:chromeOptions']['prefs']['plugins.always_open_pdf_externally'] = true;
             if (!isset($config['extensions']) || !is_array($config['extensions'])) {
                 $config['extensions'] = [];
             }
@@ -382,7 +383,7 @@ class MftfExecutorService
 
         // Clean downloads directory before each run (shared volume with Chrome nodes)
         $downloadsPath = $this->magentoRoot . '/dev/tests/acceptance/tests/_data/downloads';
-        $parts[] = sprintf('rm -rf %s/* && mkdir -p %s', escapeshellarg($downloadsPath), escapeshellarg($downloadsPath));
+        $parts[] = sprintf('rm -rf %s/* && mkdir -p %s && chmod 777 %s', escapeshellarg($downloadsPath), escapeshellarg($downloadsPath), escapeshellarg($downloadsPath));
 
         // Generate credentials file from env variables (MFTF requires this for _CREDS references)
         $credentialsFile = $envConfigDir . '/.credentials';
