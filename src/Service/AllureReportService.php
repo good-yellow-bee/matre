@@ -292,6 +292,14 @@ class AllureReportService
     }
 
     /**
+     * Reset incremental send tracking (call between runs or for final report).
+     */
+    public function resetSentFiles(): void
+    {
+        $this->sentFiles = [];
+    }
+
+    /**
      * Copy attachment files referenced in Allure result.
      */
     private function copyAttachments(array $data, string $sourceDir, string $targetDir): void
@@ -505,6 +513,7 @@ class AllureReportService
             $this->executeWithRetry(
                 fn () => $this->httpClient->request('POST', $this->allureUrl . '/allure-docker-service/projects', [
                     'json' => ['id' => $projectId],
+                    'timeout' => 30,
                 ]),
                 'create_allure_project',
             );
@@ -537,7 +546,10 @@ class AllureReportService
                 fn () => $this->httpClient->request(
                     'GET',
                     $this->allureUrl . '/allure-docker-service/generate-report',
-                    ['query' => ['project_id' => $projectId]],
+                    [
+                        'query' => ['project_id' => $projectId],
+                        'timeout' => 60,
+                    ],
                 ),
                 'generate_allure_report',
             );
@@ -853,6 +865,7 @@ class AllureReportService
                         [
                             'query' => ['project_id' => $projectId],
                             'json' => ['results' => $results],
+                            'timeout' => 120,
                         ],
                     ),
                     'send_allure_results',
@@ -877,13 +890,5 @@ class AllureReportService
         }
 
         return $hasResultFiles;
-    }
-
-    /**
-     * Reset incremental send tracking (call between runs or for final report).
-     */
-    public function resetSentFiles(): void
-    {
-        $this->sentFiles = [];
     }
 }

@@ -108,6 +108,7 @@ class TestRunnerService
     public function executeRun(TestRun $run, ?\Closure $receiverLockRefreshCallback = null, ?\Closure $heartbeatCallback = null): void
     {
         $this->logger->info('Executing test run', ['id' => $run->getId()]);
+        $this->allureReportService->resetSentFiles();
 
         // Set WAITING status before blocking lock acquisition
         $run->setStatus(TestRun::STATUS_WAITING);
@@ -684,7 +685,18 @@ class TestRunnerService
             }
 
             ++$completedTests;
+            $run->setUpdatedAt(new \DateTimeImmutable());
             $this->entityManager->flush();
+
+            $this->logger->info('Test iteration completed', [
+                'runId' => $run->getId(),
+                'testName' => $testName,
+                'progress' => $completedTests . '/' . $totalTests,
+                'memoryMB' => round(memory_get_usage(true) / 1048576, 1),
+                'peakMemoryMB' => round(memory_get_peak_usage(true) / 1048576, 1),
+                'entityCount' => $this->entityManager->getUnitOfWork()->size(),
+                'emOpen' => $this->entityManager->isOpen(),
+            ]);
         }
 
         // Clear current test

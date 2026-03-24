@@ -597,15 +597,38 @@ class MftfExecutorService
         $refreshInterval = 30;
         $heartbeatInterval = 300;
         $maxLockRefreshFailures = 5;
+        $lastCancellationCheck = time();
+        $cancellationCheckInterval = 5;
+        $cancellationRefreshFailures = 0;
+        $processStartTime = time();
+        $maxWallClockTimeout = 4200; // 70 min: safety net above the 60 min process timeout
 
         try {
             while ($process->isRunning()) {
                 usleep(500000);
-                $this->checkCancellation($run, $process);
+                $now = time();
+
+                // Wall-clock safety net: kills process if isRunning() timeout mechanism is blocked
+                if (($now - $processStartTime) > $maxWallClockTimeout) {
+                    $this->logger->error('Wall-clock timeout exceeded, force-killing process', [
+                        'runId' => $run->getId(),
+                        'testName' => $testName,
+                        'elapsed' => $now - $processStartTime,
+                        'processRunning' => $process->isRunning(),
+                    ]);
+                    $process->stop(10);
+
+                    throw new \RuntimeException(sprintf('Wall-clock timeout exceeded (%ds) for test %s', $maxWallClockTimeout, $testName ?? 'unknown'));
+                }
+
+                if (($now - $lastCancellationCheck) >= $cancellationCheckInterval) {
+                    $this->checkCancellation($run, $process, $cancellationRefreshFailures);
+                    $lastCancellationCheck = $now;
+                }
 
                 // Refresh environment lock to prevent expiration during long-running tests
-                if ($lockRefreshCallback && (time() - $lastRefresh) >= $refreshInterval) {
-                    $lastRefresh = time(); // Always update — prevents immediate re-attempt on failure
+                if ($lockRefreshCallback && ($now - $lastRefresh) >= $refreshInterval) {
+                    $lastRefresh = $now; // Always update — prevents immediate re-attempt on failure
 
                     try {
                         $lockRefreshCallback();
@@ -646,10 +669,10 @@ class MftfExecutorService
                 }
 
                 // Heartbeat: extend message redelivery window during long-running tests
-                if ($heartbeatCallback && (time() - $lastHeartbeat) >= $heartbeatInterval) {
+                if ($heartbeatCallback && ($now - $lastHeartbeat) >= $heartbeatInterval) {
                     try {
                         $heartbeatCallback();
-                        $lastHeartbeat = time();
+                        $lastHeartbeat = $now;
                         $heartbeatFailures = 0;
                     } catch (\Exception $e) {
                         ++$heartbeatFailures;
@@ -721,10 +744,32 @@ class MftfExecutorService
      *
      * @throws \RuntimeException if cancelled
      */
-    private function checkCancellation(TestRun $run, Process $process): void
+    private function checkCancellation(TestRun $run, Process $process, int &$consecutiveFailures = 0): void
     {
-        // Refresh from DB to get latest status
-        $this->entityManager->refresh($run);
+        try {
+            $this->entityManager->refresh($run);
+            $consecutiveFailures = 0;
+        } catch (\Throwable $e) {
+            ++$consecutiveFailures;
+            $this->logger->warning('checkCancellation refresh failed', [
+                'runId' => $run->getId(),
+                'error' => $e->getMessage(),
+                'emOpen' => $this->entityManager->isOpen(),
+                'consecutiveFailures' => $consecutiveFailures,
+            ]);
+
+            if ($consecutiveFailures >= 5) {
+                $this->logger->error('Cancellation check persistently failing', [
+                    'runId' => $run->getId(),
+                    'consecutiveFailures' => $consecutiveFailures,
+                ]);
+                $process->stop(10);
+
+                throw new \RuntimeException('EntityManager unrecoverable - cannot check cancellation');
+            }
+
+            return;
+        }
 
         if (TestRun::STATUS_CANCELLED === $run->getStatus()) {
             $this->logger->info('Test run cancelled, stopping MFTF process', [

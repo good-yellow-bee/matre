@@ -68,6 +68,10 @@ services:
             $mainContainer: '%env(MAGENTO_CONTAINER)%'
             $useContainerPool: '%env(bool:USE_CONTAINER_POOL)%'
 
+    App\Service\TestRunnerService:
+        arguments:
+            $logger: '@monolog.logger.test_runner'
+
     App\Service\MftfExecutorService:
         arguments:
             $projectDir: '%kernel.project_dir%'
@@ -79,6 +83,7 @@ services:
             $webDriverRequestTimeout: '%env(int:MFTF_WEBDRIVER_REQUEST_TIMEOUT)%'
             $webDriverPageLoadTimeout: '%env(int:MFTF_WEBDRIVER_PAGELOAD_TIMEOUT)%'
             $webDriverWaitTimeout: '%env(int:MFTF_WEBDRIVER_WAIT_TIMEOUT)%'
+            $logger: '@monolog.logger.test_runner'
 
     App\Service\PlaywrightExecutorService:
         arguments:
