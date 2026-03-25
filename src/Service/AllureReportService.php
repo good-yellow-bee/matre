@@ -25,6 +25,8 @@ class AllureReportService
     /** @var array<string> Files already sent to Allure during incremental reports */
     private array $sentFiles = [];
 
+    private int $incrementalCallCount = 0;
+
     private readonly Filesystem $filesystem;
 
     public function __construct(
@@ -250,7 +252,12 @@ class AllureReportService
         }
 
         try {
-            $this->triggerReportGeneration($run, incrementalOnly: true, skipReportGeneration: true);
+            // Generate HTML report every 5th call (~every 5 tests) to balance freshness vs overhead
+            // Results are always uploaded; only the expensive generate-report GET is throttled
+            ++$this->incrementalCallCount;
+            $skipReport = ($this->incrementalCallCount % 5) !== 0;
+
+            $this->triggerReportGeneration($run, incrementalOnly: true, skipReportGeneration: $skipReport);
             $this->lastIncrementalReportTime = microtime(true);
 
             $this->logger->info('Incremental Allure report generated', [
@@ -297,6 +304,7 @@ class AllureReportService
     public function resetSentFiles(): void
     {
         $this->sentFiles = [];
+        $this->incrementalCallCount = 0;
     }
 
     /**
