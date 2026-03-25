@@ -225,8 +225,12 @@ class ModuleCloneService
 
         try {
             if ($this->filesystem->exists($targetPath . '/.git')) {
-                // Existing clone: pull latest changes
-                $this->pullLatest($targetPath);
+                // Existing clone: skip pull if already at latest remote commit
+                if ($this->isAtLatestCommit($targetPath)) {
+                    $this->logger->info('Module already at latest commit, skipping pull');
+                } else {
+                    $this->pullLatest($targetPath);
+                }
             } else {
                 // Fresh clone
                 $this->cloneModule($targetPath);
@@ -272,6 +276,36 @@ class ModuleCloneService
     public function getModuleBranch(): string
     {
         return $this->moduleBranch;
+    }
+
+    /**
+     * Check if local clone is already at the latest remote commit.
+     */
+    private function isAtLatestCommit(string $targetPath): bool
+    {
+        $localHash = $this->getCommitHash($targetPath);
+        if ($localHash === null) {
+            return false;
+        }
+
+        $repoUrl = $this->getAuthenticatedRepoUrl();
+        $process = new Process(['git', 'ls-remote', $repoUrl, $this->moduleBranch]);
+        $process->setTimeout(30);
+        $process->run();
+
+        if (!$process->isSuccessful()) {
+            $this->logger->warning('Failed to query remote commit, will pull', [
+                'error' => $this->sanitizeOutput($process->getErrorOutput()),
+            ]);
+
+            return false;
+        }
+
+        // Output format: "<hash>\trefs/heads/<branch>"
+        $output = trim($process->getOutput());
+        $remoteHash = explode("\t", $output)[0] ?? '';
+
+        return $localHash === $remoteHash;
     }
 
     /**

@@ -139,6 +139,16 @@ class MagentoContainerPoolService
         ]);
         $process->run();
 
+        if (!$process->isSuccessful()) {
+            $this->logger->warning('docker ps failed in containerExists, assuming container does not exist', [
+                'container' => $name,
+                'exitCode' => $process->getExitCode(),
+                'error' => trim($process->getErrorOutput()),
+            ]);
+
+            return false;
+        }
+
         return trim($process->getOutput()) === $name;
     }
 
@@ -151,6 +161,16 @@ class MagentoContainerPoolService
             '--format', '{{.Names}}',
         ]);
         $process->run();
+
+        if (!$process->isSuccessful()) {
+            $this->logger->warning('docker ps failed in containerRunning, assuming container is not running', [
+                'container' => $name,
+                'exitCode' => $process->getExitCode(),
+                'error' => trim($process->getErrorOutput()),
+            ]);
+
+            return false;
+        }
 
         return trim($process->getOutput()) === $name;
     }

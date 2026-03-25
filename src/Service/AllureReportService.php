@@ -250,7 +250,7 @@ class AllureReportService
         }
 
         try {
-            $this->triggerReportGeneration($run, incrementalOnly: true);
+            $this->triggerReportGeneration($run, incrementalOnly: true, skipReportGeneration: true);
             $this->lastIncrementalReportTime = microtime(true);
 
             $this->logger->info('Incremental Allure report generated', [
@@ -502,7 +502,7 @@ class AllureReportService
     /**
      * Trigger report generation via Allure Docker service.
      */
-    private function triggerReportGeneration(TestRun $run, bool $incrementalOnly = false): string
+    private function triggerReportGeneration(TestRun $run, bool $incrementalOnly = false, bool $skipReportGeneration = false): string
     {
         // Use environment code as project ID for per-environment reports
         $projectId = $run->getEnvironment()->getCode();
@@ -540,26 +540,28 @@ class AllureReportService
             return $projectId;
         }
 
-        // Generate report (with retry)
-        try {
-            $this->executeWithRetry(
-                fn () => $this->httpClient->request(
-                    'GET',
-                    $this->allureUrl . '/allure-docker-service/generate-report',
-                    [
-                        'query' => ['project_id' => $projectId],
-                        'timeout' => 60,
-                    ],
-                ),
-                'generate_allure_report',
-            );
-        } catch (\Throwable $e) {
-            $this->logger->error('Failed to generate Allure report after retries', [
-                'runId' => $runId,
-                'error' => $e->getMessage(),
-            ]);
+        // Generate report (with retry) — skipped during incremental to avoid 10-40s overhead per test
+        if (!$skipReportGeneration) {
+            try {
+                $this->executeWithRetry(
+                    fn () => $this->httpClient->request(
+                        'GET',
+                        $this->allureUrl . '/allure-docker-service/generate-report',
+                        [
+                            'query' => ['project_id' => $projectId],
+                            'timeout' => 60,
+                        ],
+                    ),
+                    'generate_allure_report',
+                );
+            } catch (\Throwable $e) {
+                $this->logger->error('Failed to generate Allure report after retries', [
+                    'runId' => $runId,
+                    'error' => $e->getMessage(),
+                ]);
 
-            throw $e;
+                throw $e;
+            }
         }
 
         return $projectId;
