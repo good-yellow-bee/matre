@@ -137,6 +137,7 @@ class ArtifactCollectorServiceTest extends TestCase
         $result = new TestResult();
         $result->setTestId('MOEC2609');
         $result->setTestName('SomeTest');
+        $result->setStatus(TestResult::STATUS_FAILED);
 
         // Use a separator that creates a word boundary (- is not a word char)
         $service->associateScreenshotsWithResults(
@@ -154,6 +155,7 @@ class ArtifactCollectorServiceTest extends TestCase
         $result = new TestResult();
         $result->setTestId('MOEC2609');
         $result->setTestName('SomeTest');
+        $result->setStatus(TestResult::STATUS_FAILED);
 
         // MOEC2609ES contains MOEC2609 but \b prevents partial match
         // since 'S' is a word char, \bMOEC2609\b won't match inside MOEC2609ES
@@ -163,6 +165,57 @@ class ArtifactCollectorServiceTest extends TestCase
         );
 
         $this->assertNull($result->getScreenshotPath());
+    }
+
+    public function testAssociateScreenshotsSkipsPassedResults(): void
+    {
+        $service = $this->createService();
+
+        $result = new TestResult();
+        $result->setTestId('MOEC2609');
+        $result->setTestName('SomeTest');
+        $result->setStatus(TestResult::STATUS_PASSED);
+
+        $service->associateScreenshotsWithResults(
+            [$result],
+            ['/artifacts/MOEC2609-screenshot.png'],
+        );
+
+        $this->assertNull($result->getScreenshotPath());
+    }
+
+    public function testAssociateScreenshotsSkipsSkippedResults(): void
+    {
+        $service = $this->createService();
+
+        $result = new TestResult();
+        $result->setTestId('MOEC2609');
+        $result->setTestName('SomeTest');
+        $result->setStatus(TestResult::STATUS_SKIPPED);
+
+        $service->associateScreenshotsWithResults(
+            [$result],
+            ['/artifacts/MOEC2609-screenshot.png'],
+        );
+
+        $this->assertNull($result->getScreenshotPath());
+    }
+
+    public function testAssociateScreenshotsMatchesBrokenResults(): void
+    {
+        $service = $this->createService();
+
+        $result = new TestResult();
+        $result->setTestId('MOEC2609');
+        $result->setTestName('SomeTest');
+        $result->setStatus(TestResult::STATUS_BROKEN);
+
+        $service->associateScreenshotsWithResults(
+            [$result],
+            ['/artifacts/MOEC2609-screenshot.png'],
+        );
+
+        $this->assertSame('MOEC2609-screenshot.png', $result->getScreenshotPath());
     }
 
     public function testClearRootLevelArtifactsRemovesFilesButNotSubdirs(): void

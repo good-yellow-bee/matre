@@ -104,6 +104,11 @@ class ArtifactCollectorService
     public function associateScreenshotsWithResults(array $results, array $screenshotPaths): void
     {
         foreach ($results as $result) {
+            // Only associate screenshots with failed/broken tests
+            if (!$result->isFailed() && !$result->isBroken()) {
+                continue;
+            }
+
             $testName = $result->getTestName();
             $testId = $result->getTestId();
 
@@ -187,9 +192,10 @@ class ArtifactCollectorService
                 $targetFile = $targetPath . '/' . $filename;
                 $filesystem->copy($realPath, $targetFile, true);
 
-                // Set screenshot path for first matching screenshot
+                // Set screenshot path for first matching screenshot (only for failed/broken tests)
                 $ext = strtolower($file->getExtension());
-                if (!$screenshotCollected && in_array($ext, self::SCREENSHOT_EXTENSIONS, true)) {
+                if (!$screenshotCollected && in_array($ext, self::SCREENSHOT_EXTENSIONS, true)
+                    && ($result->isFailed() || $result->isBroken())) {
                     $result->setScreenshotPath($filename);
                     $screenshotCollected = true;
                 }
