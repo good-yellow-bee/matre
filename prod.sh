@@ -96,6 +96,11 @@ case "${1:-help}" in
         docker exec -it ${PROJECT_NAME}_${SERVICE} sh
         ;;
 
+    console)
+        shift
+        docker exec -T ${PROJECT_NAME}_php php bin/console "$@"
+        ;;
+
     recreate)
         SERVICE="${2:-}"
         if [ -z "$SERVICE" ]; then
@@ -340,6 +345,7 @@ case "${1:-help}" in
         echo "  worker-logs    Follow test worker logs"
         echo "  scheduler-logs Follow scheduler logs"
         echo "  build          Build images (no cache)"
+        echo "  console <cmd>  Run Symfony console command"
         echo "  shell [svc]    Open shell (default: php)"
         echo "  frontend [--no-cache]  Build and deploy frontend assets"
         echo "  frontend-rollback      Restore previous frontend build"
