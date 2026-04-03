@@ -98,7 +98,7 @@ case "${1:-help}" in
 
     console)
         shift
-        docker exec -T ${PROJECT_NAME}_php php bin/console "$@"
+        docker exec ${PROJECT_NAME}_php php bin/console "$@"
         ;;
 
     recreate)
