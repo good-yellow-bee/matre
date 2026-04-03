@@ -391,6 +391,13 @@ class MftfExecutorService
         // Symlink credentials to expected location
         $parts[] = sprintf('ln -sf %s %s', escapeshellarg($credentialsFile), escapeshellarg($acceptanceDir . '/.credentials'));
 
+        // Purge _generated contents before MFTF generation.
+        // Stale processes from previous runs can lock this dir ("Resource busy" on rmdir),
+        // preventing MFTF from regenerating PHP test files from XML — causes stale code to execute.
+        // Use find -delete to remove contents only (preserves the directory itself, which may be a tmpfs mount).
+        $generatedDir = $acceptanceDir . '/tests/functional/Magento/_generated';
+        $parts[] = sprintf('find %1$s -mindepth 1 -depth -delete 2>/dev/null; mkdir -p %1$s', escapeshellarg($generatedDir));
+
         // MFTF binary path
         $mftfBin = $this->magentoRoot . '/vendor/bin/mftf';
 
