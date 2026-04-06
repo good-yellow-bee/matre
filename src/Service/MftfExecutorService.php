@@ -406,7 +406,7 @@ class MftfExecutorService
 
         $mftfParts = [$mftfBin . ' ' . $mftfCommand];
         $mftfParts[] = escapeshellarg($filter);
-        $mftfParts[] = '-fr'; // failed rerun flag
+        $mftfParts[] = '-f'; // force flag (skip -r/remove to avoid rmdir EBUSY on tmpfs _generated mount)
 
         $mftfParts[] = '--ansi'; // Force colored output
 
@@ -489,10 +489,24 @@ class MftfExecutorService
             }
             // Don't use raw filter as testId - it could be a group name like "us"
 
-            // Check for errors FIRST - errors take priority over individual "PASSED" lines
-            // because "PASSED" can appear for steps even when overall test fails
-            if ($this->hasErrorIndicators($cleanOutput)) {
-                // Create synthetic broken result for real failures
+            // Check for Codeception definitive failure FIRST — FAIL/Failures/ERRORS means
+            // the test ran but assertions/actions failed (STATUS_FAILED).
+            // Only fall through to hasErrorIndicators for infrastructure issues (STATUS_BROKEN).
+            $hasDefinitiveFailure = preg_match('/^\s*FAIL\s*$/m', $cleanOutput)
+                || preg_match('/Failures:\s*([1-9]\d*)/i', $cleanOutput)
+                || preg_match('/ERRORS!\s*$/m', $cleanOutput);
+
+            if ($hasDefinitiveFailure) {
+                $result = new TestResult();
+                $result->setTestRun($run);
+                $result->setTestName($testId ?? 'Unknown');
+                if ($testId) {
+                    $result->setTestId($testId);
+                }
+                $result->setStatus(TestResult::STATUS_FAILED);
+                $result->setErrorMessage($this->extractErrorSummary($cleanOutput));
+                $results[] = $result;
+            } elseif ($this->hasErrorIndicators($cleanOutput)) {
                 $result = new TestResult();
                 $result->setTestRun($run);
                 $result->setTestName($testId ?? 'Unknown');
@@ -859,7 +873,9 @@ class MftfExecutorService
 
         // Exclude known infrastructure/cleanup exceptions that don't indicate test failure
         $excludedPatterns = [
-            '/In AllureHelper\.php.*?unlink\(.*?Cest\.php\).*?(?=\nrun \[)/s', // Entire AllureHelper unlink block + stack trace
+            '/In AllureHelper\.php.*?unlink\(.*?Cest\.php\).*?(?=\nrun \[)/s', // AllureHelper unlink block + stack trace
+            '/In AllureHelper\.php.*?\[Exception\].*?(?=\nrun \[)/s',          // AllureHelper generic exception block
+            '/Warning:\s*rmdir\([^)]*_generated[^)]*\):\s*Resource busy[^\n]*/i', // tmpfs mount rmdir warning
         ];
 
         foreach ($excludedPatterns as $pattern) {

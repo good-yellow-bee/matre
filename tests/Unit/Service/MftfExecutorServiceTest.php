@@ -566,6 +566,78 @@ class MftfExecutorServiceTest extends TestCase
         $this->assertEquals('Unknown', $results[0]->getTestName());
     }
 
+    // =====================
+    // hasErrorIndicators() Tests
+    // =====================
+
+    public function testRmdirWarningNotDetectedAsError(): void
+    {
+        $output = "Warning: rmdir(/var/www/html/dev/tests/acceptance/tests/functional/Magento/_generated): Resource busy in /var/www/html/vendor/magento/magento2-functional-testing-framework/src/Magento/FunctionalTestingFramework/Util/Filesystem/DirSetupUtil.php on line 72\n"
+            . "Generate Tests Command Run\n\n"
+            . "Codeception PHP Testing Framework v5.3.4\n\n"
+            . "MOEC2635Cest: Moec2635\n"
+            . "Signature: Magento\\AcceptanceTest\\_default\\Backend\\MOEC2635Cest:MOEC2635\n"
+            . "Test: tests/functional/Magento/_generated/default/MOEC2635Cest.php:MOEC2635\n"
+            . "Scenario --\n"
+            . " PASSED\n\n"
+            . "OK (1 test, 5 assertions)\n";
+
+        $method = new \ReflectionMethod($this->service, 'hasErrorIndicators');
+        $this->assertFalse($method->invoke($this->service, $output));
+    }
+
+    public function testAllureHelperExceptionNotDetectedAsError(): void
+    {
+        $output = "OK (1 test, 3 assertions)\n\n"
+            . "In AllureHelper.php line 29:\n\n"
+            . "  [Exception]\n\n"
+            . "Exception trace:\n"
+            . "  at /var/www/html/vendor/magento/AllureHelper.php:30\n\n"
+            . "run [-o|--override OVERRIDE] [-e|--ext EXT]\n";
+
+        $method = new \ReflectionMethod($this->service, 'hasErrorIndicators');
+        $this->assertFalse($method->invoke($this->service, $output));
+    }
+
+    // =====================
+    // Broken-vs-Failed Classification Tests
+    // =====================
+
+    public function testFailedTestClassifiedAsFailedNotBroken(): void
+    {
+        $output = "Codeception PHP Testing Framework v5.3.4\n\n"
+            . "MOEC2635Cest: Moec2635\n"
+            . "Signature: Magento\\AcceptanceTest\\_default\\Backend\\MOEC2635Cest:MOEC2635\n"
+            . "Test: tests/functional/Magento/_generated/default/MOEC2635Cest.php:MOEC2635\n"
+            . "Scenario --\n"
+            . " javascript Error: Cannot read properties of null (reading 'click')\n"
+            . " FAIL\n\n"
+            . "In AllureHelper.php line 29:\n\n"
+            . "  [Exception]\n\n"
+            . "Exception trace:\n"
+            . "  at /var/www/html/vendor/magento/AllureHelper.php:30\n\n"
+            . "run [-o|--override OVERRIDE] [-e|--ext EXT]\n";
+
+        $run = $this->createTestRun('MOEC2635');
+        $results = $this->service->parseResults($run, $output);
+
+        $this->assertCount(1, $results);
+        $this->assertEquals(TestResult::STATUS_FAILED, $results[0]->getStatus());
+    }
+
+    public function testBrokenTestStillClassifiedAsBroken(): void
+    {
+        $output = "Codeception PHP Testing Framework v5.3.4\n\n"
+            . "[FastFailException]\n"
+            . "Unable to connect to Selenium server\n";
+
+        $run = $this->createTestRun('MOEC9999');
+        $results = $this->service->parseResults($run, $output);
+
+        $this->assertCount(1, $results);
+        $this->assertEquals(TestResult::STATUS_BROKEN, $results[0]->getStatus());
+    }
+
     private function rebuildService(): void
     {
         $this->service = new MftfExecutorService(
@@ -611,6 +683,10 @@ class MftfExecutorServiceTest extends TestCase
 
         return $this->shellEscapeService;
     }
+
+    // =====================
+    // Helpers
+    // =====================
 
     private function createTestEnvironment(string $name = 'stage-us'): TestEnvironment
     {
