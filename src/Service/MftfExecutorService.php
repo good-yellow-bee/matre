@@ -226,7 +226,7 @@ class MftfExecutorService
 
         // Copy module _data files (CSV fixtures etc.) to central MFTF _data directory
         $acceptanceDir = $this->magentoRoot . '/dev/tests/acceptance';
-        $parts[] = sprintf('cp -n %s/Test/Mftf/_data/* %s/tests/_data/ 2>/dev/null || true', escapeshellarg($mountedModulePath), escapeshellarg($acceptanceDir));
+        $parts[] = sprintf('if [ -d %s/Test/Mftf/_data ]; then cp -n %s/Test/Mftf/_data/* %s/tests/_data/; fi', escapeshellarg($mountedModulePath), escapeshellarg($mountedModulePath), escapeshellarg($acceptanceDir));
 
         // Change to acceptance test directory
         $parts[] = 'cd ' . escapeshellarg($acceptanceDir);
