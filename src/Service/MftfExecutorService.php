@@ -224,8 +224,11 @@ class MftfExecutorService
         $parts[] = sprintf('rm -rf %s', escapeshellarg($modulePath)); // Remove existing
         $parts[] = sprintf('ln -sf %s %s', escapeshellarg($mountedModulePath), escapeshellarg($modulePath));
 
-        // Change to acceptance test directory
+        // Copy module _data files (CSV fixtures etc.) to central MFTF _data directory
         $acceptanceDir = $this->magentoRoot . '/dev/tests/acceptance';
+        $parts[] = sprintf('cp -n %s/Test/Mftf/_data/* %s/tests/_data/ 2>/dev/null || true', escapeshellarg($mountedModulePath), escapeshellarg($acceptanceDir));
+
+        // Change to acceptance test directory
         $parts[] = 'cd ' . escapeshellarg($acceptanceDir);
 
         // Bootstrap: copy clean codeception.yml to per-container tmpfs (isolated per environment)
