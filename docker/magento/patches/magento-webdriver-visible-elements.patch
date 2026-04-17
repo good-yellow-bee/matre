@@ -1,6 +1,6 @@
 --- a/src/Magento/FunctionalTestingFramework/Module/MagentoWebDriver.php
 +++ b/src/Magento/FunctionalTestingFramework/Module/MagentoWebDriver.php
-@@ -1184,4 +1184,114 @@
+@@ -1184,4 +1184,117 @@
              $this->assertNodesNotContain($text, $nodes, $selector);
          }
      }
