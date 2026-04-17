@@ -1,0 +1,120 @@
+--- a/src/Magento/FunctionalTestingFramework/Module/MagentoWebDriver.php
++++ b/src/Magento/FunctionalTestingFramework/Module/MagentoWebDriver.php
+@@ -1184,4 +1184,114 @@
+             $this->assertNodesNotContain($text, $nodes, $selector);
+         }
+     }
++
++    /**
++     * Find elements matching the locator, but return only visible elements.
++     * Fixes duplicate-id rendering (e.g. Magento cart page rendering #shopping-cart-table twice)
++     * where the default first-match picks a hidden/collapsed copy.
++     *
++     * @param string $locator
++     * @return array
++     */
++    public function _findElements($locator): array
++    {
++        $elements = $this->match($this->webDriver, $locator);
++        $visibleElements = [];
++        foreach ($elements as $element) {
++            if ($element->isDisplayed()) {
++                $visibleElements[] = $element;
++            }
++        }
++        return $visibleElements;
++    }
++
++    /**
++     * Prefer a visible element when multiple match the selector.
++     * Falls back to first match (original behavior) if none are visible.
++     *
++     * @param \Facebook\WebDriver\WebDriverSearchContext $page
++     * @param string|array|\Facebook\WebDriver\WebDriverBy $selector
++     * @return \Facebook\WebDriver\WebDriverElement
++     */
++    protected function matchFirstOrFail(\Facebook\WebDriver\WebDriverSearchContext $page, $selector): \Facebook\WebDriver\WebDriverElement
++    {
++        $this->enableImplicitWait();
++        $els = $this->match($page, $selector);
++        $this->disableImplicitWait();
++        if ($els === []) {
++            throw new \Codeception\Exception\ElementNotFound($selector, "CSS or XPath");
++        }
++        foreach ($els as $el) {
++            if ($el->isDisplayed()) {
++                return $el;
++            }
++        }
++        return reset($els);
++    }
++
++    /**
++     * Wait for ANY matching element to become visible — not just the first match.
++     * Fixes duplicate-id rendering where the first match is hidden but a later one is visible.
++     *
++     * @param string|array|\Facebook\WebDriver\WebDriverBy $element
++     * @param int $timeout
++     * @return void
++     */
++    public function waitForElementVisible($element, int $timeout = 10): void
++    {
++        $locator = $this->getLocator($element);
++        $this->webDriver->wait($timeout)->until(function ($driver) use ($locator) {
++            try {
++                $elements = $driver->findElements($locator);
++                foreach ($elements as $el) {
++                    if ($el->isDisplayed()) {
++                        return $el;
++                    }
++                }
++                return null;
++            } catch (\Exception $e) {
++                return null;
++            }
++        });
++    }
++
++    /**
++     * Wait for ANY matching element to become clickable — not just the first match.
++     *
++     * @param string|array|\Facebook\WebDriver\WebDriverBy $element
++     * @param int $timeout
++     * @return void
++     */
++    public function waitForElementClickable($element, int $timeout = 10): void
++    {
++        $locator = $this->getLocator($element);
++        $this->webDriver->wait($timeout)->until(function ($driver) use ($locator) {
++            try {
++                $elements = $driver->findElements($locator);
++                foreach ($elements as $el) {
++                    if ($el->isDisplayed() && $el->isEnabled()) {
++                        return $el;
++                    }
++                }
++                return null;
++            } catch (\Exception $e) {
++                return null;
++            }
++        });
++    }
++
++    /**
++     * Prefer a visible, enabled field when multiple match — fixes duplicate-id forms
++     * where the default first-match picks a non-interactable copy.
++     *
++     * @param string|array|\Facebook\WebDriver\WebDriverBy|\Facebook\WebDriver\WebDriverElement $selector
++     * @return \Facebook\WebDriver\WebDriverElement
++     */
++    protected function findField($selector): \Facebook\WebDriver\WebDriverElement
++    {
++        $arr = $this->findFields($selector);
++        foreach ($arr as $el) {
++            if ($el->isDisplayed() && $el->isEnabled()) {
++                return $el;
++            }
++        }
++        return reset($arr);
++    }
+ }
