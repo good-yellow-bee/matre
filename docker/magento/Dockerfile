@@ -20,7 +20,8 @@ RUN apk add --no-cache \
     npm \
     chromium \
     chromium-chromedriver \
-    linux-headers
+    linux-headers \
+    patch
 
 # Configure and install PHP extensions
 # ftp extension required for Magento 2.4.8+

@@ -115,6 +115,18 @@ if [ -f "/usr/local/share/mftf-patches/mergedActionGroupSchema.xsd" ]; then
     echo "MFTF schema patched"
 fi
 
+# Patch MagentoWebDriver to prefer visible elements on duplicate-id pages
+if [ -f "/usr/local/share/mftf-patches/magento-webdriver-visible-elements.patch" ]; then
+    MFTF_ROOT="${MAGENTO_ROOT}/vendor/magento/magento2-functional-testing-framework"
+    if command -v patch >/dev/null 2>&1; then
+        (cd "${MFTF_ROOT}" && patch -p1 --forward --batch < /usr/local/share/mftf-patches/magento-webdriver-visible-elements.patch) \
+            && echo "MagentoWebDriver visible-elements patch applied" \
+            || echo "MagentoWebDriver visible-elements patch may already be applied (continuing)"
+    else
+        echo "WARNING: 'patch' not installed - skipping MagentoWebDriver patch"
+    fi
+fi
+
 # Install Magento with minimal configuration
 echo "Installing Magento (minimal for MFTF)..."
 bin/magento setup:install \
