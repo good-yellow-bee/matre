@@ -131,6 +131,11 @@ class UserApiController extends AbstractController
         UserPasswordHasherInterface $passwordHasher,
         TestEnvironmentRepository $environments,
     ): JsonResponse {
+        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
+        if (!$this->isCsrfTokenValid('api', $token)) {
+            return $this->json(['error' => 'Invalid CSRF token'], 403);
+        }
+
         $data = json_decode($request->getContent(), true);
 
         // Validate input
@@ -187,6 +192,11 @@ class UserApiController extends AbstractController
         UserPasswordHasherInterface $passwordHasher,
         TestEnvironmentRepository $environments,
     ): JsonResponse {
+        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
+        if (!$this->isCsrfTokenValid('api', $token)) {
+            return $this->json(['error' => 'Invalid CSRF token'], 403);
+        }
+
         $user = $users->find($id);
 
         if (!$user) {
@@ -245,8 +255,13 @@ class UserApiController extends AbstractController
     }
 
     #[Route('/{id}', name: 'api_users_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
-    public function delete(User $user, EntityManagerInterface $entityManager): JsonResponse
+    public function delete(User $user, Request $request, EntityManagerInterface $entityManager): JsonResponse
     {
+        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
+        if (!$this->isCsrfTokenValid('api', $token)) {
+            return $this->json(['error' => 'Invalid CSRF token'], 403);
+        }
+
         // Prevent users from deleting themselves
         if ($user === $this->getUser()) {
             return $this->json([

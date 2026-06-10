@@ -212,7 +212,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ArrowLeft, CalendarClock, Check, ChevronDown, History, Loader2, Power, RotateCcw } from 'lucide-vue-next';
 import PageHeader from '../../components/ui/PageHeader.vue';
-import Toggle from '../settings/components/Toggle.vue';
+import Toggle from '../../components/ui/Toggle.vue';
 import CronStatusBadge from './components/CronStatusBadge.vue';
 import { api } from '../../api/client';
 import { useToastStore } from '../../stores/toasts';

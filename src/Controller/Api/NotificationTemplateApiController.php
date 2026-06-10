@@ -70,6 +70,11 @@ class NotificationTemplateApiController extends AbstractController
     #[Route('/{id}', name: 'api_notification_template_update', methods: ['PUT'], requirements: ['id' => '\d+'])]
     public function update(Request $request, NotificationTemplate $template): JsonResponse
     {
+        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
+        if (!$this->isCsrfTokenValid('api', $token)) {
+            return $this->json(['error' => 'Invalid CSRF token'], 403);
+        }
+
         $data = json_decode($request->getContent(), true);
 
         if (JSON_ERROR_NONE !== json_last_error()) {
@@ -147,6 +152,11 @@ class NotificationTemplateApiController extends AbstractController
     #[Route('/{id}/preview', name: 'api_notification_template_preview', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function preview(Request $request, NotificationTemplate $template): JsonResponse
     {
+        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
+        if (!$this->isCsrfTokenValid('api', $token)) {
+            return $this->json(['error' => 'Invalid CSRF token'], 403);
+        }
+
         $data = json_decode($request->getContent(), true);
 
         if (JSON_ERROR_NONE !== json_last_error()) {
@@ -177,6 +187,11 @@ class NotificationTemplateApiController extends AbstractController
     #[Route('/{id}/test-send', name: 'api_notification_template_test_send', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function testSend(Request $request, NotificationTemplate $template): JsonResponse
     {
+        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
+        if (!$this->isCsrfTokenValid('api', $token)) {
+            return $this->json(['error' => 'Invalid CSRF token'], 403);
+        }
+
         $data = json_decode($request->getContent(), true);
 
         if (JSON_ERROR_NONE !== json_last_error()) {
@@ -225,8 +240,13 @@ class NotificationTemplateApiController extends AbstractController
     }
 
     #[Route('/{id}/reset', name: 'api_notification_template_reset', methods: ['POST'], requirements: ['id' => '\d+'])]
-    public function reset(NotificationTemplate $template): JsonResponse
+    public function reset(Request $request, NotificationTemplate $template): JsonResponse
     {
+        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
+        if (!$this->isCsrfTokenValid('api', $token)) {
+            return $this->json(['error' => 'Invalid CSRF token'], 403);
+        }
+
         $defaults = $this->templateService->getDefaultTemplateContent(
             $template->getChannel(),
             $template->getName(),

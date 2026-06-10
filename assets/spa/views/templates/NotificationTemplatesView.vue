@@ -77,7 +77,7 @@
                     class="btn-ghost btn-sm"
                     :title="template.isActive ? 'Deactivate template' : 'Activate template'"
                     :disabled="togglingId === template.id"
-                    @click="toggleActive(template)"
+                    @click="toggleTarget = template"
                   >
                     <Loader2 v-if="togglingId === template.id" class="h-3.5 w-3.5 animate-spin" />
                     <Pause v-else-if="template.isActive" class="h-3.5 w-3.5" />
@@ -125,6 +125,18 @@
       @confirm="resetDefaults"
       @cancel="confirmResetOpen = false"
     />
+
+    <ConfirmDialog
+      :open="!!toggleTarget"
+      :title="toggleTarget?.isActive ? 'Deactivate Template' : 'Activate Template'"
+      :message="toggleTarget?.isActive
+        ? `Deactivate the “${toggleTarget?.nameLabel}” ${toggleTarget?.channel} template? Notifications using it will stop being sent.`
+        : `Activate the “${toggleTarget?.nameLabel}” ${toggleTarget?.channel} template?`"
+      :confirm-label="toggleTarget?.isActive ? 'Deactivate' : 'Activate'"
+      :busy="togglingId !== null"
+      @confirm="confirmToggle"
+      @cancel="toggleTarget = null"
+    />
   </div>
 </template>
 
@@ -159,6 +171,7 @@ const templates = ref([]);
 const variables = ref([]);
 const loading = ref(true);
 const togglingId = ref(null);
+const toggleTarget = ref(null);
 const confirmResetOpen = ref(false);
 const resetting = ref(false);
 
@@ -191,12 +204,14 @@ async function fetchAll() {
   }
 }
 
-async function toggleActive(template) {
+async function confirmToggle() {
+  const template = toggleTarget.value;
   togglingId.value = template.id;
   try {
     const data = await api.post(`/api/notification-templates/${template.id}/toggle-active`);
     template.isActive = data.isActive;
     toasts.success(data.message);
+    toggleTarget.value = null;
   } catch (e) {
     toasts.error(e.message);
   } finally {

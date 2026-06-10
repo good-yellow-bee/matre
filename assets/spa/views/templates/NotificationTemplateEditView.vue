@@ -180,7 +180,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { ArrowLeft, Check, Eye, Loader2, Mail, Pencil, RefreshCw, RotateCcw, Send, Slack } from 'lucide-vue-next';
 import PageHeader from '../../components/ui/PageHeader.vue';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.vue';
-import Toggle from '../settings/components/Toggle.vue';
+import Toggle from '../../components/ui/Toggle.vue';
 import { api } from '../../api/client';
 import { useToastStore } from '../../stores/toasts';
 import { useAuthStore } from '../../stores/auth';

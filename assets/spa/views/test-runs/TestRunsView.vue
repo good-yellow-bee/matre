@@ -66,7 +66,9 @@
         @row-click="(row) => router.push({ name: 'test-run-detail', params: { id: row.id } })"
       >
         <template #cell-id="{ row }">
-          <span class="mono-id text-ink-faint">#{{ row.id }}</span>
+          <RouterLink :to="{ name: 'test-run-detail', params: { id: row.id } }" class="mono-id link" @click.stop>
+            #{{ row.id }}
+          </RouterLink>
         </template>
 
         <template #cell-environment="{ row }">
@@ -227,6 +229,7 @@ const page = ref(1);
 const confirming = ref(null);
 const actingOn = ref(null);
 let pollTimer = null;
+let loadToken = 0;
 
 const hasFilters = computed(() => filters.status || filters.type || filters.suite);
 
@@ -250,17 +253,19 @@ function truncate(value, length) {
 }
 
 async function load({ background = false } = {}) {
+  const token = ++loadToken;
   if (!background) loading.value = true;
   try {
     const data = await api.get('/api/test-runs', {
       params: { page: page.value, limit: meta.value.limit, status: filters.status, type: filters.type, suite: filters.suite },
     });
+    if (token !== loadToken) return;
     rows.value = data.data;
     meta.value = data.meta;
   } catch (e) {
-    if (!background) toasts.error(e.message);
+    if (token === loadToken && !background) toasts.error(e.message);
   } finally {
-    loading.value = false;
+    if (token === loadToken) loading.value = false;
   }
 }
 
@@ -327,8 +332,8 @@ async function executeConfirm() {
 async function loadSuites() {
   try {
     suites.value = await api.get('/api/test-suites/list');
-  } catch {
-    suites.value = [];
+  } catch (e) {
+    toasts.error(e.message);
   }
 }
 

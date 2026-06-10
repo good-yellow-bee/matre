@@ -113,6 +113,11 @@ class CronJobApiController extends AbstractController
     #[Route('', name: 'api_cron_jobs_create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
+        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
+        if (!$this->isCsrfTokenValid('cron_job_api', $token)) {
+            return $this->json(['error' => 'Invalid CSRF token'], 403);
+        }
+
         $data = json_decode($request->getContent(), true) ?? [];
 
         $errors = $this->validateCronJobData($data);
@@ -140,6 +145,11 @@ class CronJobApiController extends AbstractController
     #[Route('/{id}', name: 'api_cron_jobs_update', methods: ['PUT'], requirements: ['id' => '\d+'])]
     public function update(int $id, Request $request): JsonResponse
     {
+        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
+        if (!$this->isCsrfTokenValid('cron_job_api', $token)) {
+            return $this->json(['error' => 'Invalid CSRF token'], 403);
+        }
+
         $job = $this->cronJobRepository->find($id);
 
         if (!$job) {

@@ -17,6 +17,7 @@
           class="input pl-9 pr-9"
           type="text"
           placeholder="Search by username or email…"
+          aria-label="Search users by username or email"
           @input="onSearchInput"
         >
         <button

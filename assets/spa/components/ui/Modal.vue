@@ -6,12 +6,20 @@
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
         @mousedown.self="emit('close')"
       >
-        <div class="card flex max-h-[88vh] w-full flex-col overflow-hidden" :class="sizes[size]">
+        <div
+          ref="panel"
+          role="dialog"
+          aria-modal="true"
+          :aria-labelledby="titleId"
+          tabindex="-1"
+          class="card flex max-h-[88vh] w-full flex-col overflow-hidden outline-none"
+          :class="sizes[size]"
+        >
           <div class="flex shrink-0 items-center justify-between border-b border-edge px-5 py-3.5">
-            <h2 class="text-sm font-bold uppercase tracking-wider text-ink">
+            <h2 :id="titleId" class="text-sm font-bold uppercase tracking-wider text-ink">
               <slot name="title">{{ title }}</slot>
             </h2>
-            <button class="cursor-pointer rounded-md p-1 text-ink-faint hover:bg-panel-2 hover:text-ink" @click="emit('close')">
+            <button aria-label="Close" class="cursor-pointer rounded-md p-1 text-ink-faint hover:bg-panel-2 hover:text-ink" @click="emit('close')">
               <X class="h-4 w-4" />
             </button>
           </div>
@@ -28,10 +36,10 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted } from 'vue';
+import { nextTick, onMounted, onUnmounted, ref, useId, watch } from 'vue';
 import { X } from 'lucide-vue-next';
 
-defineProps({
+const props = defineProps({
   open: { type: Boolean, default: false },
   title: { type: String, default: '' },
   size: { type: String, default: 'md' },
@@ -47,7 +55,23 @@ const sizes = {
   full: 'max-w-6xl',
 };
 
+const titleId = useId();
+const panel = ref(null);
+let previouslyFocused = null;
+
+watch(() => props.open, async (open) => {
+  if (open) {
+    previouslyFocused = document.activeElement;
+    await nextTick();
+    panel.value?.focus();
+  } else {
+    previouslyFocused?.focus?.();
+    previouslyFocused = null;
+  }
+});
+
 function onKeydown(event) {
+  if (!props.open) return;
   if (event.key === 'Escape') emit('close');
 }
 

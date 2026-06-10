@@ -80,6 +80,11 @@ class TestEnvironmentApiController extends AbstractController
     #[Route('', name: 'api_test_environment_create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
+        $token = $request->headers->get('X-CSRF-Token');
+        if (!$this->isCsrfTokenValid('env_variable_api', $token)) {
+            return $this->json(['error' => 'Invalid CSRF token'], 403);
+        }
+
         $data = json_decode($request->getContent(), true) ?? [];
 
         $errors = $this->validateEnvironmentData($data);
@@ -103,6 +108,11 @@ class TestEnvironmentApiController extends AbstractController
     #[Route('/{id}', name: 'api_test_environment_update', methods: ['PUT'], requirements: ['id' => '\d+'])]
     public function update(int $id, Request $request): JsonResponse
     {
+        $token = $request->headers->get('X-CSRF-Token');
+        if (!$this->isCsrfTokenValid('env_variable_api', $token)) {
+            return $this->json(['error' => 'Invalid CSRF token'], 403);
+        }
+
         $env = $this->environmentRepository->find($id);
 
         if (!$env) {

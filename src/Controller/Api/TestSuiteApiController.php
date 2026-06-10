@@ -141,6 +141,11 @@ class TestSuiteApiController extends AbstractController
     #[IsGranted('ROLE_ADMIN')]
     public function create(Request $request): JsonResponse
     {
+        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
+        if (!$this->isCsrfTokenValid('api', $token)) {
+            return $this->json(['error' => 'Invalid CSRF token'], 403);
+        }
+
         $data = json_decode($request->getContent(), true) ?? [];
 
         $errors = $this->validateSuiteData($data);
@@ -165,6 +170,11 @@ class TestSuiteApiController extends AbstractController
     #[IsGranted('ROLE_ADMIN')]
     public function update(int $id, Request $request): JsonResponse
     {
+        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
+        if (!$this->isCsrfTokenValid('api', $token)) {
+            return $this->json(['error' => 'Invalid CSRF token'], 403);
+        }
+
         $suite = $this->testSuiteRepository->find($id);
 
         if (!$suite) {

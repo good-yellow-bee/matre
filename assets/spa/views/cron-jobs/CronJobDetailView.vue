@@ -69,7 +69,9 @@
               </span>
               <h2 class="text-sm font-bold uppercase tracking-wider text-ink">Last Output</h2>
             </header>
-            <pre class="max-h-96 overflow-y-auto bg-zinc-950 p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap break-words text-zinc-200">{{ job.lastOutput }}</pre>
+            <div class="p-5">
+              <AnsiLog :text="job.lastOutput" max-height="384px" />
+            </div>
           </section>
         </div>
 
@@ -112,7 +114,7 @@
                 <Pencil class="h-4 w-4" />
                 Edit
               </RouterLink>
-              <button class="btn-ghost w-full" :disabled="toggling" @click="toggleActive">
+              <button class="btn-ghost w-full" :disabled="toggling" @click="confirmToggleOpen = true">
                 <Power class="h-4 w-4" />
                 {{ job.isActive ? 'Deactivate' : 'Activate' }}
               </button>
@@ -134,6 +136,18 @@
         @confirm="runNow"
         @cancel="confirmRunOpen = false"
       />
+
+      <ConfirmDialog
+        :open="confirmToggleOpen"
+        :title="job.isActive ? 'Deactivate Cron Job' : 'Activate Cron Job'"
+        :message="job.isActive
+          ? `Deactivate “${job.name}”? It will no longer run on schedule.`
+          : `Activate “${job.name}”? It will run on its schedule.`"
+        :confirm-label="job.isActive ? 'Deactivate' : 'Activate'"
+        :busy="toggling"
+        @confirm="toggleActive"
+        @cancel="confirmToggleOpen = false"
+      />
     </template>
   </div>
 </template>
@@ -145,6 +159,7 @@ import { ArrowLeft, CalendarClock, History, Loader2, Pencil, Play, Power, Termin
 import PageHeader from '../../components/ui/PageHeader.vue';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.vue';
 import CronStatusBadge from './components/CronStatusBadge.vue';
+import AnsiLog from '../test-runs/components/AnsiLog.vue';
 import { api } from '../../api/client';
 import { useToastStore } from '../../stores/toasts';
 
@@ -158,6 +173,7 @@ const loading = ref(true);
 const running = ref(false);
 const toggling = ref(false);
 const confirmRunOpen = ref(false);
+const confirmToggleOpen = ref(false);
 let refreshTimeout = null;
 
 function formatDate(iso) {
@@ -207,6 +223,7 @@ async function toggleActive() {
     const data = await api.post(`/api/cron-jobs/${job.value.id}/toggle-active`);
     job.value.isActive = data.isActive;
     toasts.success(data.message);
+    confirmToggleOpen.value = false;
   } catch (e) {
     toasts.error(e.message);
   } finally {

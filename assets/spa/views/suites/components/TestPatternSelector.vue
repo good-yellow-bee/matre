@@ -30,30 +30,32 @@
           @blur="handleBlur"
           @keydown="handleKeydown"
         >
-        <div
+        <button
           v-if="modelValue && !isOpen"
-          class="absolute inset-y-1 left-1.5 flex max-w-[calc(100%-1rem)] cursor-pointer items-center gap-2 rounded-md bg-accent-soft px-2.5 font-mono text-[13px] text-accent"
+          type="button"
+          class="absolute top-1/2 left-2 flex max-w-[calc(100%-1rem)] -translate-y-1/2 cursor-pointer items-center gap-1.5 rounded-md bg-accent px-2.5 py-1 font-mono text-xs font-semibold text-accent-ink hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           title="Clear selection"
           @click="clearAndFocus"
         >
           <span class="truncate">{{ modelValue }}</span>
-          <X class="h-3.5 w-3.5 shrink-0 opacity-70" />
-        </div>
+          <X class="h-3 w-3 shrink-0 opacity-70" />
+        </button>
         <div
           v-if="isOpen && !loading"
           class="absolute top-full right-0 left-0 z-20 mt-1 max-h-60 overflow-y-auto rounded-lg border border-edge bg-panel py-1 shadow-lg"
         >
-          <div
+          <button
             v-for="(option, index) in options"
             :key="option.free ? '__free__' : option.value"
-            class="cursor-pointer px-3 py-1.5 font-mono text-[13px] text-ink"
-            :class="{ 'bg-accent-soft text-accent': index === highlightedIndex }"
+            type="button"
+            class="block w-full cursor-pointer px-3 py-1.5 text-left font-mono text-[13px] transition-colors"
+            :class="index === highlightedIndex ? 'bg-accent-soft text-accent' : 'text-ink hover:bg-panel-2'"
             @mousedown.prevent="selectOption(option)"
             @mouseenter="highlightedIndex = index"
           >
             <template v-if="option.free">Use "{{ option.value }}" as pattern</template>
             <template v-else>{{ option.label }}</template>
-          </div>
+          </button>
           <div v-if="options.length === 0" class="px-3 py-1.5 text-center text-xs italic text-ink-faint">
             No matches found
           </div>
@@ -184,7 +186,12 @@ function handleKeydown(event) {
   }
 }
 
+let loadToken = 0;
+
 async function loadItems({ refreshed = false } = {}) {
+  // Invalidate any in-flight discovery request so out-of-order responses are discarded
+  const token = ++loadToken;
+
   if (!props.type || isPlaywright.value) {
     items.value = [];
     cached.value = false;
@@ -196,6 +203,7 @@ async function loadItems({ refreshed = false } = {}) {
   loading.value = true;
   try {
     const data = await api.get('/api/test-discovery', { params: { type: props.type } });
+    if (token !== loadToken) return;
     items.value = (data.items || []).map((item) => ({
       value: item?.value ?? item,
       label: item?.label ?? item?.value ?? item,
@@ -204,9 +212,10 @@ async function loadItems({ refreshed = false } = {}) {
     lastUpdated.value = data.lastUpdated || null;
     message.value = refreshed ? `Loaded ${items.value.length} items` : (data.message || '');
   } catch (e) {
+    if (token !== loadToken) return;
     message.value = e.message || 'Error loading test list';
   } finally {
-    loading.value = false;
+    if (token === loadToken) loading.value = false;
   }
 }
 

@@ -17,6 +17,7 @@
           class="input pl-9"
           type="text"
           placeholder="Search by name or command..."
+          aria-label="Search cron jobs by name or command"
           @input="onSearchInput"
         >
         <button
@@ -66,7 +67,7 @@
               ? 'text-pass border-pass/25 bg-pass/10 hover:bg-pass/20'
               : 'text-skip border-skip/25 bg-skip/10 hover:bg-skip/20'"
             :title="row.isActive ? 'Click to deactivate' : 'Click to activate'"
-            @click="toggleActive(row)"
+            @click="toggleTarget = row"
           >
             {{ row.isActive ? 'Yes' : 'No' }}
           </button>
@@ -128,6 +129,18 @@
       @confirm="confirmDelete"
       @cancel="jobToDelete = null"
     />
+
+    <ConfirmDialog
+      :open="!!toggleTarget"
+      :title="toggleTarget?.isActive ? 'Deactivate Cron Job' : 'Activate Cron Job'"
+      :message="toggleTarget?.isActive
+        ? `Deactivate “${toggleTarget?.name}”? It will no longer run on schedule.`
+        : `Activate “${toggleTarget?.name}”? It will run on its schedule.`"
+      :confirm-label="toggleTarget?.isActive ? 'Deactivate' : 'Activate'"
+      :busy="toggleBusy"
+      @confirm="confirmToggle"
+      @cancel="toggleTarget = null"
+    />
   </div>
 </template>
 
@@ -170,6 +183,8 @@ const jobToRun = ref(null);
 const runBusy = ref(false);
 const jobToDelete = ref(null);
 const deleteBusy = ref(false);
+const toggleTarget = ref(null);
+const toggleBusy = ref(false);
 
 let searchTimeout = null;
 let refreshTimeout = null;
@@ -216,13 +231,18 @@ function goToPage(value) {
   fetchJobs();
 }
 
-async function toggleActive(job) {
+async function confirmToggle() {
+  const job = toggleTarget.value;
+  toggleBusy.value = true;
   try {
     const data = await api.post(`/api/cron-jobs/${job.id}/toggle-active`);
     job.isActive = data.isActive;
     toasts.success(data.message);
+    toggleTarget.value = null;
   } catch (e) {
     toasts.error(e.message);
+  } finally {
+    toggleBusy.value = false;
   }
 }
 

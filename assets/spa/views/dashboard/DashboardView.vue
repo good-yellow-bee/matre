@@ -255,14 +255,19 @@ const statCards = computed(() => {
   ];
 });
 
-const quickActions = computed(() => [
-  { label: 'New Test Run', to: { name: 'test-run-new' }, icon: Play, bg: 'bg-accent-soft', tone: 'text-accent' },
-  { label: 'Add Environment', to: { name: 'environment-new' }, icon: Server, bg: 'bg-broken/10', tone: 'text-broken' },
-  { label: 'New Test Suite', to: { name: 'suite-new' }, icon: Layers, bg: 'bg-pass/10', tone: 'text-pass' },
-  { label: 'View All Runs', to: { name: 'test-runs' }, icon: ListChecks, bg: 'bg-skip/10', tone: 'text-skip' },
-  { label: 'Test History', to: { name: 'test-history' }, icon: History, bg: 'bg-accent-2/10', tone: 'text-accent-2' },
-  { label: 'Allure Results', href: auth.urls.allure, icon: ChartColumn, bg: 'bg-run/10', tone: 'text-run' },
-]);
+const quickActions = computed(() => {
+  const actions = [
+    { label: 'New Test Run', to: { name: 'test-run-new' }, icon: Play, bg: 'bg-accent-soft', tone: 'text-accent' },
+    { label: 'Add Environment', to: { name: 'environment-new' }, icon: Server, bg: 'bg-broken/10', tone: 'text-broken' },
+    { label: 'New Test Suite', to: { name: 'suite-new' }, icon: Layers, bg: 'bg-pass/10', tone: 'text-pass' },
+    { label: 'View All Runs', to: { name: 'test-runs' }, icon: ListChecks, bg: 'bg-skip/10', tone: 'text-skip' },
+    { label: 'Test History', to: { name: 'test-history' }, icon: History, bg: 'bg-accent-2/10', tone: 'text-accent-2' },
+  ];
+  if (auth.urls.allure) {
+    actions.push({ label: 'Allure Results', href: auth.urls.allure, icon: ChartColumn, bg: 'bg-run/10', tone: 'text-run' });
+  }
+  return actions;
+});
 
 async function loadStats() {
   statsLoading.value = true;

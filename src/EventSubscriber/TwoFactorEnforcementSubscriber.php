@@ -41,7 +41,6 @@ class TwoFactorEnforcementSubscriber implements EventSubscriberInterface
     /** API endpoints that must stay reachable while 2FA setup is pending */
     private const API_EXEMPT_PREFIXES = [
         '/api/login',
-        '/api/logout',
         '/api/me',
         '/api/2fa-setup',
     ];

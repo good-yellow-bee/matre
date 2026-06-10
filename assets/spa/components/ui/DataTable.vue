@@ -32,8 +32,11 @@
               v-for="(row, index) in rows"
               :key="rowKey ? row[rowKey] : index"
               class="transition-colors hover:bg-panel-2/50"
-              :class="{ 'cursor-pointer': clickable }"
+              :class="{ 'cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent': clickable }"
+              :tabindex="clickable ? 0 : undefined"
               @click="clickable && emit('row-click', row)"
+              @keydown.enter.self="clickable && emit('row-click', row)"
+              @keydown.space.self.prevent="clickable && emit('row-click', row)"
             >
               <td v-for="column in columns" :key="column.key" class="td-base" :class="column.cellClass">
                 <slot :name="`cell-${column.key}`" :row="row" :value="row[column.key]">

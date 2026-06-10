@@ -59,6 +59,7 @@
           type="text"
           class="input pl-9 pr-8"
           placeholder="Search by entity label..."
+          aria-label="Search audit logs by entity label"
           @input="onSearchInput"
         >
         <button

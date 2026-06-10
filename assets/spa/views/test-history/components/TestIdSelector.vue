@@ -8,6 +8,7 @@
       :class="{ 'text-transparent': model && !isOpen }"
       :placeholder="placeholder"
       :disabled="loading"
+      aria-label="Search test IDs"
       autocomplete="off"
       spellcheck="false"
       @focus="openDropdown"

@@ -145,12 +145,12 @@
         </div>
       </section>
 
-      <div class="flex items-center gap-3 rounded-lg border border-edge bg-panel-2/50 p-4">
-        <ToggleSwitch v-model="form.isActive" />
-        <div>
-          <span class="block text-sm font-semibold text-ink">Active Account</span>
-          <span class="text-xs text-ink-faint">{{ form.isActive ? 'User can log in' : 'User cannot log in' }}</span>
-        </div>
+      <div class="rounded-lg border border-edge bg-panel-2/50 p-4">
+        <Toggle
+          v-model="form.isActive"
+          label="Active Account"
+          :help="form.isActive ? 'User can log in' : 'User cannot log in'"
+        />
       </div>
 
       <section class="rounded-lg border border-edge bg-panel-2/50 p-4">
@@ -159,12 +159,12 @@
           Notification Settings
         </h3>
 
-        <div class="flex items-center gap-3 rounded-lg border border-edge bg-panel p-3">
-          <ToggleSwitch v-model="form.notificationsEnabled" />
-          <div>
-            <span class="block text-sm font-semibold text-ink">Enable Notifications</span>
-            <span class="text-xs text-ink-faint">Master toggle for all notifications</span>
-          </div>
+        <div class="rounded-lg border border-edge bg-panel p-3">
+          <Toggle
+            v-model="form.notificationsEnabled"
+            label="Enable Notifications"
+            help="Master toggle for all notifications"
+          />
         </div>
 
         <div v-if="form.notificationsEnabled" class="mt-4 space-y-4 border-t border-edge pt-4">
@@ -247,7 +247,7 @@ import { AlertTriangle, ArrowLeft, Check, Eye, EyeOff, Loader2, Mail, RotateCcw,
 import EmptyState from '../../components/ui/EmptyState.vue';
 import PageHeader from '../../components/ui/PageHeader.vue';
 import PasswordStrength from './components/PasswordStrength.vue';
-import ToggleSwitch from './components/ToggleSwitch.vue';
+import Toggle from '../../components/ui/Toggle.vue';
 import { api } from '../../api/client';
 import { useToastStore } from '../../stores/toasts';
 
@@ -478,6 +478,7 @@ async function fetchEnvironments() {
     environments.value = await api.get('/api/profile/environments');
   } catch {
     environments.value = [];
+    toasts.error('Failed to load environments for notification settings');
   }
 }
 

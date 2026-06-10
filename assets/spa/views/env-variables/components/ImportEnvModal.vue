@@ -78,7 +78,6 @@ import { useToastStore } from '../../../stores/toasts';
 
 const props = defineProps({
   open: { type: Boolean, default: false },
-  existing: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits(['close', 'imported']);
@@ -107,14 +106,24 @@ watch(
   },
 );
 
+async function fetchAllVariables() {
+  try {
+    const result = await api.get('/api/env-variables/list');
+    return result.data;
+  } catch (error) {
+    throw new Error(`Could not load existing variables — import blocked to avoid resetting variable scopes (${error.message})`);
+  }
+}
+
 async function parse() {
   parsing.value = true;
   try {
+    const allVariables = await fetchAllVariables();
     const result = await api.post('/api/env-variables/import', { content: content.value });
     const byName = new Map();
     for (const variable of result.variables) byName.set(variable.name, variable.value);
     preview.value = Array.from(byName, ([name, value]) => {
-      const existing = props.existing.find((item) => item.name === name);
+      const existing = allVariables.find((item) => item.name === name);
       if (existing) {
         return {
           name,

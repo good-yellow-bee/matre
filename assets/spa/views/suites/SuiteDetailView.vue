@@ -15,6 +15,16 @@
       </EmptyState>
     </div>
 
+    <div
+      v-else-if="loadError"
+      class="rise flex items-center gap-3 rounded-xl border border-fail/30 bg-fail/10 p-4 text-sm text-fail"
+      style="--i: 1"
+    >
+      <AlertCircle class="h-4 w-4 shrink-0" />
+      {{ loadError }}
+      <button class="ml-auto cursor-pointer font-semibold hover:underline" @click="load">Retry</button>
+    </div>
+
     <div v-else-if="!suite" class="grid items-start gap-6 lg:grid-cols-3">
       <div class="card rise space-y-4 p-5 lg:col-span-2" style="--i: 1">
         <div v-for="i in 7" :key="i" class="skeleton h-4" :style="{ width: `${90 - i * 8}%` }"></div>
@@ -132,7 +142,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ArrowLeft, Copy, Pencil, Play, Power } from 'lucide-vue-next';
+import { AlertCircle, ArrowLeft, Copy, Pencil, Play, Power } from 'lucide-vue-next';
 import PageHeader from '../../components/ui/PageHeader.vue';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.vue';
 import EmptyState from '../../components/ui/EmptyState.vue';
@@ -149,6 +159,7 @@ const suite = ref(null);
 const environments = ref([]);
 const nextRun = ref('');
 const notFound = ref(false);
+const loadError = ref('');
 const confirmAction = ref(null);
 const confirmBusy = ref(false);
 
@@ -175,6 +186,7 @@ const confirmConfig = computed(() => {
 });
 
 async function load() {
+  loadError.value = '';
   try {
     const [suiteData, envs] = await Promise.all([
       api.get(`/api/test-suites/${suiteId.value}`),
@@ -188,7 +200,7 @@ async function load() {
       notFound.value = true;
       return;
     }
-    toasts.error(e.message);
+    loadError.value = e.message;
   }
 }
 

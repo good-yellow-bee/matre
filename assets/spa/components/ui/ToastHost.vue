@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div class="pointer-events-none fixed bottom-5 right-5 z-[100] flex w-80 flex-col gap-2">
+    <div role="status" aria-live="polite" class="pointer-events-none fixed bottom-5 right-5 z-[100] flex w-80 flex-col gap-2">
       <TransitionGroup name="toast">
         <div
           v-for="toast in toasts.items"
@@ -12,7 +12,7 @@
           <AlertCircle v-else-if="toast.type === 'error'" class="mt-0.5 h-4 w-4 shrink-0" />
           <Info v-else class="mt-0.5 h-4 w-4 shrink-0" />
           <span class="flex-1">{{ toast.message }}</span>
-          <button class="cursor-pointer opacity-60 hover:opacity-100" @click="toasts.dismiss(toast.id)">
+          <button aria-label="Dismiss" class="cursor-pointer opacity-60 hover:opacity-100" @click="toasts.dismiss(toast.id)">
             <X class="h-3.5 w-3.5" />
           </button>
         </div>

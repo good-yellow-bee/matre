@@ -191,7 +191,7 @@
       </DataTable>
     </div>
 
-    <ImportEnvModal :open="importOpen" :existing="rows" @close="importOpen = false" @imported="onImported" />
+    <ImportEnvModal :open="importOpen" @close="importOpen = false" @imported="onImported" />
 
     <ConfirmDialog
       :open="!!confirmDelete"

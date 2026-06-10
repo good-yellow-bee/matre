@@ -12,7 +12,19 @@
       </template>
     </PageHeader>
 
-    <form class="space-y-6" novalidate @submit.prevent="submit">
+    <div v-if="loading" class="space-y-6">
+      <div class="card p-5">
+        <div class="skeleton mb-4 h-9 w-full"></div>
+        <div class="skeleton mb-4 h-9 w-full"></div>
+        <div class="skeleton h-24 w-full"></div>
+      </div>
+      <div class="card p-5">
+        <div class="skeleton mb-4 h-9 w-full"></div>
+        <div class="skeleton h-24 w-full"></div>
+      </div>
+    </div>
+
+    <form v-else class="space-y-6" novalidate @submit.prevent="submit">
       <section class="card rise p-5" style="--i: 1">
         <h2 class="mb-4 border-b border-edge pb-2 text-sm font-bold uppercase tracking-wider text-ink">
           Suite Configuration
@@ -211,6 +223,7 @@ const form = reactive({
 const errors = reactive({});
 const valid = reactive({});
 const submitting = ref(false);
+const loading = ref(isEdit.value);
 
 const suiteTypes = ref([]);
 const suiteTypesError = ref('');
@@ -338,5 +351,6 @@ async function submit() {
 onMounted(async () => {
   await Promise.all([loadTypes(), loadEnvironments()]);
   if (isEdit.value) await loadSuite();
+  loading.value = false;
 });
 </script>

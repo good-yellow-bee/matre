@@ -8,12 +8,12 @@
 
     <div v-else class="grid items-start gap-6 lg:grid-cols-3">
       <form class="card rise space-y-6 p-6 lg:col-span-2" style="--i: 1" @submit.prevent="save">
-        <div class="flex items-center gap-3 rounded-lg border border-edge bg-panel-2/50 p-4">
-          <ToggleSwitch v-model="form.notificationsEnabled" />
-          <div>
-            <span class="block text-sm font-semibold text-ink">Enable Notifications</span>
-            <span class="text-xs text-ink-faint">Master toggle for all notifications</span>
-          </div>
+        <div class="rounded-lg border border-edge bg-panel-2/50 p-4">
+          <Toggle
+            v-model="form.notificationsEnabled"
+            label="Enable Notifications"
+            help="Master toggle for all notifications"
+          />
         </div>
 
         <template v-if="form.notificationsEnabled">
@@ -109,7 +109,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { AlertTriangle, Check, Info, Loader2, Mail, RotateCcw, X } from 'lucide-vue-next';
 import PageHeader from '../../components/ui/PageHeader.vue';
-import ToggleSwitch from '../users/components/ToggleSwitch.vue';
+import Toggle from '../../components/ui/Toggle.vue';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../stores/auth';
 import { useToastStore } from '../../stores/toasts';

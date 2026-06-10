@@ -10,6 +10,15 @@
       </div>
     </div>
 
+    <div
+      v-else-if="loadError"
+      class="flex max-w-3xl items-center gap-3 rounded-xl border border-fail/30 bg-fail/10 p-4 text-sm text-fail"
+    >
+      <AlertCircle class="h-4 w-4 shrink-0" />
+      {{ loadError }}
+      <button class="ml-auto cursor-pointer font-semibold hover:underline" @click="initialLoad">Retry</button>
+    </div>
+
     <form v-else class="max-w-3xl space-y-5" novalidate @submit.prevent="save">
       <!-- General -->
       <section class="card rise p-5" style="--i: 0">
@@ -163,9 +172,9 @@
 
 <script setup>
 import { onMounted, ref } from 'vue';
-import { FlaskConical, Info, Loader2, Save, Search, Shield, SlidersHorizontal, Terminal } from 'lucide-vue-next';
+import { AlertCircle, FlaskConical, Info, Loader2, Save, Search, Shield, SlidersHorizontal, Terminal } from 'lucide-vue-next';
 import PageHeader from '../../components/ui/PageHeader.vue';
-import Toggle from './components/Toggle.vue';
+import Toggle from '../../components/ui/Toggle.vue';
 import { api } from '../../api/client';
 import { useToastStore } from '../../stores/toasts';
 import { useAuthStore } from '../../stores/auth';
@@ -174,6 +183,7 @@ const toasts = useToastStore();
 const auth = useAuthStore();
 
 const loading = ref(true);
+const loadError = ref('');
 const saving = ref(false);
 const errors = ref({});
 const updatedAt = ref(null);
@@ -237,13 +247,17 @@ async function save() {
   }
 }
 
-onMounted(async () => {
+async function initialLoad() {
+  loading.value = true;
+  loadError.value = '';
   try {
     await load();
   } catch (e) {
-    toasts.error(e.message);
+    loadError.value = e.message;
   } finally {
     loading.value = false;
   }
-});
+}
+
+onMounted(initialLoad);
 </script>

@@ -11,6 +11,16 @@
       </div>
     </div>
 
+    <div
+      v-else-if="loadError"
+      class="rise flex items-center gap-3 rounded-xl border border-fail/30 bg-fail/10 p-4 text-sm text-fail"
+      style="--i: 1"
+    >
+      <AlertCircle class="h-4 w-4 shrink-0" />
+      {{ loadError }}
+      <button class="ml-auto cursor-pointer font-semibold hover:underline" @click="load">Retry</button>
+    </div>
+
     <div v-else-if="environment" class="grid items-start gap-6 lg:grid-cols-3">
       <div class="space-y-6 lg:col-span-2">
         <section class="card rise" style="--i: 1">
@@ -128,7 +138,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ArrowLeft, Braces, ExternalLink, Globe, Pause, Pencil, Play } from 'lucide-vue-next';
+import { AlertCircle, ArrowLeft, Braces, ExternalLink, Globe, Pause, Pencil, Play } from 'lucide-vue-next';
 import PageHeader from '../../components/ui/PageHeader.vue';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.vue';
 import ActiveBadge from './components/ActiveBadge.vue';
@@ -143,6 +153,7 @@ const toasts = useToastStore();
 
 const environment = ref(null);
 const loading = ref(true);
+const loadError = ref('');
 const globalVariables = ref([]);
 const envVariables = ref([]);
 const varsLoading = ref(true);
@@ -153,11 +164,16 @@ const safeBaseUrl = computed(() => stripCredentials(environment.value?.baseUrl))
 
 async function load() {
   loading.value = true;
+  loadError.value = '';
   try {
     environment.value = await api.get(`/api/test-environments/${route.params.id}`);
   } catch (e) {
-    toasts.error(e.message);
-    if (e.status === 404) router.replace({ name: 'environments' });
+    if (e.status === 404) {
+      toasts.error(e.message);
+      router.replace({ name: 'environments' });
+    } else {
+      loadError.value = e.message;
+    }
     return;
   } finally {
     loading.value = false;

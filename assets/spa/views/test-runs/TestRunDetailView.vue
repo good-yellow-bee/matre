@@ -20,6 +20,12 @@
       </EmptyState>
     </div>
 
+    <div v-else-if="loadError" class="flex items-center gap-3 rounded-xl border border-fail/30 bg-fail/10 p-4 text-sm text-fail">
+      <AlertCircle class="h-4 w-4 shrink-0" />
+      {{ loadError }}
+      <button class="btn-ghost btn-sm ml-auto" @click="init">Retry</button>
+    </div>
+
     <template v-else-if="run">
       <PageHeader :title="`Test Run #${run.id}`">
         <template #subtitle>
@@ -471,6 +477,7 @@ const run = ref(null);
 const results = ref([]);
 const loading = ref(true);
 const notFound = ref(false);
+const loadError = ref('');
 
 const liveOutput = ref('');
 const liveCurrentTest = ref(null);
@@ -513,8 +520,13 @@ const progressInfo = computed(() => {
 });
 
 const allureUrl = computed(() => {
-  if (!auth.urls.allure || !run.value) return null;
-  return `${auth.urls.allure}/allure-docker-service/projects/${run.value.environment.name}/reports/latest/index.html`;
+  if (!run.value) return null;
+  const latestReport = (run.value.reports || [])
+    .filter((report) => report.publicUrl)
+    .sort((a, b) => new Date(b.generatedAt) - new Date(a.generatedAt))[0];
+  if (latestReport) return latestReport.publicUrl;
+  if (!auth.urls.allure) return null;
+  return `${auth.urls.allure}/allure-docker-service/projects/${run.value.environment.code}/reports/latest/index.html`;
 });
 
 function typeBadgeClass(type) {
@@ -557,23 +569,32 @@ function mergeLiveResults(list) {
 }
 
 async function loadRun({ silent = false } = {}) {
-  if (!silent) loading.value = true;
+  const id = runId.value;
+  if (!silent) {
+    loading.value = true;
+    loadError.value = '';
+  }
   try {
-    const data = await api.get(`/api/test-runs/${runId.value}`);
+    const data = await api.get(`/api/test-runs/${id}`);
+    if (id !== runId.value) return;
     run.value = data;
     setResultsFromRun(data);
   } catch (e) {
+    if (id !== runId.value) return;
     if (e.status === 404) notFound.value = true;
-    else toasts.error(e.message);
+    else if (silent) toasts.error(e.message);
+    else loadError.value = e.message;
   } finally {
-    loading.value = false;
+    if (id === runId.value) loading.value = false;
   }
 }
 
 async function poll() {
   if (document.hidden || !run.value) return;
+  const id = runId.value;
   try {
-    const data = await api.get(`/api/test-runs/${runId.value}/live-output`);
+    const data = await api.get(`/api/test-runs/${id}/live-output`);
+    if (id !== runId.value) return;
     if (data.output) liveOutput.value = data.output;
     liveCurrentTest.value = data.currentTest;
     liveProgress.value = data.progress;
@@ -585,8 +606,9 @@ async function poll() {
       stopPolling();
       await loadRun({ silent: true });
     }
-  } catch {
-    // transient polling errors are retried on the next tick
+  } catch (e) {
+    // transient polling errors are retried on the next tick; stop only if the run is gone
+    if (id === runId.value && e.status === 404) stopPolling();
   }
 }
 
@@ -695,6 +717,7 @@ async function init() {
   liveCurrentTest.value = null;
   liveProgress.value = null;
   notFound.value = false;
+  loadError.value = '';
   expandedErrors.value = new Set();
   await loadRun();
 }

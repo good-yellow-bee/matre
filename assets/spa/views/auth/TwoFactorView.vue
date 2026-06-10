@@ -26,6 +26,7 @@
         maxlength="6"
         placeholder="••••••"
         autocomplete="one-time-code"
+        aria-label="6-digit authentication code"
         required
       >
       <button class="btn-primary w-full" type="submit" :disabled="busy || code.length !== 6">

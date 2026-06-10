@@ -44,9 +44,10 @@ export const useAuthStore = defineStore('auth', {
     async logout() {
       try {
         await api.post('/logout');
-      } finally {
-        this.reset();
+      } catch {
+        // Ignore network errors — local state reset and redirect must always proceed.
       }
+      this.reset();
     },
 
     reset() {
