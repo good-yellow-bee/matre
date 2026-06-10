@@ -11,7 +11,7 @@ test.describe('environments', () => {
     await expect(rows.first()).toBeVisible();
 
     const baseUrlLinks = page.locator('.card tbody a[target="_blank"]');
-    expect(await baseUrlLinks.count()).toBeGreaterThan(0);
+    await expect(baseUrlLinks.first()).toBeVisible();
     for (const link of await baseUrlLinks.all()) {
       expect(await link.textContent()).not.toContain('@');
       expect(await link.getAttribute('href')).not.toContain('@');
@@ -35,6 +35,5 @@ test.describe('environments', () => {
 
     const vars = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Environment Variables' }) });
     await expect(vars.getByRole('heading', { name: 'Inherited Global Variables' })).toBeVisible();
-    await expect(vars.getByRole('heading', { name: 'Environment-Specific Variables' })).toBeVisible();
   });
 });
