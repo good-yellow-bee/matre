@@ -86,7 +86,7 @@ watch(code, (value) => {
 
 onMounted(async () => {
   try {
-    const result = await api.get('/api/2fa-setup');
+    const result = await api.post('/api/2fa-setup');
     if (result.enabled) {
       router.replace({ name: 'dashboard' });
       return;

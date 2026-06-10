@@ -31,9 +31,14 @@ class TwoFactorSetupApiController extends AbstractController
     ) {
     }
 
-    #[Route('', name: 'api_2fa_setup', methods: ['GET'])]
-    public function setup(): JsonResponse
+    #[Route('', name: 'api_2fa_setup', methods: ['POST'])]
+    public function setup(Request $request): JsonResponse
     {
+        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
+        if (!$this->isCsrfTokenValid('api', $token)) {
+            return $this->json(['error' => 'Invalid CSRF token'], 403);
+        }
+
         /** @var User $user */
         $user = $this->getUser();
 
