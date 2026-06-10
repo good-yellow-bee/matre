@@ -88,7 +88,7 @@ class TestRun
     #[ORM\JoinColumn(name: 'executed_by_id', nullable: true, onDelete: 'SET NULL')]
     private ?User $executedBy = null;
 
-    #[ORM\ManyToOne(targetEntity: TestRun::class)]
+    #[ORM\ManyToOne(targetEntity: self::class)]
     #[ORM\JoinColumn(name: 'original_run_id', nullable: true, onDelete: 'SET NULL')]
     private ?TestRun $originalRun = null;
 
@@ -502,12 +502,12 @@ class TestRun
         return $this;
     }
 
-    public function getOriginalRun(): ?TestRun
+    public function getOriginalRun(): ?self
     {
         return $this->originalRun;
     }
 
-    public function setOriginalRun(?TestRun $originalRun): static
+    public function setOriginalRun(?self $originalRun): static
     {
         $this->originalRun = $originalRun;
 

@@ -197,6 +197,7 @@ class TestRunMessageHandler
                     $this->logger->info('Skipping report for individual run (disabled in settings)', [
                         'runId' => $run->getId(),
                     ]);
+
                     // Mark run as completed (preserve failed status if already failed)
                     try {
                         if (TestRun::STATUS_FAILED !== $run->getStatus()) {
@@ -334,7 +335,7 @@ class TestRunMessageHandler
 
         // Only retry runs that have failed results
         $counts = $run->getResultCounts();
-        if ($counts['failed'] === 0 && $counts['broken'] === 0) {
+        if (0 === $counts['failed'] && 0 === $counts['broken']) {
             return false;
         }
 

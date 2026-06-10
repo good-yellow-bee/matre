@@ -18,6 +18,19 @@ use Symfony\Component\Process\Process;
  */
 class MftfExecutorService
 {
+    /**
+     * Extract error details from a matched test block for failed/error tests.
+     */
+    /** Map WebDriver error descriptions to their exception class names. */
+    private const WEBDRIVER_ERROR_MAP = [
+        'element not interactable' => 'ElementNotInteractableException',
+        'element click intercepted' => 'ElementClickInterceptedException',
+        'javascript error:' => 'JavascriptErrorException',
+        'timed out after' => 'TimeoutException',
+        'timed out waiting' => 'TimeoutException',
+        'stale element reference' => 'StaleElementReferenceException',
+    ];
+
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly GlobalEnvVariableRepository $globalEnvVariableRepository,
@@ -1083,19 +1096,6 @@ class MftfExecutorService
             default => TestResult::STATUS_BROKEN,
         };
     }
-
-    /**
-     * Extract error details from a matched test block for failed/error tests.
-     */
-    /** Map WebDriver error descriptions to their exception class names. */
-    private const WEBDRIVER_ERROR_MAP = [
-        'element not interactable' => 'ElementNotInteractableException',
-        'element click intercepted' => 'ElementClickInterceptedException',
-        'javascript error:' => 'JavascriptErrorException',
-        'timed out after' => 'TimeoutException',
-        'timed out waiting' => 'TimeoutException',
-        'stale element reference' => 'StaleElementReferenceException',
-    ];
 
     private function extractErrorFromBlock(string $block): ?string
     {

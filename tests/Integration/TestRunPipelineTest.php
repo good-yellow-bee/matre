@@ -413,6 +413,7 @@ class TestRunPipelineTest extends KernelTestCase
         return new TestRunnerService(
             $this->entityManager,
             $container->get('App\Repository\TestRunRepository'),
+            $container->get('App\Repository\SettingsRepository'),
             $moduleCloneService,
             $mftfExecutor ?? $this->createMock(MftfExecutorService::class),
             $playwrightExecutor ?? $this->createMock(PlaywrightExecutorService::class),
