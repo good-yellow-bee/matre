@@ -56,13 +56,8 @@ jobs:
       - name: Run PHPStan static analysis
         run: vendor/bin/phpstan analyse --error-format=github --no-progress
 
-      - name: Download PHP-CS-Fixer
-        run: |
-          curl -L https://github.com/PHP-CS-Fixer/PHP-CS-Fixer/releases/download/v3.89.2/php-cs-fixer.phar -o php-cs-fixer
-          chmod +x php-cs-fixer
-
       - name: Run PHP-CS-Fixer (dry run)
-        run: ./php-cs-fixer fix --dry-run --diff --verbose
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff --verbose
 
   # ============================================================
   # Job 2: PHPUnit Tests with MySQL
