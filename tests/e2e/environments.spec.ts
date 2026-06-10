@@ -34,6 +34,7 @@ test.describe('environments', () => {
     expect(await baseUrlLink.textContent()).not.toContain('@');
 
     const vars = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Environment Variables' }) });
-    await expect(vars.getByRole('heading', { name: 'Inherited Global Variables' })).toBeVisible();
+    // 'Environment-Specific Variables' always renders; the inherited-globals block only when globals exist
+    await expect(vars.getByRole('heading', { name: 'Environment-Specific Variables' })).toBeVisible();
   });
 });
