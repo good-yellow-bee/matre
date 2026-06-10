@@ -134,7 +134,7 @@ jobs:
         run: bin/console doctrine:migrations:migrate --env=test --no-interaction
 
       - name: Load fixtures
-        run: bin/console doctrine:fixtures:load --env=test --no-interaction
+        run: bin/console doctrine:fixtures:load --env=test --no-interaction --append
 
       - name: Run PHPUnit smoke tests
         run: vendor/bin/phpunit --testsuite="Smoke Tests" --testdox
@@ -374,7 +374,7 @@ jobs:
         run: |
           bin/console doctrine:database:create --env=test --if-not-exists
           bin/console doctrine:migrations:migrate --env=test --no-interaction
-          bin/console doctrine:fixtures:load --env=test --no-interaction
+          bin/console doctrine:fixtures:load --env=test --no-interaction --append
 
       - name: Start Symfony server
         run: |
