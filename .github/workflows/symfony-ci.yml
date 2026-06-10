@@ -1,4 +1,4 @@
-name: Symfony 7 CI/CD Pipeline
+name: Symfony CI/CD Pipeline
 
 on:
   push:

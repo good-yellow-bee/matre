@@ -6,9 +6,9 @@
 |-------|------------|
 | Backend | Symfony 8.0, PHP 8.5 |
 | ORM | Doctrine ORM 3 |
-| Frontend | Vue 3, Tailwind CSS |
-| Build | Vite |
-| Database | MariaDB 11 / MySQL 8 |
+| Frontend | Vue 3 SPA (Vue Router 4, Pinia), Tailwind CSS 4 |
+| Build | Vite 7 |
+| Database | MariaDB 11 (local) / MySQL 8 (CI) |
 | Search | OpenSearch 2.14 (Magento 2.4.8) |
 | Server | Nginx, PHP-FPM |
 | Container | Docker |
@@ -37,14 +37,17 @@
 ```
 matre/
 ├── assets/                 # Frontend assets
-│   ├── app.js             # Public site entry
-│   ├── admin.js           # Admin panel entry
-│   ├── cms.js             # CMS pages entry
-│   ├── styles/            # CSS files
-│   └── vue/               # Vue components
-│       ├── components/    # Vue SFCs
-│       ├── composables/   # Vue composables
-│       └── *-app.js       # Vue island entry points
+│   └── spa/               # Vue 3 single-page application
+│       ├── main.js        # Single Vite entry
+│       ├── api/           # JSON API client
+│       ├── router/        # Vue Router + guards
+│       ├── stores/        # Pinia (auth, toasts)
+│       ├── components/    # Shared UI kit + shell
+│       ├── composables/   # Shared composables
+│       ├── layouts/       # Admin/auth layouts
+│       ├── styles/        # Tailwind 4 + design tokens
+│       ├── utils/         # Format/debounce/sensitive helpers
+│       └── views/         # One directory per feature
 ├── config/                # Symfony configuration
 │   ├── packages/          # Bundle configs
 │   └── routes/            # Route definitions
@@ -53,20 +56,20 @@ matre/
 ├── docs/                  # Documentation
 ├── migrations/            # Doctrine migrations
 ├── public/                # Web root
-│   └── build/             # Vite output
+│   └── build/             # Vite output (manifest + hashed assets)
 ├── src/                   # PHP source
-│   ├── Controller/        # Controllers
-│   │   ├── Admin/         # Admin controllers
-│   │   └── Api/           # API controllers
+│   ├── Controller/        # SpaController, AdminController, SecurityController
+│   │   ├── Admin/         # Binary artifact serving (TestRunController)
+│   │   └── Api/           # JSON API controllers
 │   ├── Entity/            # Doctrine entities
-│   ├── Form/              # Form types
+│   ├── EventListener/     # ApiCsrfListener, ApiRateLimitListener, ...
 │   ├── Repository/        # Repositories
-│   ├── Security/          # Security classes
-│   └── Twig/              # Twig extensions
+│   ├── Security/          # User checker, voters, JSON auth handlers
+│   └── Twig/              # ViteExtension (manifest-based asset tags)
 ├── templates/             # Twig templates
-│   ├── admin/             # Admin templates
-│   └── security/          # Auth templates
-├── tests/                 # PHPUnit tests
+│   ├── emails/            # Email templates
+│   └── spa/               # SPA shell (index.html.twig)
+├── tests/                 # PHPUnit + Playwright tests
 ├── docker-compose.yml     # Docker services
 ├── vite.config.mjs        # Vite configuration
 └── Dockerfile             # Multi-stage build
@@ -76,110 +79,91 @@ matre/
 
 ## Frontend Architecture
 
-### Entry Points
+The entire admin UI is a single Vue 3 SPA (`assets/spa/`, one Vite entry: `spa`). See [SPA Frontend](spa-frontend.md) for the full guide.
 
-| Entry | Purpose | File |
-|-------|---------|------|
-| app | Public site base | `assets/app.js` |
-| admin | Admin panel base | `assets/admin.js` |
-| cms | CMS pages | `assets/cms.js` |
-| Vue islands | Interactive components | `assets/vue/*-app.js` |
+### SPA Shell & Catch-All Routing
 
-### Vue Islands
-
-Vue components mount into specific DOM elements:
-
-```html
-<!-- Twig template -->
-<div data-vue-island="category-form"
-     data-api-url="{{ path('api_categories') }}"
-     data-category-id="{{ category.id }}">
-</div>
-
-{{ vite_entry_script_tags('category-form-app') }}
-```
-
-The entry point finds and mounts the component:
-
-```javascript
-// assets/vue/category-form-app.js
-const target = document.querySelector('[data-vue-island="category-form"]');
-createApp(CategoryForm, {
-  apiUrl: target.dataset.apiUrl,
-  categoryId: target.dataset.categoryId
-}).mount(target);
-```
+`SpaController` serves `templates/spa/index.html.twig` for every GET path that is not `/api/*`, `/build/`, `/uploads/`, `/_profiler`, `/_wdt`, `/2fa_check`, or `/logout` (route priority -100). URLs are unchanged from the Twig era — `/admin/*`, `/login`, `/2fa`, `/2fa-setup` all load the shell and Vue Router takes over client-side.
 
 ### Vite Integration
 
-Twig helpers handle dev/prod modes:
-- **Dev:** Loads from Vite dev server (HMR)
-- **Prod:** Loads from `public/build/` manifest
+`App\Twig\ViteExtension` provides the asset tag helpers and resolves hashed filenames from `public/build/.vite/manifest.json` (produced by `npm run build`):
 
 ```twig
-{{ vite_entry_link_tags('admin') }}
-{{ vite_entry_script_tags('admin') }}
+{{ vite_entry_link_tags('spa') }}
+{{ vite_entry_script_tags('spa') }}
 ```
 
 ---
 
 ## API Endpoints
 
-JSON endpoints for Vue islands:
+The SPA talks exclusively to the JSON API under `/api` (controllers in `src/Controller/Api/`):
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/api/pages` | GET | List pages |
-| `/api/pages/{id}` | GET | Get page |
-| `/api/pages` | POST | Create page |
-| `/api/pages/{id}` | PUT | Update page |
-| `/api/categories` | GET | List categories |
-| `/api/users` | GET | List users |
+| Resource | Base Path |
+|----------|-----------|
+| Auth & session bootstrap | `/api/login`, `/api/me` |
+| Test runs (create/cancel/retry/retry-failed/resend-notification/live-output/steps/output) | `/api/test-runs` |
+| Test suites | `/api/test-suites` |
+| Test environments (incl. per-env variables) | `/api/test-environments` |
+| Global env variables | `/api/env-variables` |
+| Users | `/api/users` |
+| Cron jobs | `/api/cron-jobs` |
+| Audit logs | `/api/audit-logs` |
+| Notification templates | `/api/notification-templates` |
+| Settings | `/api/settings` |
+| Dashboard stats | `/api/dashboard` |
+| 2FA setup | `/api/2fa-setup` |
+| Test history | `/api/test-history` |
+| Test discovery | `/api/test-discovery` |
+| Profile (notification preferences) | `/api/profile` |
 
-All API endpoints require `ROLE_USER` or higher.
+All API endpoints require `ROLE_USER` or higher (`/api/login` and `/api/me` are public); admin resources require `ROLE_ADMIN`. Binary artifacts (screenshots, HTML dumps) are served outside `/api` at `/admin/test-runs/{id}/artifacts/{filename}`.
 
 ---
 
 ## Admin Panel
 
 ### URL Structure
-- `/admin/dashboard` - Dashboard
-- `/admin/users` - User management
-- `/admin/pages` - Page management
-- `/admin/categories` - Category management
-- `/admin/settings` - System settings
+
+Client-side routes (Vue Router), served by the SPA shell:
+
+- `/admin` - Dashboard
+- `/admin/test-runs`, `/admin/test-history` - Test execution
+- `/admin/test-environments`, `/admin/test-suites`, `/admin/env-variables` - Test configuration
+- `/admin/users`, `/admin/notification-templates` - Administration
+- `/admin/settings`, `/admin/cron-jobs`, `/admin/audit-logs` - System
+- `/admin/profile/notifications` - Per-user preferences
 
 ### Controller Pattern
-Each admin feature follows CRUD + toggle pattern:
-- `index()` - List view
-- `new()` - Create form
-- `show()` - Detail view
-- `edit()` - Edit form
-- `delete()` - Delete action
-- `toggleActive()` - Toggle status
+
+Each admin feature pairs a JSON API controller with SPA views (see [Admin CRUD](admin-crud.md)):
+- `list()` / `grid()` - Collection endpoints (GET)
+- `get()` / `show()` - Single resource (GET)
+- `create()` - POST with JSON body, 422 + `errors` map on validation failure
+- `update()` - PUT
+- `delete()` - DELETE
+- `toggleActive()` - POST status toggle
 
 ---
 
 ## Security
 
 ### Authentication
-- Form login with CSRF protection
-- Login throttling (5 attempts/minute)
+- JSON login (`json_login`) at `POST /api/login` with login throttling (5 attempts/minute)
+- Session bootstrap via `GET /api/me` (anonymous / 2FA-pending / authenticated)
+- Two-factor authentication (TOTP) — JSON challenge at `POST /2fa_check`
 - Remember me (1 week)
-- Two-factor authentication (TOTP)
+- JSON-aware entry point: 401 JSON for API requests, redirect to `/login` for browsers
 
 ### Authorization
-- `ROLE_USER` - Basic access
-- `ROLE_ADMIN` - Admin panel access
-- Route-level security with `#[IsGranted]`
+- `ROLE_USER` - Dashboard, test history, profile
+- `ROLE_ADMIN` - Everything else under `/admin` and the admin API resources
+- Enforced server-side via `access_control` + `#[IsGranted]`; mirrored client-side by router guards
 
 ### CSRF Protection
-All destructive actions require CSRF tokens:
-```php
-if ($this->isCsrfTokenValid('delete' . $id, $token)) {
-    // Process delete
-}
-```
+
+Stateless CSRF (`config/packages/csrf.yaml`). `App\EventListener\ApiCsrfListener` validates the `X-CSRF-Token` header on every mutating `/api` request (except `/api/login`); the SPA client sends a random ≥24-char token and Symfony asserts same-origin. Controllers do not validate tokens themselves.
 
 ---
 
@@ -191,10 +175,14 @@ if ($this->isCsrfTokenValid('delete' . $id, $token)) {
 - Entities: PascalCase
 
 ### Entities
-- `User` - Authentication and profile
-- `Page` - CMS content pages
-- `Category` - Content categorization
-- `Settings` - System configuration
+- `User` - Authentication and profile (2FA, roles, notification preferences)
+- `Settings` - System configuration (singleton)
+- `TestEnvironment`, `TestSuite`, `TestRun`, `TestResult`, `TestReport` - Test orchestration
+- `GlobalEnvVariable` - Shared env vars across environments
+- `CronJob` - Scheduled commands
+- `NotificationTemplate` - Customizable Slack/email templates
+- `AuditLog` - Entity change tracking
+- `PasswordResetRequest` - Token-based password reset
 
 ### Migrations
 ```bash
