@@ -67,14 +67,15 @@
               ? 'text-pass border-pass/25 bg-pass/10 hover:bg-pass/20'
               : 'text-skip border-skip/25 bg-skip/10 hover:bg-skip/20'"
             :title="row.isActive ? 'Click to deactivate' : 'Click to activate'"
-            @click="toggleTarget = row"
+            @click="askToggle(row)"
           >
             {{ row.isActive ? 'Yes' : 'No' }}
           </button>
         </template>
 
         <template #cell-lastStatus="{ value }">
-          <CronStatusBadge :status="value" />
+          <StatusBadge v-if="value" :status="value" />
+          <span v-else class="badge border border-edge bg-panel-2 text-ink-mute">—</span>
         </template>
 
         <template #cell-lastRunAt="{ value }">
@@ -85,14 +86,8 @@
 
         <template #cell-actions="{ row }">
           <div class="flex items-center justify-end gap-1">
-            <button
-              class="btn-ghost btn-sm"
-              title="Run now"
-              :disabled="runningId === row.id"
-              @click="askRun(row)"
-            >
-              <Loader2 v-if="runningId === row.id" class="h-3.5 w-3.5 animate-spin" />
-              <Play v-else class="h-3.5 w-3.5" />
+            <button class="btn-ghost btn-sm" title="Run now" @click="askRun(row)">
+              <Play class="h-3.5 w-3.5" />
             </button>
             <RouterLink class="btn-ghost btn-sm" title="Edit job" :to="{ name: 'cron-job-edit', params: { id: row.id } }">
               <Pencil class="h-3.5 w-3.5" />
@@ -108,52 +103,21 @@
         </template>
       </DataTable>
     </div>
-
-    <ConfirmDialog
-      :open="!!jobToRun"
-      title="Run Cron Job"
-      :message="`Run “${jobToRun?.name}” now? The command will be dispatched to the queue immediately.`"
-      confirm-label="Run Now"
-      :busy="runBusy"
-      @confirm="confirmRun"
-      @cancel="jobToRun = null"
-    />
-
-    <ConfirmDialog
-      :open="!!jobToDelete"
-      title="Delete Cron Job"
-      :message="`Are you sure you want to delete “${jobToDelete?.name}”? This action cannot be undone.`"
-      confirm-label="Delete Job"
-      danger
-      :busy="deleteBusy"
-      @confirm="confirmDelete"
-      @cancel="jobToDelete = null"
-    />
-
-    <ConfirmDialog
-      :open="!!toggleTarget"
-      :title="toggleTarget?.isActive ? 'Deactivate Cron Job' : 'Activate Cron Job'"
-      :message="toggleTarget?.isActive
-        ? `Deactivate “${toggleTarget?.name}”? It will no longer run on schedule.`
-        : `Activate “${toggleTarget?.name}”? It will run on its schedule.`"
-      :confirm-label="toggleTarget?.isActive ? 'Deactivate' : 'Activate'"
-      :busy="toggleBusy"
-      @confirm="confirmToggle"
-      @cancel="toggleTarget = null"
-    />
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { Loader2, Pencil, Play, Plus, Search, Trash2, X } from 'lucide-vue-next';
+import { Pencil, Play, Plus, Search, Trash2, X } from 'lucide-vue-next';
 import PageHeader from '../../components/ui/PageHeader.vue';
 import DataTable from '../../components/ui/DataTable.vue';
 import Pagination from '../../components/ui/Pagination.vue';
-import ConfirmDialog from '../../components/ui/ConfirmDialog.vue';
-import CronStatusBadge from './components/CronStatusBadge.vue';
+import StatusBadge from '../../components/ui/StatusBadge.vue';
 import { api } from '../../api/client';
 import { useToastStore } from '../../stores/toasts';
+import { confirm } from '../../composables/useConfirm';
+import { debounce } from '../../utils/debounce';
+import { relativeTime, truncate } from '../../utils/format';
 
 const toasts = useToastStore();
 
@@ -178,15 +142,6 @@ const perPage = 20;
 const total = ref(0);
 const pages = computed(() => Math.max(1, Math.ceil(total.value / perPage)));
 
-const runningId = ref(null);
-const jobToRun = ref(null);
-const runBusy = ref(false);
-const jobToDelete = ref(null);
-const deleteBusy = ref(false);
-const toggleTarget = ref(null);
-const toggleBusy = ref(false);
-
-let searchTimeout = null;
 let refreshTimeout = null;
 
 async function fetchJobs() {
@@ -205,15 +160,13 @@ async function fetchJobs() {
   }
 }
 
-function onSearchInput() {
-  clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(() => {
-    page.value = 1;
-    fetchJobs();
-  }, 300);
-}
+const onSearchInput = debounce(() => {
+  page.value = 1;
+  fetchJobs();
+}, 300);
 
 function clearSearch() {
+  onSearchInput.cancel();
   search.value = '';
   page.value = 1;
   fetchJobs();
@@ -231,80 +184,51 @@ function goToPage(value) {
   fetchJobs();
 }
 
-async function confirmToggle() {
-  const job = toggleTarget.value;
-  toggleBusy.value = true;
-  try {
-    const data = await api.post(`/api/cron-jobs/${job.id}/toggle-active`);
-    job.isActive = data.isActive;
-    toasts.success(data.message);
-    toggleTarget.value = null;
-  } catch (e) {
-    toasts.error(e.message);
-  } finally {
-    toggleBusy.value = false;
-  }
+function askToggle(job) {
+  confirm({
+    title: job.isActive ? 'Deactivate Cron Job' : 'Activate Cron Job',
+    message: job.isActive
+      ? `Deactivate “${job.name}”? It will no longer run on schedule.`
+      : `Activate “${job.name}”? It will run on its schedule.`,
+    confirmLabel: job.isActive ? 'Deactivate' : 'Activate',
+    action: async () => {
+      const data = await api.post(`/api/cron-jobs/${job.id}/toggle-active`);
+      job.isActive = data.isActive;
+      toasts.success(data.message);
+    },
+  });
 }
 
 function askRun(job) {
-  jobToRun.value = job;
-}
-
-async function confirmRun() {
-  const job = jobToRun.value;
-  runBusy.value = true;
-  runningId.value = job.id;
-  try {
-    const data = await api.post(`/api/cron-jobs/${job.id}/run`);
-    toasts.success(data.message);
-    jobToRun.value = null;
-    refreshTimeout = setTimeout(fetchJobs, 1000);
-  } catch (e) {
-    toasts.error(e.message);
-  } finally {
-    runBusy.value = false;
-    runningId.value = null;
-  }
+  confirm({
+    title: 'Run Cron Job',
+    message: `Run “${job.name}” now? The command will be dispatched to the queue immediately.`,
+    confirmLabel: 'Run Now',
+    action: async () => {
+      const data = await api.post(`/api/cron-jobs/${job.id}/run`);
+      toasts.success(data.message);
+      refreshTimeout = setTimeout(fetchJobs, 1000);
+    },
+  });
 }
 
 function askDelete(job) {
-  jobToDelete.value = job;
-}
-
-async function confirmDelete() {
-  deleteBusy.value = true;
-  try {
-    const data = await api.delete(`/api/cron-jobs/${jobToDelete.value.id}`);
-    toasts.success(data.message);
-    jobToDelete.value = null;
-    await fetchJobs();
-  } catch (e) {
-    toasts.error(e.message);
-  } finally {
-    deleteBusy.value = false;
-  }
-}
-
-function truncate(value, length) {
-  if (!value) return '';
-  return value.length > length ? `${value.slice(0, length)}...` : value;
-}
-
-function relativeTime(iso) {
-  if (!iso) return '—';
-  const diffMinutes = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (diffMinutes < 1) return 'just now';
-  if (diffMinutes < 60) return `${diffMinutes}m ago`;
-  const hours = Math.floor(diffMinutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  confirm({
+    title: 'Delete Cron Job',
+    message: `Are you sure you want to delete “${job.name}”? This action cannot be undone.`,
+    confirmLabel: 'Delete Job',
+    danger: true,
+    action: async () => {
+      const data = await api.delete(`/api/cron-jobs/${job.id}`);
+      toasts.success(data.message);
+      await fetchJobs();
+    },
+  });
 }
 
 onMounted(fetchJobs);
 onUnmounted(() => {
-  clearTimeout(searchTimeout);
+  onSearchInput.cancel();
   clearTimeout(refreshTimeout);
 });
 </script>

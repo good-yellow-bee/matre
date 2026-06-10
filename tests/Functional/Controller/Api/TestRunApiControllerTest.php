@@ -17,7 +17,6 @@ class TestRunApiControllerTest extends WebTestCase
     use ApiTestTrait;
 
     private const BASE_URL = '/api/test-runs';
-    private const CSRF_TOKEN_ID = 'test_run_api';
 
     protected function tearDown(): void
     {
@@ -192,7 +191,7 @@ class TestRunApiControllerTest extends WebTestCase
         $run = $this->createTestRun(status: TestRun::STATUS_RUNNING);
 
         // No CSRF token
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $run->getId() . '/cancel');
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $run->getId() . '/cancel', [], self::INVALID_CSRF_HEADERS);
 
         $this->assertJsonError($response, 403, 'CSRF');
     }
@@ -221,7 +220,7 @@ class TestRunApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $run = $this->createTestRun(status: TestRun::STATUS_FAILED);
 
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $run->getId() . '/retry');
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $run->getId() . '/retry', [], self::INVALID_CSRF_HEADERS);
 
         $this->assertJsonError($response, 403, 'CSRF');
     }

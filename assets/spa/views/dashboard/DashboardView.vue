@@ -6,11 +6,7 @@
 
     <!-- Stat cards -->
     <section class="rise" style="--i: 1">
-      <div v-if="statsError" class="flex items-center gap-3 rounded-xl border border-fail/30 bg-fail/10 p-4 text-sm text-fail">
-        <TriangleAlert class="h-4 w-4 shrink-0" />
-        {{ statsError }}
-        <button class="ml-auto cursor-pointer font-semibold hover:underline" @click="loadStats">Retry</button>
-      </div>
+      <ErrorBanner v-if="statsError" :message="statsError" @retry="loadStats" />
       <div v-else class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7">
         <template v-if="statsLoading">
           <div v-for="i in 7" :key="`stat-skel-${i}`" class="card p-4">
@@ -47,11 +43,7 @@
         <h2 class="text-xs font-bold uppercase tracking-[0.18em] text-ink-mute">Environment Health</h2>
       </div>
 
-      <div v-if="envError" class="flex items-center gap-3 rounded-xl border border-fail/30 bg-fail/10 p-4 text-sm text-fail">
-        <TriangleAlert class="h-4 w-4 shrink-0" />
-        {{ envError }}
-        <button class="ml-auto cursor-pointer font-semibold hover:underline" @click="loadEnvironments">Retry</button>
-      </div>
+      <ErrorBanner v-if="envError" :message="envError" @retry="loadEnvironments" />
 
       <div v-else-if="envLoading" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <div v-for="i in 3" :key="`env-skel-${i}`" class="card p-4">
@@ -118,7 +110,7 @@
 
             <div class="mt-2.5 flex items-center gap-1.5 text-[11px] text-ink-faint">
               <Clock class="h-3 w-3" />
-              {{ timeAgo(env.lastRun.completedAt) }}
+              {{ relativeTime(env.lastRun.completedAt) }}
               <ArrowUpRight class="ml-auto h-3.5 w-3.5 text-accent opacity-0 transition-opacity group-hover:opacity-100" />
             </div>
           </template>
@@ -219,15 +211,16 @@ import {
   Plus,
   Radio,
   Server,
-  TriangleAlert,
   Users,
   Zap,
 } from 'lucide-vue-next';
 import PageHeader from '../../components/ui/PageHeader.vue';
 import StatusBadge from '../../components/ui/StatusBadge.vue';
 import EmptyState from '../../components/ui/EmptyState.vue';
+import ErrorBanner from '../../components/ui/ErrorBanner.vue';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../stores/auth';
+import { relativeTime } from '../../utils/format';
 
 const auth = useAuthStore();
 const username = computed(() => auth.user?.username ?? '');
@@ -304,19 +297,6 @@ function deltaTone(delta) {
   if (delta > 0) return 'text-pass';
   if (delta < 0) return 'text-fail';
   return 'text-ink-faint';
-}
-
-function timeAgo(dateStr) {
-  if (!dateStr) return '';
-  const date = new Date(dateStr.includes('T') ? dateStr : dateStr.replace(' ', 'T'));
-  const diffMins = Math.floor((Date.now() - date.getTime()) / 60000);
-  if (diffMins < 1) return 'just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays === 1) return 'yesterday';
-  return `${diffDays}d ago`;
 }
 
 onMounted(() => {

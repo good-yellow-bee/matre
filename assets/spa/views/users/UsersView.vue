@@ -81,11 +81,11 @@
               <button
                 class="btn-ghost btn-sm"
                 :title="row.isActive ? 'Deactivate user' : 'Activate user'"
-                @click="toggleTarget = row"
+                @click="askToggle(row)"
               >
                 <Power class="h-3.5 w-3.5" :class="row.isActive ? 'text-run' : 'text-pass'" />
               </button>
-              <button class="btn-ghost btn-sm" title="Delete user" @click="deleteTarget = row">
+              <button class="btn-ghost btn-sm" title="Delete user" @click="askDelete(row)">
                 <Trash2 class="h-3.5 w-3.5 text-fail" />
               </button>
             </template>
@@ -109,30 +109,6 @@
         </template>
       </DataTable>
     </div>
-
-    <ConfirmDialog
-      :open="!!deleteTarget"
-      title="Delete user"
-      :message="`Are you sure you want to delete user “${deleteTarget?.username}”? This action cannot be undone.`"
-      confirm-label="Delete User"
-      danger
-      :busy="mutating"
-      @confirm="deleteUser"
-      @cancel="deleteTarget = null"
-    />
-
-    <ConfirmDialog
-      :open="!!toggleTarget"
-      :title="toggleTarget?.isActive ? 'Deactivate user' : 'Activate user'"
-      :message="toggleTarget?.isActive
-        ? `Deactivate “${toggleTarget?.username}”? They will no longer be able to log in.`
-        : `Activate “${toggleTarget?.username}”? They will be able to log in again.`"
-      :confirm-label="toggleTarget?.isActive ? 'Deactivate' : 'Activate'"
-      :danger="!!toggleTarget?.isActive"
-      :busy="mutating"
-      @confirm="toggleActive"
-      @cancel="toggleTarget = null"
-    />
   </div>
 </template>
 
@@ -140,7 +116,6 @@
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { Pencil, Power, Search, ShieldCheck, Trash2, UserPlus, X } from 'lucide-vue-next';
-import ConfirmDialog from '../../components/ui/ConfirmDialog.vue';
 import DataTable from '../../components/ui/DataTable.vue';
 import EmptyState from '../../components/ui/EmptyState.vue';
 import PageHeader from '../../components/ui/PageHeader.vue';
@@ -148,6 +123,10 @@ import Pagination from '../../components/ui/Pagination.vue';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../stores/auth';
 import { useToastStore } from '../../stores/toasts';
+import { confirm } from '../../composables/useConfirm';
+import { debounce } from '../../utils/debounce';
+import { formatDate } from '../../utils/format';
+import { formatRole, roleBadgeClass } from './display.js';
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -171,12 +150,6 @@ const sort = ref('createdAt');
 const order = ref('DESC');
 const page = ref(1);
 
-const deleteTarget = ref(null);
-const toggleTarget = ref(null);
-const mutating = ref(false);
-
-let searchTimeout = null;
-
 async function fetchUsers() {
   loading.value = true;
   try {
@@ -192,15 +165,13 @@ async function fetchUsers() {
   }
 }
 
-function onSearchInput() {
-  clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(() => {
-    page.value = 1;
-    fetchUsers();
-  }, 300);
-}
+const onSearchInput = debounce(() => {
+  page.value = 1;
+  fetchUsers();
+}, 300);
 
 function clearSearch() {
+  onSearchInput.cancel();
   search.value = '';
   page.value = 1;
   fetchUsers();
@@ -217,46 +188,34 @@ function goToPage(target) {
   fetchUsers();
 }
 
-async function deleteUser() {
-  mutating.value = true;
-  try {
-    const result = await api.delete(`/api/users/${deleteTarget.value.id}`);
-    toasts.success(result.message);
-    deleteTarget.value = null;
-    await fetchUsers();
-  } catch (e) {
-    toasts.error(e.message);
-  } finally {
-    mutating.value = false;
-  }
+function askDelete(user) {
+  confirm({
+    title: 'Delete user',
+    message: `Are you sure you want to delete user “${user.username}”? This action cannot be undone.`,
+    confirmLabel: 'Delete User',
+    danger: true,
+    action: async () => {
+      const result = await api.delete(`/api/users/${user.id}`);
+      toasts.success(result.message);
+      await fetchUsers();
+    },
+  });
 }
 
-async function toggleActive() {
-  mutating.value = true;
-  try {
-    const result = await api.post(`/api/users/${toggleTarget.value.id}/toggle-active`);
-    toasts.success(result.message);
-    toggleTarget.value = null;
-    await fetchUsers();
-  } catch (e) {
-    toasts.error(e.message);
-  } finally {
-    mutating.value = false;
-  }
-}
-
-function formatRole(role) {
-  return role.replace('ROLE_', '').replace('_', ' ');
-}
-
-function roleBadgeClass(role) {
-  return role === 'ROLE_ADMIN'
-    ? 'border-accent/25 bg-accent-soft text-accent'
-    : 'border-edge bg-panel-2 text-ink-mute';
-}
-
-function formatDate(value) {
-  return new Date(value).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+function askToggle(user) {
+  confirm({
+    title: user.isActive ? 'Deactivate user' : 'Activate user',
+    message: user.isActive
+      ? `Deactivate “${user.username}”? They will no longer be able to log in.`
+      : `Activate “${user.username}”? They will be able to log in again.`,
+    confirmLabel: user.isActive ? 'Deactivate' : 'Activate',
+    danger: !!user.isActive,
+    action: async () => {
+      const result = await api.post(`/api/users/${user.id}/toggle-active`);
+      toasts.success(result.message);
+      await fetchUsers();
+    },
+  });
 }
 
 onMounted(fetchUsers);

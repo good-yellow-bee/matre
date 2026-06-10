@@ -140,16 +140,14 @@
               v-if="row.canBeCancelled"
               class="btn-danger btn-sm"
               title="Cancel run"
-              :disabled="actingOn === row.id"
               @click.stop="askCancel(row)"
             >
               <XCircle class="h-3.5 w-3.5" />
             </button>
             <button
-              v-if="isTerminal(row.status)"
+              v-if="row.isFinished !== false"
               class="btn-ghost btn-sm"
               title="Retry — new run with same configuration"
-              :disabled="actingOn === row.id"
               @click.stop="askRetry(row)"
             >
               <RotateCcw class="h-3.5 w-3.5" />
@@ -171,17 +169,6 @@
         </template>
       </DataTable>
     </div>
-
-    <ConfirmDialog
-      :open="!!confirming"
-      :title="confirming?.title || ''"
-      :message="confirming?.message || ''"
-      :confirm-label="confirming?.confirmLabel || 'Confirm'"
-      :danger="confirming?.danger"
-      :busy="!!actingOn"
-      @confirm="executeConfirm"
-      @cancel="confirming = null"
-    />
   </div>
 </template>
 
@@ -196,11 +183,9 @@ import DataTable from '../../components/ui/DataTable.vue';
 import Pagination from '../../components/ui/Pagination.vue';
 import StatusBadge from '../../components/ui/StatusBadge.vue';
 import EmptyState from '../../components/ui/EmptyState.vue';
-import ConfirmDialog from '../../components/ui/ConfirmDialog.vue';
-import { capitalize, formatDateTime, relativeTime } from './utils/format';
+import { confirm } from '../../composables/useConfirm';
+import { capitalize, formatDateTime, relativeTime, truncate } from '../../utils/format';
 
-const ACTIVE_STATUSES = ['pending', 'preparing', 'cloning', 'waiting', 'running', 'reporting'];
-const TERMINAL_STATUSES = ['completed', 'failed', 'cancelled'];
 const POLL_INTERVAL = 5000;
 
 const router = useRouter();
@@ -226,30 +211,19 @@ const suites = ref([]);
 const loading = ref(true);
 const filters = reactive({ status: '', type: '', suite: '' });
 const page = ref(1);
-const confirming = ref(null);
-const actingOn = ref(null);
 let pollTimer = null;
 let loadToken = 0;
 
 const hasFilters = computed(() => filters.status || filters.type || filters.suite);
 
 const polling = computed(
-  () => rows.value.some((row) => ACTIVE_STATUSES.includes(row.status)) || ['pending', 'running'].includes(filters.status),
+  () => rows.value.some((row) => row.isFinished === false) || ['pending', 'running'].includes(filters.status),
 );
-
-function isTerminal(status) {
-  return TERMINAL_STATUSES.includes(status);
-}
 
 function typeBadgeClass(type) {
   if (type === 'mftf') return 'border-accent/25 bg-accent-soft text-accent';
   if (type === 'playwright') return 'border-run/25 bg-run/10 text-run';
   return 'border-broken/25 bg-broken/10 text-broken';
-}
-
-function truncate(value, length) {
-  if (!value) return '';
-  return value.length > length ? `${value.slice(0, length)}…` : value;
 }
 
 async function load({ background = false } = {}) {
@@ -287,46 +261,30 @@ function goToPage(next) {
 }
 
 function askCancel(run) {
-  confirming.value = {
-    action: 'cancel',
-    run,
+  confirm({
     title: `Cancel run #${run.id}`,
     message: 'Cancel this test run?',
     confirmLabel: 'Cancel Run',
     danger: true,
-  };
+    action: async () => {
+      await api.post(`/api/test-runs/${run.id}/cancel`);
+      toasts.success(`Run #${run.id} cancelled`);
+      await load({ background: true });
+    },
+  });
 }
 
 function askRetry(run) {
-  confirming.value = {
-    action: 'retry',
-    run,
+  confirm({
     title: `Retry run #${run.id}`,
     message: 'Create a new run with the same configuration?',
     confirmLabel: 'Retry',
-  };
-}
-
-async function executeConfirm() {
-  const { action, run } = confirming.value;
-  actingOn.value = run.id;
-  try {
-    if (action === 'cancel') {
-      await api.post(`/api/test-runs/${run.id}/cancel`);
-      toasts.success(`Run #${run.id} cancelled`);
-      confirming.value = null;
-      await load({ background: true });
-    } else {
+    action: async () => {
       const data = await api.post(`/api/test-runs/${run.id}/retry`);
       toasts.success(`New run #${data.run.id} created`);
-      confirming.value = null;
       router.push({ name: 'test-run-detail', params: { id: data.run.id } });
-    }
-  } catch (e) {
-    toasts.error(e.message);
-  } finally {
-    actingOn.value = null;
-  }
+    },
+  });
 }
 
 async function loadSuites() {

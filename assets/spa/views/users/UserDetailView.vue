@@ -64,7 +64,7 @@
             </div>
             <template v-if="user.totpEnabled">
               <p class="mb-3 text-xs text-ink-faint">User has configured an authenticator app for 2FA verification.</p>
-              <button class="btn-danger w-full" @click="resetConfirmOpen = true">
+              <button class="btn-danger w-full" @click="askReset2fa">
                 <RotateCcw class="h-4 w-4" />
                 Reset 2FA
               </button>
@@ -75,11 +75,11 @@
           <section class="card rise p-5" style="--i: 3">
             <h2 class="mb-4 text-sm font-bold uppercase tracking-wider text-ink">Actions</h2>
             <template v-if="!isSelf">
-              <button class="btn-ghost mb-2 w-full" @click="toggleConfirmOpen = true">
+              <button class="btn-ghost mb-2 w-full" @click="askToggle">
                 <component :is="user.isActive ? PauseCircle : PlayCircle" class="h-4 w-4" :class="user.isActive ? 'text-run' : 'text-pass'" />
                 {{ user.isActive ? 'Deactivate User' : 'Activate User' }}
               </button>
-              <button class="btn-danger w-full" @click="deleteConfirmOpen = true">
+              <button class="btn-danger w-full" @click="askDelete">
                 <Trash2 class="h-4 w-4" />
                 Delete User
               </button>
@@ -92,40 +92,6 @@
         </div>
       </div>
 
-      <ConfirmDialog
-        :open="resetConfirmOpen"
-        title="Reset 2FA"
-        message="Reset 2FA for this user? They will need to set up their authenticator app again."
-        confirm-label="Reset 2FA"
-        danger
-        :busy="mutating"
-        @confirm="reset2fa"
-        @cancel="resetConfirmOpen = false"
-      />
-
-      <ConfirmDialog
-        :open="toggleConfirmOpen"
-        :title="user.isActive ? 'Deactivate user' : 'Activate user'"
-        :message="user.isActive
-          ? `Deactivate “${user.username}”? They will no longer be able to log in.`
-          : `Activate “${user.username}”? They will be able to log in again.`"
-        :confirm-label="user.isActive ? 'Deactivate' : 'Activate'"
-        :danger="user.isActive"
-        :busy="mutating"
-        @confirm="toggleActive"
-        @cancel="toggleConfirmOpen = false"
-      />
-
-      <ConfirmDialog
-        :open="deleteConfirmOpen"
-        title="Delete user"
-        :message="`Are you sure you want to delete user “${user.username}”? This action cannot be undone.`"
-        confirm-label="Delete User"
-        danger
-        :busy="mutating"
-        @confirm="deleteUser"
-        @cancel="deleteConfirmOpen = false"
-      />
     </template>
   </div>
 </template>
@@ -134,12 +100,14 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ArrowLeft, Info, PauseCircle, Pencil, PlayCircle, RotateCcw, ShieldCheck, Trash2 } from 'lucide-vue-next';
-import ConfirmDialog from '../../components/ui/ConfirmDialog.vue';
 import EmptyState from '../../components/ui/EmptyState.vue';
 import PageHeader from '../../components/ui/PageHeader.vue';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../stores/auth';
 import { useToastStore } from '../../stores/toasts';
+import { confirm } from '../../composables/useConfirm';
+import { formatDateTime } from '../../utils/format';
+import { formatRole, roleBadgeClass } from './display.js';
 
 const route = useRoute();
 const router = useRouter();
@@ -148,10 +116,6 @@ const toasts = useToastStore();
 
 const user = ref(null);
 const loading = ref(true);
-const mutating = ref(false);
-const resetConfirmOpen = ref(false);
-const toggleConfirmOpen = ref(false);
-const deleteConfirmOpen = ref(false);
 
 const isSelf = computed(() => user.value?.id === auth.user?.id);
 
@@ -177,64 +141,48 @@ async function fetchUser() {
   }
 }
 
-async function reset2fa() {
-  mutating.value = true;
-  try {
-    const result = await api.post(`/api/users/${user.value.id}/reset-2fa`);
-    toasts.success(result.message);
-    resetConfirmOpen.value = false;
-    await fetchUser();
-  } catch (e) {
-    toasts.error(e.message);
-  } finally {
-    mutating.value = false;
-  }
+function askReset2fa() {
+  confirm({
+    title: 'Reset 2FA',
+    message: 'Reset 2FA for this user? They will need to set up their authenticator app again.',
+    confirmLabel: 'Reset 2FA',
+    danger: true,
+    action: async () => {
+      const result = await api.post(`/api/users/${user.value.id}/reset-2fa`);
+      toasts.success(result.message);
+      await fetchUser();
+    },
+  });
 }
 
-async function toggleActive() {
-  mutating.value = true;
-  try {
-    const result = await api.post(`/api/users/${user.value.id}/toggle-active`);
-    toasts.success(result.message);
-    toggleConfirmOpen.value = false;
-    await fetchUser();
-  } catch (e) {
-    toasts.error(e.message);
-  } finally {
-    mutating.value = false;
-  }
+function askToggle() {
+  const { isActive, username } = user.value;
+  confirm({
+    title: isActive ? 'Deactivate user' : 'Activate user',
+    message: isActive
+      ? `Deactivate “${username}”? They will no longer be able to log in.`
+      : `Activate “${username}”? They will be able to log in again.`,
+    confirmLabel: isActive ? 'Deactivate' : 'Activate',
+    danger: isActive,
+    action: async () => {
+      const result = await api.post(`/api/users/${user.value.id}/toggle-active`);
+      toasts.success(result.message);
+      await fetchUser();
+    },
+  });
 }
 
-async function deleteUser() {
-  mutating.value = true;
-  try {
-    const result = await api.delete(`/api/users/${user.value.id}`);
-    toasts.success(result.message);
-    router.push({ name: 'users' });
-  } catch (e) {
-    toasts.error(e.message);
-    mutating.value = false;
-  }
-}
-
-function formatRole(role) {
-  return role.replace('ROLE_', '').replace('_', ' ');
-}
-
-function roleBadgeClass(role) {
-  return role === 'ROLE_ADMIN'
-    ? 'border-accent/25 bg-accent-soft text-accent'
-    : 'border-edge bg-panel-2 text-ink-mute';
-}
-
-function formatDateTime(value) {
-  return new Date(value).toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
+function askDelete() {
+  confirm({
+    title: 'Delete user',
+    message: `Are you sure you want to delete user “${user.value.username}”? This action cannot be undone.`,
+    confirmLabel: 'Delete User',
+    danger: true,
+    action: async () => {
+      const result = await api.delete(`/api/users/${user.value.id}`);
+      toasts.success(result.message);
+      router.push({ name: 'users' });
+    },
   });
 }
 

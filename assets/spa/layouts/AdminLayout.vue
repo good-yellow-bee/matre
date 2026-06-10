@@ -14,6 +14,16 @@
         </div>
       </main>
     </div>
+    <ConfirmDialog
+      :open="confirmState.open"
+      :title="confirmState.title"
+      :message="confirmState.message"
+      :confirm-label="confirmState.confirmLabel"
+      :danger="confirmState.danger"
+      :busy="confirmState.busy"
+      @confirm="onConfirm"
+      @cancel="onCancel"
+    />
   </div>
 </template>
 
@@ -21,6 +31,10 @@
 import { ref } from 'vue';
 import AppSidebar from '../components/shell/AppSidebar.vue';
 import AppTopbar from '../components/shell/AppTopbar.vue';
+import ConfirmDialog from '../components/ui/ConfirmDialog.vue';
+import { useConfirm } from '../composables/useConfirm';
+
+const { state: confirmState, onConfirm, onCancel } = useConfirm();
 
 const STORAGE_KEY = 'matre_sidebar_collapsed';
 const collapsed = ref(localStorage.getItem(STORAGE_KEY) === 'true');

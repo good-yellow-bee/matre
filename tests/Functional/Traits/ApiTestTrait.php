@@ -9,13 +9,15 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
-use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 
 /**
  * Helper trait for API functional tests.
  */
 trait ApiTestTrait
 {
+    /** Below the 24-char minimum accepted by stateless CSRF validation */
+    protected const INVALID_CSRF_HEADERS = ['HTTP_X-CSRF-Token' => 'too-short'];
+
     protected ?EntityManagerInterface $entityManager = null;
 
     protected function getEntityManager(): EntityManagerInterface
@@ -82,21 +84,12 @@ trait ApiTestTrait
         return $user;
     }
 
-    protected function getCsrfToken(KernelBrowser $client, string $tokenId): string
-    {
-        // Use stateless CSRF tokens (configured in config/packages/test/csrf.yaml)
-        $csrfManager = static::getContainer()->get(CsrfTokenManagerInterface::class);
-
-        return $csrfManager->getToken($tokenId)->getValue();
-    }
-
     protected function jsonRequest(
         KernelBrowser $client,
         string $method,
         string $url,
         array $data = [],
         array $headers = [],
-        ?string $csrfTokenId = null,
     ): Response {
         $requestHeaders = array_merge([
             'CONTENT_TYPE' => 'application/json',
@@ -105,8 +98,9 @@ trait ApiTestTrait
             'HTTP_SEC_FETCH_SITE' => 'same-origin',
         ], $headers);
 
-        if (null !== $csrfTokenId) {
-            $requestHeaders['HTTP_X-CSRF-Token'] = $this->getCsrfToken($client, $csrfTokenId);
+        // Stateless CSRF accepts any token of 24+ chars when same-origin
+        if ('GET' !== strtoupper($method) && !isset($requestHeaders['HTTP_X-CSRF-Token'])) {
+            $requestHeaders['HTTP_X-CSRF-Token'] = 'functional-test-csrf-token-value';
         }
 
         $client->request(

@@ -153,7 +153,7 @@ import PageHeader from '../../components/ui/PageHeader.vue';
 import StatusBadge from '../../components/ui/StatusBadge.vue';
 import EmptyState from '../../components/ui/EmptyState.vue';
 import TestIdSelector from './components/TestIdSelector.vue';
-import { formatDate } from '../test-runs/utils/format';
+import { formatDate } from '../../utils/format';
 
 const route = useRoute();
 const router = useRouter();

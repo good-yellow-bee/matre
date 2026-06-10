@@ -55,7 +55,7 @@ class TwoFactorSetupControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsUser($client);
 
-        $response = $this->jsonRequest($client, 'POST', '/api/2fa-setup');
+        $response = $this->jsonRequest($client, 'POST', '/api/2fa-setup', [], self::INVALID_CSRF_HEADERS);
 
         $this->assertJsonError($response, 403, 'CSRF');
     }
@@ -65,7 +65,7 @@ class TwoFactorSetupControllerTest extends WebTestCase
         $client = self::createClient();
         $user = $this->loginAsUser($client);
 
-        $response = $this->jsonRequest($client, 'POST', '/api/2fa-setup', csrfTokenId: 'api');
+        $response = $this->jsonRequest($client, 'POST', '/api/2fa-setup');
 
         $data = $this->assertJsonResponse($response, 200);
         $this->assertFalse($data['enabled']);
@@ -85,7 +85,7 @@ class TwoFactorSetupControllerTest extends WebTestCase
         $user->setIsTotpEnabled(true);
         $this->getEntityManager()->flush();
 
-        $response = $this->jsonRequest($client, 'POST', '/api/2fa-setup', csrfTokenId: 'api');
+        $response = $this->jsonRequest($client, 'POST', '/api/2fa-setup');
 
         $data = $this->assertJsonResponse($response, 200);
         $this->assertTrue($data['enabled']);
@@ -98,7 +98,7 @@ class TwoFactorSetupControllerTest extends WebTestCase
 
         $response = $this->jsonRequest($client, 'POST', '/api/2fa-setup/verify', [
             'code' => '123456',
-        ], csrfTokenId: 'api');
+        ]);
 
         $this->assertJsonError($response, 400, 'not been initiated');
     }
@@ -109,11 +109,11 @@ class TwoFactorSetupControllerTest extends WebTestCase
         $user = $this->loginAsUser($client);
 
         // Initiate setup to generate a secret
-        $this->jsonRequest($client, 'POST', '/api/2fa-setup', csrfTokenId: 'api');
+        $this->jsonRequest($client, 'POST', '/api/2fa-setup');
 
         $response = $this->jsonRequest($client, 'POST', '/api/2fa-setup/verify', [
             'code' => '000000',
-        ], csrfTokenId: 'api');
+        ]);
 
         $this->assertJsonError($response, 400, 'Invalid verification code');
 

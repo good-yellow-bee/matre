@@ -250,6 +250,7 @@ import PasswordStrength from './components/PasswordStrength.vue';
 import Toggle from '../../components/ui/Toggle.vue';
 import { api } from '../../api/client';
 import { useToastStore } from '../../stores/toasts';
+import { capitalize, formatDateTime } from '../../utils/format';
 
 const route = useRoute();
 const router = useRouter();
@@ -327,77 +328,61 @@ function handleUsernameInput() {
   delete errors.username;
 }
 
-async function validateUsername() {
-  if (!form.username) {
-    errors.username = 'Username is required';
-    usernameValid.value = false;
-    return;
-  }
-  if (form.username.length < 3) {
-    errors.username = 'Username must be at least 3 characters';
-    usernameValid.value = false;
-    return;
-  }
-  if (!/^[a-zA-Z0-9_-]+$/.test(form.username)) {
-    errors.username = 'Username can only contain letters, numbers, underscores, and hyphens';
-    usernameValid.value = false;
-    return;
-  }
-
-  validatingUsername.value = true;
-  try {
-    const result = await api.post('/api/users/validate-username', { username: form.username, excludeId: userId.value });
-    if (result.valid) {
-      delete errors.username;
-      usernameValid.value = true;
-      usernameValidMessage.value = result.message || 'Username is available';
-    } else {
-      errors.username = result.message;
-      usernameValid.value = false;
-    }
-  } catch {
-    errors.username = 'Failed to validate username';
-    usernameValid.value = false;
-  } finally {
-    validatingUsername.value = false;
-  }
-}
-
 function handleEmailInput() {
   emailValid.value = false;
   delete errors.email;
 }
 
-async function validateEmail() {
-  if (!form.email) {
-    errors.email = 'Email is required';
-    emailValid.value = false;
-    return;
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-    errors.email = 'Please enter a valid email address';
-    emailValid.value = false;
-    return;
-  }
-
-  validatingEmail.value = true;
-  try {
-    const result = await api.post('/api/users/validate-email', { email: form.email, excludeId: userId.value });
-    if (result.valid) {
-      delete errors.email;
-      emailValid.value = true;
-      emailValidMessage.value = result.message || 'Email is available';
-    } else {
-      errors.email = result.message;
-      emailValid.value = false;
+function makeRemoteValidator(field, endpoint, localCheck, flags) {
+  return async () => {
+    const localError = localCheck();
+    if (localError) {
+      errors[field] = localError;
+      flags.valid.value = false;
+      return;
     }
-  } catch {
-    errors.email = 'Failed to validate email';
-    emailValid.value = false;
-  } finally {
-    validatingEmail.value = false;
-  }
+    flags.validating.value = true;
+    try {
+      const result = await api.post(endpoint, { [field]: form[field], excludeId: userId.value });
+      if (result.valid) {
+        delete errors[field];
+        flags.valid.value = true;
+        flags.message.value = result.message || `${capitalize(field)} is available`;
+      } else {
+        errors[field] = result.message;
+        flags.valid.value = false;
+      }
+    } catch {
+      errors[field] = `Failed to validate ${field}`;
+      flags.valid.value = false;
+    } finally {
+      flags.validating.value = false;
+    }
+  };
 }
+
+const validateUsername = makeRemoteValidator(
+  'username',
+  '/api/users/validate-username',
+  () => {
+    if (!form.username) return 'Username is required';
+    if (form.username.length < 3) return 'Username must be at least 3 characters';
+    if (!/^[a-zA-Z0-9_-]+$/.test(form.username)) return 'Username can only contain letters, numbers, underscores, and hyphens';
+    return '';
+  },
+  { valid: usernameValid, validating: validatingUsername, message: usernameValidMessage },
+);
+
+const validateEmail = makeRemoteValidator(
+  'email',
+  '/api/users/validate-email',
+  () => {
+    if (!form.email) return 'Email is required';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return 'Please enter a valid email address';
+    return '';
+  },
+  { valid: emailValid, validating: validatingEmail, message: emailValidMessage },
+);
 
 function handlePasswordInput() {
   delete errors.password;
@@ -518,19 +503,9 @@ async function fetchUser() {
   }
 }
 
-function formatDateTime(value) {
-  return new Date(value).toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-}
-
 onMounted(async () => {
-  await fetchEnvironments();
-  if (isEditMode.value) await fetchUser();
+  const tasks = [fetchEnvironments()];
+  if (isEditMode.value) tasks.push(fetchUser());
+  await Promise.all(tasks);
 });
 </script>

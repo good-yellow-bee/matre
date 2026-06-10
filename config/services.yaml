@@ -24,12 +24,6 @@ services:
     App\Twig\ViteExtension:
         tags: ['twig.extension']
 
-    # HTML Sanitizer extension for XSS prevention
-    App\Twig\HtmlSanitizerExtension:
-        arguments:
-            $htmlSanitizer: '@html_sanitizer.sanitizer.app.html_sanitizer'
-        tags: ['twig.extension']
-
     # API Rate Limiting listener for abuse prevention
     App\EventListener\ApiRateLimitListener:
         arguments:

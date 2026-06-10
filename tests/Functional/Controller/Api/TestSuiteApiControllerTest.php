@@ -150,7 +150,7 @@ class TestSuiteApiControllerTest extends WebTestCase
             'type' => TestSuite::TYPE_MFTF_GROUP,
             'testPattern' => 'TestGroup',
             'environments' => [$env->getId()],
-        ], csrfTokenId: 'api');
+        ]);
 
         $data = $this->assertJsonResponse($response, 201);
         $this->assertTrue($data['success']);
@@ -166,7 +166,7 @@ class TestSuiteApiControllerTest extends WebTestCase
             'name' => 'CsrfSuite_' . bin2hex(random_bytes(4)),
             'type' => TestSuite::TYPE_MFTF_GROUP,
             'testPattern' => 'TestGroup',
-        ]);
+        ], self::INVALID_CSRF_HEADERS);
 
         $this->assertJsonError($response, 403, 'CSRF');
     }
@@ -200,7 +200,7 @@ class TestSuiteApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $suite = $this->createTestSuite();
 
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $suite->getId() . '/toggle-active');
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $suite->getId() . '/toggle-active', [], self::INVALID_CSRF_HEADERS);
 
         $this->assertJsonError($response, 403, 'CSRF');
     }
@@ -211,7 +211,7 @@ class TestSuiteApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $suite = $this->createTestSuite();
 
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $suite->getId() . '/duplicate');
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $suite->getId() . '/duplicate', [], self::INVALID_CSRF_HEADERS);
 
         $this->assertJsonError($response, 403, 'CSRF');
     }
@@ -222,7 +222,7 @@ class TestSuiteApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $suite = $this->createTestSuite();
 
-        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/' . $suite->getId());
+        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/' . $suite->getId(), [], self::INVALID_CSRF_HEADERS);
 
         $this->assertJsonError($response, 403, 'CSRF');
     }

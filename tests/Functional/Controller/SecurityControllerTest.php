@@ -151,8 +151,7 @@ class SecurityControllerTest extends WebTestCase
         $this->assertEquals($user->getUsername(), $data['user']['username']);
         $this->assertEquals($user->getEmail(), $data['user']['email']);
         $this->assertArrayHasKey('settings', $data);
-        $this->assertArrayHasKey('csrf', $data);
-        $this->assertArrayHasKey('api', $data['csrf']);
+        $this->assertArrayNotHasKey('csrf', $data);
     }
 
     public function testMeReturnsTwoFactorInProgressState(): void
@@ -173,7 +172,7 @@ class SecurityControllerTest extends WebTestCase
         $data = $this->assertJsonResponse($response, 200);
         $this->assertFalse($data['authenticated']);
         $this->assertTrue($data['twoFactorRequired']);
-        $this->assertArrayHasKey('two_factor', $data['csrf']);
+        $this->assertArrayNotHasKey('csrf', $data);
     }
 
     // =====================

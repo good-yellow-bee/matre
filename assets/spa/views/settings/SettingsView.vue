@@ -10,14 +10,7 @@
       </div>
     </div>
 
-    <div
-      v-else-if="loadError"
-      class="flex max-w-3xl items-center gap-3 rounded-xl border border-fail/30 bg-fail/10 p-4 text-sm text-fail"
-    >
-      <AlertCircle class="h-4 w-4 shrink-0" />
-      {{ loadError }}
-      <button class="ml-auto cursor-pointer font-semibold hover:underline" @click="initialLoad">Retry</button>
-    </div>
+    <ErrorBanner v-else-if="loadError" class="max-w-3xl" :message="loadError" @retry="initialLoad" />
 
     <form v-else class="max-w-3xl space-y-5" novalidate @submit.prevent="save">
       <!-- General -->
@@ -172,12 +165,14 @@
 
 <script setup>
 import { onMounted, ref } from 'vue';
-import { AlertCircle, FlaskConical, Info, Loader2, Save, Search, Shield, SlidersHorizontal, Terminal } from 'lucide-vue-next';
+import { FlaskConical, Info, Loader2, Save, Search, Shield, SlidersHorizontal, Terminal } from 'lucide-vue-next';
 import PageHeader from '../../components/ui/PageHeader.vue';
 import Toggle from '../../components/ui/Toggle.vue';
+import ErrorBanner from '../../components/ui/ErrorBanner.vue';
 import { api } from '../../api/client';
 import { useToastStore } from '../../stores/toasts';
 import { useAuthStore } from '../../stores/auth';
+import { formatDate } from '../../utils/format';
 
 const toasts = useToastStore();
 const auth = useAuthStore();
@@ -207,10 +202,6 @@ const locales = [
   { value: 'es', label: 'Spanish' },
   { value: 'it', label: 'Italian' },
 ];
-
-function formatDate(iso) {
-  return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
 
 async function load() {
   const data = await api.get('/api/settings');

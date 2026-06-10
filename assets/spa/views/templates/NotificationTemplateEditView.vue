@@ -109,15 +109,8 @@
                   <RefreshCw v-else class="h-3.5 w-3.5" />
                   Refresh
                 </button>
-                <button
-                  v-if="isEmail"
-                  class="btn-ghost btn-sm"
-                  type="button"
-                  :disabled="testSending"
-                  @click="confirmSendOpen = true"
-                >
-                  <Loader2 v-if="testSending" class="h-3.5 w-3.5 animate-spin" />
-                  <Send v-else class="h-3.5 w-3.5" />
+                <button v-if="isEmail" class="btn-ghost btn-sm" type="button" @click="askSendTest">
+                  <Send class="h-3.5 w-3.5" />
                   Send Test
                 </button>
               </div>
@@ -143,33 +136,12 @@
             {{ submitting ? 'Saving...' : 'Save Template' }}
           </button>
           <RouterLink class="btn-ghost" :to="{ name: 'notification-templates' }">Cancel</RouterLink>
-          <button class="btn-danger ml-auto" type="button" @click="confirmResetOpen = true">
+          <button class="btn-danger ml-auto" type="button" @click="askReset">
             <RotateCcw class="h-4 w-4" />
             Reset to Default
           </button>
         </div>
       </form>
-
-      <ConfirmDialog
-        :open="confirmSendOpen"
-        title="Send Test Email"
-        :message="`Send a real test email rendered from the current editor content to ${auth.user?.email || 'your account email'}?`"
-        confirm-label="Send Test"
-        :busy="testSending"
-        @confirm="sendTest"
-        @cancel="confirmSendOpen = false"
-      />
-
-      <ConfirmDialog
-        :open="confirmResetOpen"
-        title="Reset Template"
-        message="Reset this template to its default content? Your customizations will be lost."
-        confirm-label="Reset Template"
-        danger
-        :busy="resetting"
-        @confirm="resetToDefault"
-        @cancel="confirmResetOpen = false"
-      />
     </template>
   </div>
 </template>
@@ -179,11 +151,12 @@ import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ArrowLeft, Check, Eye, Loader2, Mail, Pencil, RefreshCw, RotateCcw, Send, Slack } from 'lucide-vue-next';
 import PageHeader from '../../components/ui/PageHeader.vue';
-import ConfirmDialog from '../../components/ui/ConfirmDialog.vue';
 import Toggle from '../../components/ui/Toggle.vue';
 import { api } from '../../api/client';
 import { useToastStore } from '../../stores/toasts';
 import { useAuthStore } from '../../stores/auth';
+import { confirm } from '../../composables/useConfirm';
+import { debounce } from '../../utils/debounce';
 
 const route = useRoute();
 const router = useRouter();
@@ -199,16 +172,11 @@ const form = reactive({ subject: '', body: '' });
 const loading = ref(true);
 const submitting = ref(false);
 const previewing = ref(false);
-const testSending = ref(false);
-const resetting = ref(false);
 const togglingActive = ref(false);
-const confirmSendOpen = ref(false);
-const confirmResetOpen = ref(false);
 
 const previewHtml = ref('');
 const previewSubject = ref('');
 const bodyTextarea = ref(null);
-let previewTimeout = null;
 
 const isEmail = computed(() => template.value?.channel === 'email');
 
@@ -242,10 +210,9 @@ async function generatePreview() {
   }
 }
 
-watch([() => form.subject, () => form.body], () => {
-  clearTimeout(previewTimeout);
-  previewTimeout = setTimeout(generatePreview, 500);
-});
+const debouncedPreview = debounce(generatePreview, 500);
+
+watch([() => form.subject, () => form.body], debouncedPreview);
 
 function insertVariable(name) {
   const textarea = bodyTextarea.value;
@@ -278,35 +245,34 @@ async function save() {
   }
 }
 
-async function resetToDefault() {
-  resetting.value = true;
-  try {
-    const data = await api.post(`/api/notification-templates/${templateId.value}/reset`);
-    form.subject = data.subject || '';
-    form.body = data.body || '';
-    toasts.success(data.message || 'Template reset to default');
-    confirmResetOpen.value = false;
-  } catch (e) {
-    toasts.error(e.message);
-  } finally {
-    resetting.value = false;
-  }
+function askReset() {
+  confirm({
+    title: 'Reset Template',
+    message: 'Reset this template to its default content? Your customizations will be lost.',
+    confirmLabel: 'Reset Template',
+    danger: true,
+    action: async () => {
+      const data = await api.post(`/api/notification-templates/${templateId.value}/reset`);
+      form.subject = data.subject || '';
+      form.body = data.body || '';
+      toasts.success(data.message || 'Template reset to default');
+    },
+  });
 }
 
-async function sendTest() {
-  testSending.value = true;
-  try {
-    const data = await api.post(`/api/notification-templates/${templateId.value}/test-send`, {
-      subject: form.subject,
-      body: form.body,
-    });
-    toasts.success(data.message || 'Test notification sent');
-    confirmSendOpen.value = false;
-  } catch (e) {
-    toasts.error(e.message);
-  } finally {
-    testSending.value = false;
-  }
+function askSendTest() {
+  confirm({
+    title: 'Send Test Email',
+    message: `Send a real test email rendered from the current editor content to ${auth.user?.email || 'your account email'}?`,
+    confirmLabel: 'Send Test',
+    action: async () => {
+      const data = await api.post(`/api/notification-templates/${templateId.value}/test-send`, {
+        subject: form.subject,
+        body: form.body,
+      });
+      toasts.success(data.message || 'Test notification sent');
+    },
+  });
 }
 
 async function toggleActive() {
@@ -334,5 +300,5 @@ onMounted(async () => {
   }
 });
 
-onUnmounted(() => clearTimeout(previewTimeout));
+onUnmounted(() => debouncedPreview.cancel());
 </script>

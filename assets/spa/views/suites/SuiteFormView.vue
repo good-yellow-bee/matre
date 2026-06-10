@@ -349,8 +349,9 @@ async function submit() {
 }
 
 onMounted(async () => {
-  await Promise.all([loadTypes(), loadEnvironments()]);
-  if (isEdit.value) await loadSuite();
+  const tasks = [loadTypes(), loadEnvironments()];
+  if (isEdit.value) tasks.push(loadSuite());
+  await Promise.all(tasks);
   loading.value = false;
 });
 </script>

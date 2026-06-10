@@ -43,7 +43,7 @@ import { api } from '../../../api/client';
 import StatusBadge from '../../../components/ui/StatusBadge.vue';
 import EmptyState from '../../../components/ui/EmptyState.vue';
 import StepNode from './StepNode.vue';
-import { formatStepDuration } from '../utils/format';
+import { formatStepDuration } from '../../../utils/format';
 
 const props = defineProps({
   apiUrl: { type: String, required: true },

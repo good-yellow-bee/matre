@@ -1,6 +1,7 @@
-export function relativeTime(iso) {
-  if (!iso) return '—';
-  const seconds = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
+export function relativeTime(value) {
+  if (!value) return '—';
+  const date = new Date(typeof value === 'string' ? value.replace(' ', 'T') : value);
+  const seconds = Math.round((Date.now() - date.getTime()) / 1000);
   if (seconds < 45) return 'just now';
   const minutes = Math.round(seconds / 60);
   if (minutes < 60) return `${minutes}m ago`;
@@ -8,7 +9,7 @@ export function relativeTime(iso) {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.round(hours / 24);
   if (days < 30) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export function formatDateTime(iso) {
@@ -42,4 +43,9 @@ export function formatStepDuration(seconds) {
 export function capitalize(value) {
   if (!value) return '';
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+export function truncate(value, length) {
+  if (!value) return '';
+  return value.length > length ? `${value.slice(0, length)}…` : value;
 }

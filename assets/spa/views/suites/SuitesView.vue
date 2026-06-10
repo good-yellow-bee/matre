@@ -92,40 +92,27 @@
         </template>
       </DataTable>
     </div>
-
-    <ConfirmDialog
-      :open="confirmState !== null"
-      :title="confirmConfig.title"
-      :message="confirmConfig.message"
-      :confirm-label="confirmConfig.confirmLabel"
-      :danger="confirmConfig.danger"
-      :busy="confirmBusy"
-      @confirm="runConfirmed"
-      @cancel="confirmState = null"
-    />
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { Copy, Pencil, Play, Plus, Power, Trash2 } from 'lucide-vue-next';
 import PageHeader from '../../components/ui/PageHeader.vue';
 import DataTable from '../../components/ui/DataTable.vue';
 import Pagination from '../../components/ui/Pagination.vue';
-import ConfirmDialog from '../../components/ui/ConfirmDialog.vue';
 import EmptyState from '../../components/ui/EmptyState.vue';
 import SuiteTypeBadge from './components/SuiteTypeBadge.vue';
 import { api } from '../../api/client';
 import { useToastStore } from '../../stores/toasts';
+import { confirm } from '../../composables/useConfirm';
 
 const router = useRouter();
 const toasts = useToastStore();
 
 const suites = ref([]);
 const loading = ref(true);
-const confirmState = ref(null);
-const confirmBusy = ref(false);
 
 const columns = [
   { key: 'name', label: 'Name' },
@@ -136,40 +123,6 @@ const columns = [
   { key: 'status', label: 'Status' },
   { key: 'actions', label: '', headerClass: 'text-right', cellClass: 'text-right' },
 ];
-
-const confirmConfig = computed(() => {
-  if (!confirmState.value) return {};
-  const { action, suite } = confirmState.value;
-  if (action === 'delete') {
-    return {
-      title: 'Delete test suite',
-      message: `Delete suite "${suite.name}"? This cannot be undone.`,
-      confirmLabel: 'Delete',
-      danger: true,
-    };
-  }
-  if (action === 'duplicate') {
-    return {
-      title: 'Duplicate test suite',
-      message: `Create a copy of "${suite.name}"?`,
-      confirmLabel: 'Duplicate',
-      danger: false,
-    };
-  }
-  return suite.isActive
-    ? {
-        title: 'Deactivate test suite',
-        message: `Deactivate "${suite.name}"? Scheduled runs will stop until it is reactivated.`,
-        confirmLabel: 'Deactivate',
-        danger: false,
-      }
-    : {
-        title: 'Activate test suite',
-        message: `Activate "${suite.name}"?`,
-        confirmLabel: 'Activate',
-        danger: false,
-      };
-});
 
 async function load() {
   loading.value = true;
@@ -187,29 +140,43 @@ function runNow(suite) {
 }
 
 function askConfirm(action, suite) {
-  confirmState.value = { action, suite };
-}
-
-async function runConfirmed() {
-  const { action, suite } = confirmState.value;
-  confirmBusy.value = true;
-  try {
-    let result;
-    if (action === 'delete') {
-      result = await api.delete(`/api/test-suites/${suite.id}`);
-    } else if (action === 'duplicate') {
-      result = await api.post(`/api/test-suites/${suite.id}/duplicate`);
-    } else {
-      result = await api.post(`/api/test-suites/${suite.id}/toggle-active`);
-    }
-    toasts.success(result.message);
-    confirmState.value = null;
-    await load();
-  } catch (e) {
-    toasts.error(e.message);
-  } finally {
-    confirmBusy.value = false;
-  }
+  const configs = {
+    delete: {
+      title: 'Delete test suite',
+      message: `Delete suite "${suite.name}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      danger: true,
+    },
+    duplicate: {
+      title: 'Duplicate test suite',
+      message: `Create a copy of "${suite.name}"?`,
+      confirmLabel: 'Duplicate',
+    },
+    toggle: suite.isActive
+      ? {
+          title: 'Deactivate test suite',
+          message: `Deactivate "${suite.name}"? Scheduled runs will stop until it is reactivated.`,
+          confirmLabel: 'Deactivate',
+        }
+      : {
+          title: 'Activate test suite',
+          message: `Activate "${suite.name}"?`,
+          confirmLabel: 'Activate',
+        },
+  };
+  const endpoints = {
+    delete: () => api.delete(`/api/test-suites/${suite.id}`),
+    duplicate: () => api.post(`/api/test-suites/${suite.id}/duplicate`),
+    toggle: () => api.post(`/api/test-suites/${suite.id}/toggle-active`),
+  };
+  confirm({
+    ...configs[action],
+    action: async () => {
+      const result = await endpoints[action]();
+      toasts.success(result.message);
+      await load();
+    },
+  });
 }
 
 onMounted(load);

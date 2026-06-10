@@ -15,15 +15,7 @@
       </EmptyState>
     </div>
 
-    <div
-      v-else-if="loadError"
-      class="rise flex items-center gap-3 rounded-xl border border-fail/30 bg-fail/10 p-4 text-sm text-fail"
-      style="--i: 1"
-    >
-      <AlertCircle class="h-4 w-4 shrink-0" />
-      {{ loadError }}
-      <button class="ml-auto cursor-pointer font-semibold hover:underline" @click="load">Retry</button>
-    </div>
+    <ErrorBanner v-else-if="loadError" class="rise" style="--i: 1" :message="loadError" @retry="load" />
 
     <div v-else-if="!suite" class="grid items-start gap-6 lg:grid-cols-3">
       <div class="card rise space-y-4 p-5 lg:col-span-2" style="--i: 1">
@@ -48,7 +40,7 @@
         <dl class="divide-y divide-edge">
           <div class="grid gap-1 px-5 py-3 sm:grid-cols-[160px_1fr] sm:gap-4">
             <dt class="pt-0.5 text-xs font-semibold uppercase tracking-wider text-ink-mute">Type</dt>
-            <dd><SuiteTypeBadge :type="suite.type" /></dd>
+            <dd><SuiteTypeBadge :type="suite.type" :label="suite.typeLabel" /></dd>
           </div>
           <div class="grid gap-1 px-5 py-3 sm:grid-cols-[160px_1fr] sm:gap-4">
             <dt class="pt-0.5 text-xs font-semibold uppercase tracking-wider text-ink-mute">Test Pattern</dt>
@@ -126,29 +118,21 @@
         </div>
       </div>
     </div>
-
-    <ConfirmDialog
-      :open="confirmAction !== null"
-      :title="confirmConfig.title"
-      :message="confirmConfig.message"
-      :confirm-label="confirmConfig.confirmLabel"
-      :busy="confirmBusy"
-      @confirm="runConfirmed"
-      @cancel="confirmAction = null"
-    />
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { AlertCircle, ArrowLeft, Copy, Pencil, Play, Power } from 'lucide-vue-next';
+import { ArrowLeft, Copy, Pencil, Play, Power } from 'lucide-vue-next';
 import PageHeader from '../../components/ui/PageHeader.vue';
-import ConfirmDialog from '../../components/ui/ConfirmDialog.vue';
+import ErrorBanner from '../../components/ui/ErrorBanner.vue';
 import EmptyState from '../../components/ui/EmptyState.vue';
 import SuiteTypeBadge from './components/SuiteTypeBadge.vue';
 import { api } from '../../api/client';
 import { useToastStore } from '../../stores/toasts';
+import { confirm } from '../../composables/useConfirm';
+import { formatDateTime } from '../../utils/format';
 
 const route = useRoute();
 const router = useRouter();
@@ -160,30 +144,6 @@ const environments = ref([]);
 const nextRun = ref('');
 const notFound = ref(false);
 const loadError = ref('');
-const confirmAction = ref(null);
-const confirmBusy = ref(false);
-
-const confirmConfig = computed(() => {
-  if (!confirmAction.value || !suite.value) return {};
-  if (confirmAction.value === 'duplicate') {
-    return {
-      title: 'Duplicate test suite',
-      message: `Create a copy of "${suite.value.name}"?`,
-      confirmLabel: 'Duplicate',
-    };
-  }
-  return suite.value.isActive
-    ? {
-        title: 'Deactivate test suite',
-        message: `Deactivate "${suite.value.name}"? Scheduled runs will stop until it is reactivated.`,
-        confirmLabel: 'Deactivate',
-      }
-    : {
-        title: 'Activate test suite',
-        message: `Activate "${suite.value.name}"?`,
-        confirmLabel: 'Activate',
-      };
-});
 
 async function load() {
   loadError.value = '';
@@ -218,32 +178,32 @@ function runSuite() {
 }
 
 function askConfirm(action) {
-  confirmAction.value = action;
-}
-
-async function runConfirmed() {
-  confirmBusy.value = true;
-  try {
-    if (confirmAction.value === 'duplicate') {
-      const result = await api.post(`/api/test-suites/${suite.value.id}/duplicate`);
-      toasts.success(result.message);
-      confirmAction.value = null;
-      router.push({ name: 'suite-edit', params: { id: result.id } });
-    } else {
+  if (action === 'duplicate') {
+    confirm({
+      title: 'Duplicate test suite',
+      message: `Create a copy of "${suite.value.name}"?`,
+      confirmLabel: 'Duplicate',
+      action: async () => {
+        const result = await api.post(`/api/test-suites/${suite.value.id}/duplicate`);
+        toasts.success(result.message);
+        router.push({ name: 'suite-edit', params: { id: result.id } });
+      },
+    });
+    return;
+  }
+  const { isActive, name } = suite.value;
+  confirm({
+    title: isActive ? 'Deactivate test suite' : 'Activate test suite',
+    message: isActive
+      ? `Deactivate "${name}"? Scheduled runs will stop until it is reactivated.`
+      : `Activate "${name}"?`,
+    confirmLabel: isActive ? 'Deactivate' : 'Activate',
+    action: async () => {
       const result = await api.post(`/api/test-suites/${suite.value.id}/toggle-active`);
       toasts.success(result.message);
-      confirmAction.value = null;
       suite.value.isActive = result.isActive;
-    }
-  } catch (e) {
-    toasts.error(e.message);
-  } finally {
-    confirmBusy.value = false;
-  }
-}
-
-function formatDateTime(iso) {
-  return new Date(iso).toLocaleString();
+    },
+  });
 }
 
 onMounted(load);

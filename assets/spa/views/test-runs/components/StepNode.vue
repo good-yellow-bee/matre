@@ -42,7 +42,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, FileText, MinusCircle, XCircle } from 'lucide-vue-next';
-import { formatStepDuration } from '../utils/format';
+import { formatStepDuration } from '../../../utils/format';
 
 const props = defineProps({
   step: { type: Object, required: true },

@@ -15,9 +15,8 @@
             <ArrowLeft class="h-4 w-4" />
             Back to List
           </RouterLink>
-          <button class="btn-primary" :disabled="running" @click="confirmRunOpen = true">
-            <Loader2 v-if="running" class="h-4 w-4 animate-spin" />
-            <Play v-else class="h-4 w-4" />
+          <button class="btn-primary" @click="askRun">
+            <Play class="h-4 w-4" />
             Run Now
           </button>
         </template>
@@ -52,11 +51,11 @@
               </div>
               <div class="flex flex-wrap items-baseline gap-x-6">
                 <dt class="w-28 shrink-0 text-xs font-semibold uppercase tracking-wider text-ink-faint">Created</dt>
-                <dd class="font-mono text-[13px] text-ink-mute">{{ formatDate(job.createdAt) }}</dd>
+                <dd class="font-mono text-[13px] text-ink-mute">{{ formatDateTime(job.createdAt) }}</dd>
               </div>
               <div v-if="job.updatedAt" class="flex flex-wrap items-baseline gap-x-6">
                 <dt class="w-28 shrink-0 text-xs font-semibold uppercase tracking-wider text-ink-faint">Updated</dt>
-                <dd class="font-mono text-[13px] text-ink-mute">{{ formatDate(job.updatedAt) }}</dd>
+                <dd class="font-mono text-[13px] text-ink-mute">{{ formatDateTime(job.updatedAt) }}</dd>
               </div>
             </dl>
           </section>
@@ -87,11 +86,14 @@
             <template v-if="job.lastRunAt">
               <div class="mb-3">
                 <div class="text-xs font-semibold uppercase tracking-wider text-ink-faint">Time</div>
-                <div class="mt-1 font-mono text-[13px] text-ink">{{ formatDate(job.lastRunAt) }}</div>
+                <div class="mt-1 font-mono text-[13px] text-ink">{{ formatDateTime(job.lastRunAt) }}</div>
               </div>
               <div>
                 <div class="text-xs font-semibold uppercase tracking-wider text-ink-faint">Status</div>
-                <div class="mt-1.5"><CronStatusBadge :status="job.lastStatus" /></div>
+                <div class="mt-1.5">
+                  <StatusBadge v-if="job.lastStatus" :status="job.lastStatus" />
+                  <span v-else class="badge border border-edge bg-panel-2 text-ink-mute">—</span>
+                </div>
               </div>
             </template>
             <p v-else class="text-sm text-ink-faint">Never executed</p>
@@ -106,7 +108,7 @@
               <h2 class="text-sm font-bold uppercase tracking-wider text-ink">Actions</h2>
             </header>
             <div class="flex flex-col gap-2">
-              <button class="btn-primary w-full" :disabled="running" @click="confirmRunOpen = true">
+              <button class="btn-primary w-full" @click="askRun">
                 <Play class="h-4 w-4" />
                 Run Now
               </button>
@@ -114,7 +116,7 @@
                 <Pencil class="h-4 w-4" />
                 Edit
               </RouterLink>
-              <button class="btn-ghost w-full" :disabled="toggling" @click="confirmToggleOpen = true">
+              <button class="btn-ghost w-full" @click="askToggle">
                 <Power class="h-4 w-4" />
                 {{ job.isActive ? 'Deactivate' : 'Activate' }}
               </button>
@@ -127,27 +129,6 @@
         </div>
       </div>
 
-      <ConfirmDialog
-        :open="confirmRunOpen"
-        title="Run Cron Job"
-        :message="`Run “${job.name}” now? The command will be dispatched to the queue immediately.`"
-        confirm-label="Run Now"
-        :busy="running"
-        @confirm="runNow"
-        @cancel="confirmRunOpen = false"
-      />
-
-      <ConfirmDialog
-        :open="confirmToggleOpen"
-        :title="job.isActive ? 'Deactivate Cron Job' : 'Activate Cron Job'"
-        :message="job.isActive
-          ? `Deactivate “${job.name}”? It will no longer run on schedule.`
-          : `Activate “${job.name}”? It will run on its schedule.`"
-        :confirm-label="job.isActive ? 'Deactivate' : 'Activate'"
-        :busy="toggling"
-        @confirm="toggleActive"
-        @cancel="confirmToggleOpen = false"
-      />
     </template>
   </div>
 </template>
@@ -155,13 +136,14 @@
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ArrowLeft, CalendarClock, History, Loader2, Pencil, Play, Power, Terminal, Zap } from 'lucide-vue-next';
+import { ArrowLeft, CalendarClock, History, Pencil, Play, Power, Terminal, Zap } from 'lucide-vue-next';
 import PageHeader from '../../components/ui/PageHeader.vue';
-import ConfirmDialog from '../../components/ui/ConfirmDialog.vue';
-import CronStatusBadge from './components/CronStatusBadge.vue';
+import StatusBadge from '../../components/ui/StatusBadge.vue';
 import AnsiLog from '../test-runs/components/AnsiLog.vue';
 import { api } from '../../api/client';
 import { useToastStore } from '../../stores/toasts';
+import { confirm } from '../../composables/useConfirm';
+import { formatDateTime } from '../../utils/format';
 
 const route = useRoute();
 const router = useRouter();
@@ -170,17 +152,7 @@ const toasts = useToastStore();
 const job = ref(null);
 const nextRun = ref('');
 const loading = ref(true);
-const running = ref(false);
-const toggling = ref(false);
-const confirmRunOpen = ref(false);
-const confirmToggleOpen = ref(false);
 let refreshTimeout = null;
-
-function formatDate(iso) {
-  return new Date(iso).toLocaleString(undefined, {
-    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
-  });
-}
 
 async function fetchJob() {
   try {
@@ -203,32 +175,33 @@ async function fetchNextRun() {
   }
 }
 
-async function runNow() {
-  running.value = true;
-  try {
-    const data = await api.post(`/api/cron-jobs/${job.value.id}/run`);
-    toasts.success(data.message);
-    confirmRunOpen.value = false;
-    refreshTimeout = setTimeout(fetchJob, 1500);
-  } catch (e) {
-    toasts.error(e.message);
-  } finally {
-    running.value = false;
-  }
+function askRun() {
+  confirm({
+    title: 'Run Cron Job',
+    message: `Run “${job.value.name}” now? The command will be dispatched to the queue immediately.`,
+    confirmLabel: 'Run Now',
+    action: async () => {
+      const data = await api.post(`/api/cron-jobs/${job.value.id}/run`);
+      toasts.success(data.message);
+      refreshTimeout = setTimeout(fetchJob, 1500);
+    },
+  });
 }
 
-async function toggleActive() {
-  toggling.value = true;
-  try {
-    const data = await api.post(`/api/cron-jobs/${job.value.id}/toggle-active`);
-    job.value.isActive = data.isActive;
-    toasts.success(data.message);
-    confirmToggleOpen.value = false;
-  } catch (e) {
-    toasts.error(e.message);
-  } finally {
-    toggling.value = false;
-  }
+function askToggle() {
+  const { isActive, name } = job.value;
+  confirm({
+    title: isActive ? 'Deactivate Cron Job' : 'Activate Cron Job',
+    message: isActive
+      ? `Deactivate “${name}”? It will no longer run on schedule.`
+      : `Activate “${name}”? It will run on its schedule.`,
+    confirmLabel: isActive ? 'Deactivate' : 'Activate',
+    action: async () => {
+      const data = await api.post(`/api/cron-jobs/${job.value.id}/toggle-active`);
+      job.value.isActive = data.isActive;
+      toasts.success(data.message);
+    },
+  });
 }
 
 onMounted(fetchJob);

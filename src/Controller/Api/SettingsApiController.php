@@ -35,7 +35,6 @@ class SettingsApiController extends AbstractController
             'seoDescription' => $settings->getSeoDescription(),
             'seoKeywords' => $settings->getSeoKeywords(),
             'defaultLocale' => $settings->getDefaultLocale(),
-            'headlessMode' => $settings->isHeadlessMode(),
             'autoReportForIndividualRuns' => $settings->isAutoReportForIndividualRuns(),
             'enforce2fa' => $settings->isEnforce2fa(),
             'maxRetryCount' => $settings->getMaxRetryCount(),
@@ -46,11 +45,6 @@ class SettingsApiController extends AbstractController
     #[Route('', name: 'api_settings_update', methods: ['PUT'])]
     public function update(Request $request): JsonResponse
     {
-        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
-        if (!$this->isCsrfTokenValid('api', $token)) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
-        }
-
         $settings = $this->settingsRepository->getOrCreate();
         $data = json_decode($request->getContent(), true) ?? [];
 
@@ -68,9 +62,6 @@ class SettingsApiController extends AbstractController
         }
         if (isset($data['defaultLocale'])) {
             $settings->setDefaultLocale((string) $data['defaultLocale']);
-        }
-        if (isset($data['headlessMode'])) {
-            $settings->setHeadlessMode((bool) $data['headlessMode']);
         }
         if (isset($data['autoReportForIndividualRuns'])) {
             $settings->setAutoReportForIndividualRuns((bool) $data['autoReportForIndividualRuns']);

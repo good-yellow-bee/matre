@@ -98,7 +98,7 @@ class NotificationTemplateApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $template = $this->createNotificationTemplate();
 
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $template->getId() . '/toggle-active');
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $template->getId() . '/toggle-active', [], self::INVALID_CSRF_HEADERS);
 
         $this->assertJsonError($response, 403, 'CSRF');
     }
@@ -108,7 +108,7 @@ class NotificationTemplateApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsAdmin($client);
 
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/reset-defaults');
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/reset-defaults', [], self::INVALID_CSRF_HEADERS);
 
         $this->assertJsonError($response, 403, 'CSRF');
     }
@@ -168,22 +168,21 @@ class NotificationTemplateApiControllerTest extends WebTestCase
     {
         $em = $this->getEntityManager();
 
-        $existing = $em->getRepository(NotificationTemplate::class)->findOneBy([
+        $template = $em->getRepository(NotificationTemplate::class)->findOneBy([
             'channel' => NotificationTemplate::CHANNEL_EMAIL,
             'name' => NotificationTemplate::NAME_COMPLETED_SUCCESS,
         ]);
 
-        if ($existing) {
-            return $existing;
+        if (!$template) {
+            $template = new NotificationTemplate();
+            $template->setChannel(NotificationTemplate::CHANNEL_EMAIL);
+            $template->setName(NotificationTemplate::NAME_COMPLETED_SUCCESS);
+            $em->persist($template);
         }
 
-        $template = new NotificationTemplate();
-        $template->setChannel(NotificationTemplate::CHANNEL_EMAIL);
-        $template->setName(NotificationTemplate::NAME_COMPLETED_SUCCESS);
         $template->setSubject('Test Subject');
         $template->setBody('Test body {{ testRunId }}');
         $template->setIsActive(true);
-        $em->persist($template);
         $em->flush();
 
         return $template;

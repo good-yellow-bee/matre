@@ -105,14 +105,14 @@ class TwoFactorEnforcementSubscriber implements EventSubscriberInterface
             return;
         }
 
-        // Check if 2FA is enforced globally
-        $settings = $this->settingsRepository->getOrCreate();
-        if (!$settings->isEnforce2fa()) {
+        // Check if user has 2FA enabled
+        if ($user->isTotpEnabled()) {
             return;
         }
 
-        // Check if user has 2FA enabled
-        if ($user->isTotpEnabled()) {
+        // Check if 2FA is enforced globally
+        $settings = $this->settingsRepository->getOrCreate();
+        if (!$settings->isEnforce2fa()) {
             return;
         }
 

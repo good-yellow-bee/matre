@@ -36,16 +36,10 @@ class NotificationTemplateApiController extends AbstractController
     {
         $templates = $this->repository->findBy([], ['channel' => 'ASC', 'name' => 'ASC']);
 
-        $data = array_map(static fn (NotificationTemplate $template) => [
-            'id' => $template->getId(),
-            'name' => $template->getName(),
-            'nameLabel' => $template->getNameLabel(),
-            'channel' => $template->getChannel(),
-            'isActive' => $template->isActive(),
-            'isDefault' => $template->isDefault(),
-            'createdAt' => $template->getCreatedAt()->format('c'),
-            'updatedAt' => $template->getUpdatedAt()?->format('c'),
-        ], $templates);
+        $data = array_map(
+            fn (NotificationTemplate $template) => $this->serializeTemplate($template),
+            $templates,
+        );
 
         return $this->json(['data' => $data]);
     }
@@ -53,28 +47,12 @@ class NotificationTemplateApiController extends AbstractController
     #[Route('/{id}', name: 'api_notification_template_show', methods: ['GET'], requirements: ['id' => '\d+'])]
     public function show(NotificationTemplate $template): JsonResponse
     {
-        return $this->json([
-            'id' => $template->getId(),
-            'channel' => $template->getChannel(),
-            'name' => $template->getName(),
-            'nameLabel' => $template->getNameLabel(),
-            'subject' => $template->getSubject(),
-            'body' => $template->getBody(),
-            'isActive' => $template->isActive(),
-            'isDefault' => $template->isDefault(),
-            'createdAt' => $template->getCreatedAt()->format('c'),
-            'updatedAt' => $template->getUpdatedAt()?->format('c'),
-        ]);
+        return $this->json($this->serializeTemplate($template, true));
     }
 
     #[Route('/{id}', name: 'api_notification_template_update', methods: ['PUT'], requirements: ['id' => '\d+'])]
     public function update(Request $request, NotificationTemplate $template): JsonResponse
     {
-        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
-        if (!$this->isCsrfTokenValid('api', $token)) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
-        }
-
         $data = json_decode($request->getContent(), true);
 
         if (JSON_ERROR_NONE !== json_last_error()) {
@@ -101,13 +79,8 @@ class NotificationTemplateApiController extends AbstractController
     }
 
     #[Route('/{id}/toggle-active', name: 'api_notification_template_toggle_active', methods: ['POST'], requirements: ['id' => '\d+'])]
-    public function toggleActive(Request $request, NotificationTemplate $template): JsonResponse
+    public function toggleActive(NotificationTemplate $template): JsonResponse
     {
-        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
-        if (!$this->isCsrfTokenValid('api', $token)) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
-        }
-
         $template->setIsActive(!$template->isActive());
         $this->entityManager->flush();
 
@@ -119,13 +92,8 @@ class NotificationTemplateApiController extends AbstractController
     }
 
     #[Route('/reset-defaults', name: 'api_notification_template_reset_defaults', methods: ['POST'])]
-    public function resetDefaults(Request $request): JsonResponse
+    public function resetDefaults(): JsonResponse
     {
-        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
-        if (!$this->isCsrfTokenValid('api', $token)) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
-        }
-
         $templates = $this->repository->findAll();
 
         foreach ($templates as $template) {
@@ -152,11 +120,6 @@ class NotificationTemplateApiController extends AbstractController
     #[Route('/{id}/preview', name: 'api_notification_template_preview', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function preview(Request $request, NotificationTemplate $template): JsonResponse
     {
-        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
-        if (!$this->isCsrfTokenValid('api', $token)) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
-        }
-
         $data = json_decode($request->getContent(), true);
 
         if (JSON_ERROR_NONE !== json_last_error()) {
@@ -187,11 +150,6 @@ class NotificationTemplateApiController extends AbstractController
     #[Route('/{id}/test-send', name: 'api_notification_template_test_send', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function testSend(Request $request, NotificationTemplate $template): JsonResponse
     {
-        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
-        if (!$this->isCsrfTokenValid('api', $token)) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
-        }
-
         $data = json_decode($request->getContent(), true);
 
         if (JSON_ERROR_NONE !== json_last_error()) {
@@ -240,13 +198,8 @@ class NotificationTemplateApiController extends AbstractController
     }
 
     #[Route('/{id}/reset', name: 'api_notification_template_reset', methods: ['POST'], requirements: ['id' => '\d+'])]
-    public function reset(Request $request, NotificationTemplate $template): JsonResponse
+    public function reset(NotificationTemplate $template): JsonResponse
     {
-        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
-        if (!$this->isCsrfTokenValid('api', $token)) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
-        }
-
         $defaults = $this->templateService->getDefaultTemplateContent(
             $template->getChannel(),
             $template->getName(),
@@ -266,6 +219,27 @@ class NotificationTemplateApiController extends AbstractController
             'subject' => $template->getSubject(),
             'body' => $template->getBody(),
         ]);
+    }
+
+    private function serializeTemplate(NotificationTemplate $template, bool $detail = false): array
+    {
+        $data = [
+            'id' => $template->getId(),
+            'name' => $template->getName(),
+            'nameLabel' => $template->getNameLabel(),
+            'channel' => $template->getChannel(),
+            'isActive' => $template->isActive(),
+            'isDefault' => $template->isDefault(),
+            'createdAt' => $template->getCreatedAt()->format('c'),
+            'updatedAt' => $template->getUpdatedAt()?->format('c'),
+        ];
+
+        if ($detail) {
+            $data['subject'] = $template->getSubject();
+            $data['body'] = $template->getBody();
+        }
+
+        return $data;
     }
 
     private function sendTestEmail(string $subject, string $body, string $recipient): void

@@ -100,10 +100,6 @@ class TestRunApiController extends AbstractController
     #[IsGranted('ROLE_ADMIN')]
     public function create(Request $request): JsonResponse
     {
-        if (!$this->isCsrfTokenValid('test_run_api', $request->headers->get('X-CSRF-Token'))) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
-        }
-
         $data = json_decode($request->getContent(), true) ?? [];
         $errors = [];
 
@@ -175,12 +171,8 @@ class TestRunApiController extends AbstractController
 
     #[Route('/{id}/cancel', name: 'api_test_runs_cancel', methods: ['POST'], requirements: ['id' => '\d+'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function cancel(Request $request, TestRun $run): JsonResponse
+    public function cancel(TestRun $run): JsonResponse
     {
-        if (!$this->isCsrfTokenValid('test_run_api', $request->headers->get('X-CSRF-Token'))) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
-        }
-
         if (!$run->canBeCancelled()) {
             return $this->json(['error' => 'Run cannot be cancelled'], 400);
         }
@@ -192,12 +184,8 @@ class TestRunApiController extends AbstractController
 
     #[Route('/{id}/retry', name: 'api_test_runs_retry', methods: ['POST'], requirements: ['id' => '\d+'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function retry(Request $request, TestRun $run): JsonResponse
+    public function retry(TestRun $run): JsonResponse
     {
-        if (!$this->isCsrfTokenValid('test_run_api', $request->headers->get('X-CSRF-Token'))) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
-        }
-
         $newRun = $this->testRunnerService->retryRun($run, $this->getUser());
 
         $this->messageBus->dispatch(new TestRunMessage(
@@ -214,12 +202,8 @@ class TestRunApiController extends AbstractController
 
     #[Route('/{id}/retry-failed', name: 'api_test_runs_retry_failed', methods: ['POST'], requirements: ['id' => '\d+'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function retryFailed(Request $request, TestRun $run): JsonResponse
+    public function retryFailed(TestRun $run): JsonResponse
     {
-        if (!$this->isCsrfTokenValid('test_run_api', $request->headers->get('X-CSRF-Token'))) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
-        }
-
         $newRun = $this->testRunnerService->retryFailedRun($run, $this->getUser());
 
         if (null === $newRun) {
@@ -240,12 +224,8 @@ class TestRunApiController extends AbstractController
 
     #[Route('/{id}/resend-notification', name: 'api_test_runs_resend_notification', methods: ['POST'], requirements: ['id' => '\d+'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function resendNotification(Request $request, TestRun $run): JsonResponse
+    public function resendNotification(TestRun $run): JsonResponse
     {
-        if (!$this->isCsrfTokenValid('test_run_api', $request->headers->get('X-CSRF-Token'))) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
-        }
-
         if (!$run->isFinished()) {
             return $this->json(['error' => 'Can only resend notifications for finished runs'], 400);
         }
@@ -340,6 +320,8 @@ class TestRunApiController extends AbstractController
             'output' => $output,
             'resultCounts' => $run->getResultCounts(),
             'results' => $results,
+            'isFinished' => $run->isFinished(),
+            'isWatchable' => $this->isWatchable($run),
         ]);
     }
 
@@ -354,16 +336,8 @@ class TestRunApiController extends AbstractController
             return new JsonResponse(['error' => 'Test run not found'], 404);
         }
 
-        $result = null;
-        foreach ($run->getResults() as $r) {
-            if ($r->getId() === $resultId) {
-                $result = $r;
-
-                break;
-            }
-        }
-
-        if (!$result) {
+        $result = $this->testResultRepository->find($resultId);
+        if (!$result || $result->getTestRun()->getId() !== $run->getId()) {
             return new JsonResponse(['error' => 'Test result not found'], 404);
         }
 
@@ -394,16 +368,8 @@ class TestRunApiController extends AbstractController
     #[Route('/{id}/results/{resultId}/output', name: 'admin_test_run_result_output', methods: ['GET'], requirements: ['id' => '\d+', 'resultId' => '\d+'])]
     public function getTestOutput(TestRun $run, int $resultId): JsonResponse
     {
-        $result = null;
-        foreach ($run->getResults() as $r) {
-            if ($r->getId() === $resultId) {
-                $result = $r;
-
-                break;
-            }
-        }
-
-        if (!$result) {
+        $result = $this->testResultRepository->find($resultId);
+        if (!$result || $result->getTestRun()->getId() !== $run->getId()) {
             throw $this->createNotFoundException('Test result not found');
         }
 
@@ -455,6 +421,8 @@ class TestRunApiController extends AbstractController
             // Use pre-fetched counts if provided, otherwise fall back to entity method
             'resultCounts' => $resultCounts ?? $run->getResultCounts(),
             'canBeCancelled' => $run->canBeCancelled(),
+            'isFinished' => $run->isFinished(),
+            'isWatchable' => $this->isWatchable($run),
         ];
 
         if ($includeDetails) {
@@ -489,6 +457,11 @@ class TestRunApiController extends AbstractController
         }
 
         return $data;
+    }
+
+    private function isWatchable(TestRun $run): bool
+    {
+        return \in_array($run->getStatus(), [TestRun::STATUS_PREPARING, TestRun::STATUS_CLONING, TestRun::STATUS_RUNNING], true);
     }
 
     /**

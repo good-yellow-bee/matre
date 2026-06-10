@@ -348,57 +348,52 @@ function handleNameInput() {
   delete errors.name;
 }
 
-async function validateName() {
-  if (!form.name) {
-    errors.name = 'Name is required';
-    nameValid.value = false;
-    return;
-  }
-  if (form.name.length < 2) {
-    errors.name = 'Name must be at least 2 characters';
-    nameValid.value = false;
-    return;
-  }
-  try {
-    const result = await api.post('/api/test-environments/validate-name', { name: form.name, excludeId: environmentId.value });
-    if (result.valid) {
-      delete errors.name;
-      nameValid.value = true;
-    } else {
-      errors.name = result.message;
-      nameValid.value = false;
-    }
-  } catch {
-    errors.name = 'Could not validate name. Check your connection.';
-    nameValid.value = false;
-  }
-}
-
 function handleCodeInput() {
   codeValid.value = false;
   delete errors.code;
 }
 
-async function validateCode() {
-  if (!form.code) {
-    errors.code = 'Code is required';
-    codeValid.value = false;
-    return;
-  }
-  try {
-    const result = await api.post('/api/test-environments/validate-code', { code: form.code, excludeId: environmentId.value });
-    if (result.valid) {
-      delete errors.code;
-      codeValid.value = true;
-    } else {
-      errors.code = result.message;
-      codeValid.value = false;
+function makeRemoteValidator(field, endpoint, localCheck, validFlag) {
+  return async () => {
+    const localError = localCheck();
+    if (localError) {
+      errors[field] = localError;
+      validFlag.value = false;
+      return;
     }
-  } catch {
-    errors.code = 'Could not validate code. Check your connection.';
-    codeValid.value = false;
-  }
+    try {
+      const result = await api.post(endpoint, { [field]: form[field], excludeId: environmentId.value });
+      if (result.valid) {
+        delete errors[field];
+        validFlag.value = true;
+      } else {
+        errors[field] = result.message;
+        validFlag.value = false;
+      }
+    } catch {
+      errors[field] = `Could not validate ${field}. Check your connection.`;
+      validFlag.value = false;
+    }
+  };
 }
+
+const validateName = makeRemoteValidator(
+  'name',
+  '/api/test-environments/validate-name',
+  () => {
+    if (!form.name) return 'Name is required';
+    if (form.name.length < 2) return 'Name must be at least 2 characters';
+    return '';
+  },
+  nameValid,
+);
+
+const validateCode = makeRemoteValidator(
+  'code',
+  '/api/test-environments/validate-code',
+  () => (form.code ? '' : 'Code is required'),
+  codeValid,
+);
 
 async function fetchEnvironment() {
   loading.value = true;
@@ -412,16 +407,16 @@ async function fetchEnvironment() {
     form.description = data.description || '';
     form.isActive = data.isActive ?? true;
     originalData.value = { ...form };
+    nameValid.value = true;
+    codeValid.value = true;
   } catch (e) {
     toasts.error('Failed to load environment');
     if (e.status === 404) {
       router.replace({ name: 'environments' });
-      return;
     }
   } finally {
     loading.value = false;
   }
-  await Promise.all([validateName(), validateCode(), fetchVariables()]);
 }
 
 function resetToOriginal() {
@@ -553,6 +548,9 @@ async function handleImport() {
 }
 
 onMounted(() => {
-  if (isEditMode.value) fetchEnvironment();
+  if (isEditMode.value) {
+    fetchEnvironment();
+    fetchVariables();
+  }
 });
 </script>

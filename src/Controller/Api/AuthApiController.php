@@ -11,7 +11,6 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
-use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 
 /**
  * SPA authentication endpoints: login stub (intercepted by json_login) and session bootstrap.
@@ -19,12 +18,9 @@ use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 #[Route('/api')]
 class AuthApiController extends AbstractController
 {
-    private const CSRF_TOKEN_IDS = ['api', 'test_run_api', 'env_variable_api', 'cron_job_api', 'test_discovery'];
-
     public function __construct(
         private readonly SettingsRepository $settingsRepository,
         private readonly TokenStorageInterface $tokenStorage,
-        private readonly CsrfTokenManagerInterface $csrfTokenManager,
         private readonly string $noVncUrl,
         private readonly string $allurePublicUrl,
     ) {
@@ -45,7 +41,6 @@ class AuthApiController extends AbstractController
             return $this->json([
                 'authenticated' => false,
                 'twoFactorRequired' => true,
-                'csrf' => ['two_factor' => $this->csrfTokenManager->getToken('two_factor')->getValue()],
             ]);
         }
 
@@ -55,11 +50,6 @@ class AuthApiController extends AbstractController
         }
 
         $settings = $this->settingsRepository->getOrCreate();
-
-        $csrf = [];
-        foreach (self::CSRF_TOKEN_IDS as $id) {
-            $csrf[$id] = $this->csrfTokenManager->getToken($id)->getValue();
-        }
 
         return $this->json([
             'authenticated' => true,
@@ -80,7 +70,6 @@ class AuthApiController extends AbstractController
                 'allure' => $this->allurePublicUrl,
                 'novnc' => $this->noVncUrl,
             ],
-            'csrf' => $csrf,
         ]);
     }
 }

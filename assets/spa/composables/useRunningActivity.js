@@ -7,8 +7,8 @@ let subscribers = 0;
 
 async function poll() {
   try {
-    const stats = await api.get('/api/dashboard/stats');
-    runningCount.value = stats?.activity?.runningNow ?? 0;
+    const data = await api.get('/api/dashboard/running-count');
+    runningCount.value = data?.runningNow ?? 0;
   } catch {
     // Topbar indicator only — stays at last known value on transient errors.
   }

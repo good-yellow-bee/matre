@@ -157,7 +157,7 @@ class CronJobApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $job = $this->createCronJob();
 
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $job->getId() . '/toggle-active');
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $job->getId() . '/toggle-active', [], self::INVALID_CSRF_HEADERS);
 
         $this->assertJsonError($response, 403, 'CSRF');
     }
@@ -178,7 +178,7 @@ class CronJobApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $job = $this->createCronJob();
 
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $job->getId() . '/run');
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $job->getId() . '/run', [], self::INVALID_CSRF_HEADERS);
 
         $this->assertJsonError($response, 403, 'CSRF');
     }
@@ -199,7 +199,7 @@ class CronJobApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $job = $this->createCronJob();
 
-        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/' . $job->getId());
+        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/' . $job->getId(), [], self::INVALID_CSRF_HEADERS);
 
         $this->assertJsonError($response, 403, 'CSRF');
     }

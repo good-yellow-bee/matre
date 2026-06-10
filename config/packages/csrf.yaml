@@ -11,8 +11,3 @@ framework:
             - logout
             - api
             - two_factor
-            - test_run_api
-            - user_api
-            - env_variable_api
-            - cron_job_api
-            - test_discovery

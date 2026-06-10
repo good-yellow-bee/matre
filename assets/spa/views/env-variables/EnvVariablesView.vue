@@ -35,14 +35,7 @@
       </select>
     </div>
 
-    <div
-      v-if="loadError"
-      class="rise card mb-4 flex items-center justify-between gap-3 border-fail/30 bg-fail/10 px-4 py-3 text-sm text-fail"
-      style="--i: 2"
-    >
-      <span>{{ loadError }}</span>
-      <button class="btn-ghost btn-sm" @click="fetchVariables">Try again</button>
-    </div>
+    <ErrorBanner v-if="loadError" class="rise mb-4" style="--i: 2" :message="loadError" @retry="fetchVariables" />
 
     <div class="rise" style="--i: 2">
       <DataTable
@@ -106,7 +99,7 @@
               :title="isMasked(row) ? undefined : row.value"
             >{{ isMasked(row) ? '••••••••' : row.value }}</span>
             <button
-              v-if="isSensitive(row.name)"
+              v-if="isSensitiveName(row.name)"
               class="shrink-0 cursor-pointer rounded p-1 text-ink-faint hover:bg-panel-2 hover:text-ink"
               :title="isMasked(row) ? 'Reveal value' : 'Hide value'"
               @click="toggleReveal(row.id)"
@@ -164,7 +157,7 @@
             <button class="btn-ghost btn-sm" :disabled="editing !== null" title="Edit variable" @click="startEdit(row)">
               <Pencil class="h-3.5 w-3.5" />
             </button>
-            <button class="btn-danger btn-sm" :disabled="editing !== null" title="Delete variable" @click="confirmDelete = row">
+            <button class="btn-danger btn-sm" :disabled="editing !== null" title="Delete variable" @click="askDelete(row)">
               <Trash2 class="h-3.5 w-3.5" />
             </button>
           </div>
@@ -192,17 +185,6 @@
     </div>
 
     <ImportEnvModal :open="importOpen" @close="importOpen = false" @imported="onImported" />
-
-    <ConfirmDialog
-      :open="!!confirmDelete"
-      title="Delete variable"
-      :message="`Delete variable &quot;${confirmDelete?.name}&quot;? This cannot be undone.`"
-      confirm-label="Delete"
-      danger
-      :busy="deleting"
-      @confirm="doDelete"
-      @cancel="confirmDelete = null"
-    />
   </div>
 </template>
 
@@ -212,13 +194,14 @@ import { Check, Eye, EyeOff, Globe, Loader2, Pencil, Plus, Search, Trash2, Uploa
 import PageHeader from '../../components/ui/PageHeader.vue';
 import DataTable from '../../components/ui/DataTable.vue';
 import EmptyState from '../../components/ui/EmptyState.vue';
-import ConfirmDialog from '../../components/ui/ConfirmDialog.vue';
+import ErrorBanner from '../../components/ui/ErrorBanner.vue';
 import EnvScopePicker from './components/EnvScopePicker.vue';
 import ImportEnvModal from './components/ImportEnvModal.vue';
 import { api } from '../../api/client';
 import { useToastStore } from '../../stores/toasts';
+import { confirm } from '../../composables/useConfirm';
+import { isSensitiveName } from '../../utils/sensitive';
 
-const SENSITIVE_NAME = /(password|secret|token|key|auth|pass)/i;
 const NAME_PATTERN = /^[A-Z][A-Z0-9_]*$/;
 
 const toasts = useToastStore();
@@ -238,8 +221,6 @@ const draft = reactive({ name: '', value: '', environments: null, usedInTests: '
 const draftErrors = ref({});
 const saving = ref(false);
 
-const confirmDelete = ref(null);
-const deleting = ref(false);
 const importOpen = ref(false);
 
 const columns = [
@@ -281,12 +262,8 @@ function isEditing(row) {
   return editing.value === 'new' ? row.id === '__new__' : editing.value === row.id;
 }
 
-function isSensitive(name) {
-  return SENSITIVE_NAME.test(name || '');
-}
-
 function isMasked(row) {
-  return isSensitive(row.name) && !revealed.value.has(row.id);
+  return isSensitiveName(row.name) && !revealed.value.has(row.id);
 }
 
 function toggleReveal(id) {
@@ -383,18 +360,18 @@ async function saveDraft() {
   }
 }
 
-async function doDelete() {
-  deleting.value = true;
-  try {
-    const result = await api.delete(`/api/env-variables/${confirmDelete.value.id}`);
-    toasts.success(result.message);
-    confirmDelete.value = null;
-    await fetchVariables();
-  } catch (error) {
-    toasts.error(error.message);
-  } finally {
-    deleting.value = false;
-  }
+function askDelete(row) {
+  confirm({
+    title: 'Delete variable',
+    message: `Delete variable "${row.name}"? This cannot be undone.`,
+    confirmLabel: 'Delete',
+    danger: true,
+    action: async () => {
+      const result = await api.delete(`/api/env-variables/${row.id}`);
+      toasts.success(result.message);
+      await fetchVariables();
+    },
+  });
 }
 
 function onImported() {

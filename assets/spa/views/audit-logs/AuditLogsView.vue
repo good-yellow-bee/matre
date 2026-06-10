@@ -72,14 +72,7 @@
       </div>
     </div>
 
-    <div
-      v-if="loadError"
-      class="rise card mb-4 flex items-center justify-between gap-3 border-fail/30 bg-fail/10 px-4 py-3 text-sm text-fail"
-      style="--i: 2"
-    >
-      <span>{{ loadError }}</span>
-      <button class="btn-ghost btn-sm" @click="fetchLogs">Try again</button>
-    </div>
+    <ErrorBanner v-if="loadError" class="rise mb-4" style="--i: 2" :message="loadError" @retry="fetchLogs" />
 
     <div class="rise" style="--i: 2">
       <DataTable
@@ -94,7 +87,7 @@
         @row-click="openDetail"
       >
         <template #cell-createdAt="{ row }">
-          <span class="whitespace-nowrap font-mono text-xs text-ink-mute">{{ formatTimestamp(row.createdAt) }}</span>
+          <span class="whitespace-nowrap font-mono text-xs text-ink-mute">{{ formatDateTime(row.createdAt) }}</span>
         </template>
 
         <template #cell-user="{ row }">
@@ -158,9 +151,12 @@ import PageHeader from '../../components/ui/PageHeader.vue';
 import DataTable from '../../components/ui/DataTable.vue';
 import Pagination from '../../components/ui/Pagination.vue';
 import EmptyState from '../../components/ui/EmptyState.vue';
+import ErrorBanner from '../../components/ui/ErrorBanner.vue';
 import AuditLogDetailModal from './components/AuditLogDetailModal.vue';
 import { api } from '../../api/client';
 import { useToastStore } from '../../stores/toasts';
+import { debounce } from '../../utils/debounce';
+import { formatDateTime } from '../../utils/format';
 
 const ACTION_CLASSES = {
   create: 'border-pass/25 bg-pass/10 text-pass',
@@ -186,8 +182,6 @@ const detail = ref(null);
 const detailOpen = ref(false);
 const detailLoading = ref(false);
 
-let searchTimer = null;
-
 const columns = [
   { key: 'createdAt', label: 'Timestamp', sortable: true },
   { key: 'user', label: 'User' },
@@ -204,12 +198,6 @@ const hasActiveFilters = computed(
 
 function actionClass(action) {
   return ACTION_CLASSES[action] || 'border-edge bg-panel-2 text-ink-mute';
-}
-
-function formatTimestamp(value) {
-  const date = new Date(value);
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 async function fetchLogs() {
@@ -253,24 +241,21 @@ function applyFilters() {
   fetchLogs();
 }
 
+const onSearchInput = debounce(() => {
+  page.value = 1;
+  fetchLogs();
+}, 300);
+
 function resetFilters() {
-  clearTimeout(searchTimer);
+  onSearchInput.cancel();
   Object.assign(filters, { entityType: '', action: '', userId: '', dateFrom: '', dateTo: '' });
   search.value = '';
   page.value = 1;
   fetchLogs();
 }
 
-function onSearchInput() {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => {
-    page.value = 1;
-    fetchLogs();
-  }, 300);
-}
-
 function clearSearch() {
-  clearTimeout(searchTimer);
+  onSearchInput.cancel();
   search.value = '';
   page.value = 1;
   fetchLogs();
@@ -312,5 +297,5 @@ onMounted(() => {
   fetchLogs();
 });
 
-onUnmounted(() => clearTimeout(searchTimer));
+onUnmounted(() => onSearchInput.cancel());
 </script>

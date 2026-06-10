@@ -174,7 +174,7 @@ class TestDiscoveryApiControllerTest extends WebTestCase
         $client = self::createClient();
         $this->loginAsAdmin($client);
 
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/refresh');
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/refresh', [], self::INVALID_CSRF_HEADERS);
 
         $this->assertJsonError($response, 403);
     }

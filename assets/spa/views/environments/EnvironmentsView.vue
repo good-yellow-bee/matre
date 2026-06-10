@@ -27,13 +27,13 @@
 
         <template #cell-baseUrl="{ row }">
           <a
-            :href="stripCredentials(row.baseUrl)"
+            :href="row.displayUrl"
             target="_blank"
             rel="noopener"
             class="link inline-flex max-w-72 items-center gap-1.5 font-mono text-xs"
-            :title="stripCredentials(row.baseUrl)"
+            :title="row.displayUrl"
           >
-            <span class="truncate">{{ stripCredentials(row.baseUrl) }}</span>
+            <span class="truncate">{{ row.displayUrl }}</span>
             <ExternalLink class="h-3 w-3 shrink-0" />
           </a>
         </template>
@@ -47,11 +47,11 @@
             <RouterLink class="btn-ghost btn-sm" title="Edit" :to="{ name: 'environment-edit', params: { id: row.id } }">
               <Pencil class="h-3.5 w-3.5" />
             </RouterLink>
-            <button class="btn-ghost btn-sm" :title="row.isActive ? 'Deactivate' : 'Activate'" @click="toggleTarget = row">
+            <button class="btn-ghost btn-sm" :title="row.isActive ? 'Deactivate' : 'Activate'" @click="askToggle(row)">
               <Pause v-if="row.isActive" class="h-3.5 w-3.5" />
               <Play v-else class="h-3.5 w-3.5" />
             </button>
-            <button class="btn-danger btn-sm" title="Delete" @click="deleteTarget = row">
+            <button class="btn-danger btn-sm" title="Delete" @click="askDelete(row)">
               <Trash2 class="h-3.5 w-3.5" />
             </button>
           </div>
@@ -71,29 +71,6 @@
         </template>
       </DataTable>
     </div>
-
-    <ConfirmDialog
-      :open="!!toggleTarget"
-      :title="toggleTarget?.isActive ? 'Deactivate environment?' : 'Activate environment?'"
-      :message="toggleTarget?.isActive
-        ? `Environment “${toggleTarget?.name}” will no longer be available for test runs.`
-        : `Environment “${toggleTarget?.name}” will become available for test runs.`"
-      :confirm-label="toggleTarget?.isActive ? 'Deactivate' : 'Activate'"
-      :busy="toggleBusy"
-      @confirm="confirmToggle"
-      @cancel="toggleTarget = null"
-    />
-
-    <ConfirmDialog
-      :open="!!deleteTarget"
-      title="Delete environment?"
-      :message="`Delete environment “${deleteTarget?.name}”? Deleting an environment permanently deletes ALL its test runs.`"
-      confirm-label="Delete"
-      danger
-      :busy="deleteBusy"
-      @confirm="confirmDelete"
-      @cancel="deleteTarget = null"
-    />
   </div>
 </template>
 
@@ -104,11 +81,10 @@ import PageHeader from '../../components/ui/PageHeader.vue';
 import DataTable from '../../components/ui/DataTable.vue';
 import Pagination from '../../components/ui/Pagination.vue';
 import EmptyState from '../../components/ui/EmptyState.vue';
-import ConfirmDialog from '../../components/ui/ConfirmDialog.vue';
 import ActiveBadge from './components/ActiveBadge.vue';
 import { api } from '../../api/client';
 import { useToastStore } from '../../stores/toasts';
-import { stripCredentials } from './display.js';
+import { confirm } from '../../composables/useConfirm';
 
 const toasts = useToastStore();
 
@@ -123,10 +99,6 @@ const columns = [
 
 const environments = ref([]);
 const loading = ref(true);
-const toggleTarget = ref(null);
-const toggleBusy = ref(false);
-const deleteTarget = ref(null);
-const deleteBusy = ref(false);
 
 async function load() {
   loading.value = true;
@@ -139,32 +111,33 @@ async function load() {
   }
 }
 
-async function confirmToggle() {
-  toggleBusy.value = true;
-  try {
-    const result = await api.post(`/api/test-environments/${toggleTarget.value.id}/toggle-active`);
-    toggleTarget.value.isActive = result.isActive;
-    toasts.success(result.message);
-    toggleTarget.value = null;
-  } catch (e) {
-    toasts.error(e.message);
-  } finally {
-    toggleBusy.value = false;
-  }
+function askToggle(env) {
+  confirm({
+    title: env.isActive ? 'Deactivate environment?' : 'Activate environment?',
+    message: env.isActive
+      ? `Environment “${env.name}” will no longer be available for test runs.`
+      : `Environment “${env.name}” will become available for test runs.`,
+    confirmLabel: env.isActive ? 'Deactivate' : 'Activate',
+    action: async () => {
+      const result = await api.post(`/api/test-environments/${env.id}/toggle-active`);
+      env.isActive = result.isActive;
+      toasts.success(result.message);
+    },
+  });
 }
 
-async function confirmDelete() {
-  deleteBusy.value = true;
-  try {
-    const result = await api.delete(`/api/test-environments/${deleteTarget.value.id}`);
-    environments.value = environments.value.filter((env) => env.id !== deleteTarget.value.id);
-    toasts.success(result.message);
-    deleteTarget.value = null;
-  } catch (e) {
-    toasts.error(e.message);
-  } finally {
-    deleteBusy.value = false;
-  }
+function askDelete(env) {
+  confirm({
+    title: 'Delete environment?',
+    message: `Delete environment “${env.name}”? Deleting an environment permanently deletes ALL its test runs.`,
+    confirmLabel: 'Delete',
+    danger: true,
+    action: async () => {
+      const result = await api.delete(`/api/test-environments/${env.id}`);
+      environments.value = environments.value.filter((item) => item.id !== env.id);
+      toasts.success(result.message);
+    },
+  });
 }
 
 onMounted(load);

@@ -11,15 +11,7 @@
       </div>
     </div>
 
-    <div
-      v-else-if="loadError"
-      class="rise flex items-center gap-3 rounded-xl border border-fail/30 bg-fail/10 p-4 text-sm text-fail"
-      style="--i: 1"
-    >
-      <AlertCircle class="h-4 w-4 shrink-0" />
-      {{ loadError }}
-      <button class="ml-auto cursor-pointer font-semibold hover:underline" @click="load">Retry</button>
-    </div>
+    <ErrorBanner v-else-if="loadError" class="rise" style="--i: 1" :message="loadError" @retry="init" />
 
     <div v-else-if="environment" class="grid items-start gap-6 lg:grid-cols-3">
       <div class="space-y-6 lg:col-span-2">
@@ -40,8 +32,8 @@
             <div class="grid grid-cols-[160px_1fr] gap-4 px-5 py-3">
               <dt class="text-xs font-semibold uppercase tracking-wider text-ink-faint">Base URL</dt>
               <dd>
-                <a :href="safeBaseUrl" target="_blank" rel="noopener" class="link inline-flex items-center gap-1.5 break-all font-mono text-xs">
-                  {{ safeBaseUrl }}
+                <a :href="environment.displayUrl" target="_blank" rel="noopener" class="link inline-flex items-center gap-1.5 break-all font-mono text-xs">
+                  {{ environment.displayUrl }}
                   <ExternalLink class="h-3 w-3 shrink-0" />
                 </a>
               </dd>
@@ -108,7 +100,7 @@
             <Pencil class="h-4 w-4" />
             Edit
           </RouterLink>
-          <button class="btn-ghost w-full" @click="toggleConfirmOpen = true">
+          <button class="btn-ghost w-full" @click="askToggle">
             <Pause v-if="environment.isActive" class="h-4 w-4" />
             <Play v-else class="h-4 w-4" />
             {{ environment.isActive ? 'Deactivate' : 'Activate' }}
@@ -120,32 +112,21 @@
         </div>
       </aside>
     </div>
-
-    <ConfirmDialog
-      :open="toggleConfirmOpen"
-      :title="environment?.isActive ? 'Deactivate environment?' : 'Activate environment?'"
-      :message="environment?.isActive
-        ? `Environment “${environment?.name}” will no longer be available for test runs.`
-        : `Environment “${environment?.name}” will become available for test runs.`"
-      :confirm-label="environment?.isActive ? 'Deactivate' : 'Activate'"
-      :busy="toggleBusy"
-      @confirm="confirmToggle"
-      @cancel="toggleConfirmOpen = false"
-    />
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { AlertCircle, ArrowLeft, Braces, ExternalLink, Globe, Pause, Pencil, Play } from 'lucide-vue-next';
+import { ArrowLeft, Braces, ExternalLink, Globe, Pause, Pencil, Play } from 'lucide-vue-next';
 import PageHeader from '../../components/ui/PageHeader.vue';
-import ConfirmDialog from '../../components/ui/ConfirmDialog.vue';
+import ErrorBanner from '../../components/ui/ErrorBanner.vue';
 import ActiveBadge from './components/ActiveBadge.vue';
 import VariablesTable from './components/VariablesTable.vue';
 import { api } from '../../api/client';
 import { useToastStore } from '../../stores/toasts';
-import { formatDateTime, stripCredentials } from './display.js';
+import { confirm } from '../../composables/useConfirm';
+import { formatDateTime } from '../../utils/format';
 
 const route = useRoute();
 const router = useRouter();
@@ -157,10 +138,6 @@ const loadError = ref('');
 const globalVariables = ref([]);
 const envVariables = ref([]);
 const varsLoading = ref(true);
-const toggleConfirmOpen = ref(false);
-const toggleBusy = ref(false);
-
-const safeBaseUrl = computed(() => stripCredentials(environment.value?.baseUrl));
 
 async function load() {
   loading.value = true;
@@ -174,11 +151,9 @@ async function load() {
     } else {
       loadError.value = e.message;
     }
-    return;
   } finally {
     loading.value = false;
   }
-  loadVariables();
 }
 
 async function loadVariables() {
@@ -198,19 +173,26 @@ function startTestRun() {
   router.push({ name: 'test-run-new', query: { environmentId: environment.value.id } });
 }
 
-async function confirmToggle() {
-  toggleBusy.value = true;
-  try {
-    const result = await api.post(`/api/test-environments/${environment.value.id}/toggle-active`);
-    environment.value.isActive = result.isActive;
-    toasts.success(result.message);
-    toggleConfirmOpen.value = false;
-  } catch (e) {
-    toasts.error(e.message);
-  } finally {
-    toggleBusy.value = false;
-  }
+function askToggle() {
+  const { isActive, name } = environment.value;
+  confirm({
+    title: isActive ? 'Deactivate environment?' : 'Activate environment?',
+    message: isActive
+      ? `Environment “${name}” will no longer be available for test runs.`
+      : `Environment “${name}” will become available for test runs.`,
+    confirmLabel: isActive ? 'Deactivate' : 'Activate',
+    action: async () => {
+      const result = await api.post(`/api/test-environments/${environment.value.id}/toggle-active`);
+      environment.value.isActive = result.isActive;
+      toasts.success(result.message);
+    },
+  });
 }
 
-onMounted(load);
+function init() {
+  load();
+  loadVariables();
+}
+
+onMounted(init);
 </script>

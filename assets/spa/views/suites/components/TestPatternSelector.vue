@@ -75,7 +75,7 @@
     <p v-if="error" class="field-error">{{ error }}</p>
     <p v-if="message" class="mt-1 text-xs text-ink-faint">{{ message }}</p>
     <p v-if="!isPlaywright && cached && lastUpdated" class="mt-1 text-xs text-ink-faint">
-      Updated: {{ formatDate(lastUpdated) }}
+      Updated: {{ formatDateTime(lastUpdated) }}
     </p>
   </div>
 </template>
@@ -84,6 +84,7 @@
 import { computed, nextTick, ref, watch } from 'vue';
 import { RefreshCw, X } from 'lucide-vue-next';
 import { api } from '../../../api/client';
+import { formatDateTime } from '../../../utils/format';
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
@@ -232,10 +233,6 @@ async function refresh() {
   } finally {
     refreshing.value = false;
   }
-}
-
-function formatDate(iso) {
-  return new Date(iso).toLocaleString();
 }
 
 watch(searchQuery, (value) => {

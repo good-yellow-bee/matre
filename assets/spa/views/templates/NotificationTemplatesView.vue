@@ -5,7 +5,7 @@
       subtitle="Customize notification messages sent via Slack and Email when test runs complete. Use template variables to include dynamic content like test results and environment info."
     >
       <template #actions>
-        <button class="btn-danger" @click="confirmResetOpen = true">
+        <button class="btn-danger" @click="askResetDefaults">
           <RotateCcw class="h-4 w-4" />
           Reset All to Defaults
         </button>
@@ -76,11 +76,9 @@
                   <button
                     class="btn-ghost btn-sm"
                     :title="template.isActive ? 'Deactivate template' : 'Activate template'"
-                    :disabled="togglingId === template.id"
-                    @click="toggleTarget = template"
+                    @click="askToggle(template)"
                   >
-                    <Loader2 v-if="togglingId === template.id" class="h-3.5 w-3.5 animate-spin" />
-                    <Pause v-else-if="template.isActive" class="h-3.5 w-3.5" />
+                    <Pause v-if="template.isActive" class="h-3.5 w-3.5" />
                     <Play v-else class="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -115,38 +113,17 @@
       </section>
     </div>
 
-    <ConfirmDialog
-      :open="confirmResetOpen"
-      title="Reset All Templates"
-      message="Reset all templates to defaults? This will overwrite any customizations you have made to subjects and bodies, and reactivate every template."
-      confirm-label="Reset All"
-      danger
-      :busy="resetting"
-      @confirm="resetDefaults"
-      @cancel="confirmResetOpen = false"
-    />
-
-    <ConfirmDialog
-      :open="!!toggleTarget"
-      :title="toggleTarget?.isActive ? 'Deactivate Template' : 'Activate Template'"
-      :message="toggleTarget?.isActive
-        ? `Deactivate the “${toggleTarget?.nameLabel}” ${toggleTarget?.channel} template? Notifications using it will stop being sent.`
-        : `Activate the “${toggleTarget?.nameLabel}” ${toggleTarget?.channel} template?`"
-      :confirm-label="toggleTarget?.isActive ? 'Deactivate' : 'Activate'"
-      :busy="togglingId !== null"
-      @confirm="confirmToggle"
-      @cancel="toggleTarget = null"
-    />
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue';
-import { Braces, Loader2, Mail, Pause, Pencil, Play, RotateCcw, Slack } from 'lucide-vue-next';
+import { Braces, Mail, Pause, Pencil, Play, RotateCcw, Slack } from 'lucide-vue-next';
 import PageHeader from '../../components/ui/PageHeader.vue';
-import ConfirmDialog from '../../components/ui/ConfirmDialog.vue';
 import { api } from '../../api/client';
 import { useToastStore } from '../../stores/toasts';
+import { confirm } from '../../composables/useConfirm';
+import { formatDate } from '../../utils/format';
 
 const toasts = useToastStore();
 
@@ -170,10 +147,6 @@ const channels = [
 const templates = ref([]);
 const variables = ref([]);
 const loading = ref(true);
-const togglingId = ref(null);
-const toggleTarget = ref(null);
-const confirmResetOpen = ref(false);
-const resetting = ref(false);
 
 const grouped = computed(() => {
   const groups = {};
@@ -182,11 +155,6 @@ const grouped = computed(() => {
   }
   return groups;
 });
-
-function formatDate(iso) {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
-}
 
 async function fetchAll() {
   loading.value = true;
@@ -204,33 +172,33 @@ async function fetchAll() {
   }
 }
 
-async function confirmToggle() {
-  const template = toggleTarget.value;
-  togglingId.value = template.id;
-  try {
-    const data = await api.post(`/api/notification-templates/${template.id}/toggle-active`);
-    template.isActive = data.isActive;
-    toasts.success(data.message);
-    toggleTarget.value = null;
-  } catch (e) {
-    toasts.error(e.message);
-  } finally {
-    togglingId.value = null;
-  }
+function askToggle(template) {
+  confirm({
+    title: template.isActive ? 'Deactivate Template' : 'Activate Template',
+    message: template.isActive
+      ? `Deactivate the “${template.nameLabel}” ${template.channel} template? Notifications using it will stop being sent.`
+      : `Activate the “${template.nameLabel}” ${template.channel} template?`,
+    confirmLabel: template.isActive ? 'Deactivate' : 'Activate',
+    action: async () => {
+      const data = await api.post(`/api/notification-templates/${template.id}/toggle-active`);
+      template.isActive = data.isActive;
+      toasts.success(data.message);
+    },
+  });
 }
 
-async function resetDefaults() {
-  resetting.value = true;
-  try {
-    const data = await api.post('/api/notification-templates/reset-defaults');
-    toasts.success(data.message);
-    confirmResetOpen.value = false;
-    await fetchAll();
-  } catch (e) {
-    toasts.error(e.message);
-  } finally {
-    resetting.value = false;
-  }
+function askResetDefaults() {
+  confirm({
+    title: 'Reset All Templates',
+    message: 'Reset all templates to defaults? This will overwrite any customizations you have made to subjects and bodies, and reactivate every template.',
+    confirmLabel: 'Reset All',
+    danger: true,
+    action: async () => {
+      const data = await api.post('/api/notification-templates/reset-defaults');
+      toasts.success(data.message);
+      await fetchAll();
+    },
+  });
 }
 
 onMounted(fetchAll);

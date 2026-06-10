@@ -44,11 +44,6 @@ class ProfileApiController extends AbstractController
     #[Route('/notifications', name: 'api_profile_notifications_update', methods: ['PUT'])]
     public function updateNotifications(Request $request): JsonResponse
     {
-        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
-        if (!$this->isCsrfTokenValid('api', $token)) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
-        }
-
         /** @var User $user */
         $user = $this->getUser();
 

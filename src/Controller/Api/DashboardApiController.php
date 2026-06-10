@@ -48,18 +48,6 @@ class DashboardApiController extends AbstractController
         // Test run statistics (last 30 days)
         $testStats = $this->testRunRepository->getStatistics(30);
 
-        // Environment statistics
-        $environments = $this->testEnvironmentRepository->findAllOrdered();
-        $activeEnvironments = $this->testEnvironmentRepository->findActive();
-
-        // Suite statistics
-        $suites = $this->testSuiteRepository->findAllOrdered();
-        $activeSuites = $this->testSuiteRepository->findActive();
-        $scheduledSuites = $this->testSuiteRepository->findScheduled();
-
-        // Running tests
-        $runningTests = $this->testRunRepository->findRunning();
-
         return $this->json([
             'users' => [
                 'total' => $totalUsers,
@@ -75,16 +63,16 @@ class DashboardApiController extends AbstractController
                 'period' => '30 days',
             ],
             'environments' => [
-                'total' => count($environments),
-                'active' => count($activeEnvironments),
+                'total' => $this->testEnvironmentRepository->countAll(),
+                'active' => $this->testEnvironmentRepository->countActive(),
             ],
             'suites' => [
-                'total' => count($suites),
-                'active' => count($activeSuites),
-                'scheduled' => count($scheduledSuites),
+                'total' => $this->testSuiteRepository->countAll(),
+                'active' => $this->testSuiteRepository->countActive(),
+                'scheduled' => $this->testSuiteRepository->countScheduled(),
             ],
             'activity' => [
-                'runningNow' => count($runningTests),
+                'runningNow' => $this->testRunRepository->countRunning(),
             ],
             'system' => [
                 'symfonyVersion' => Kernel::VERSION,
@@ -93,6 +81,12 @@ class DashboardApiController extends AbstractController
                 'debug' => $this->debug,
             ],
         ]);
+    }
+
+    #[Route('/running-count', name: 'api_dashboard_running_count', methods: ['GET'])]
+    public function runningCount(): JsonResponse
+    {
+        return $this->json(['runningNow' => $this->testRunRepository->countRunning()]);
     }
 
     #[Route('/environment-stats', name: 'api_dashboard_environment_stats', methods: ['GET'])]

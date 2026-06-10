@@ -141,7 +141,7 @@ class TestEnvironmentApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $env = $this->createTestEnvironment();
 
-        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $env->getId() . '/toggle-active');
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $env->getId() . '/toggle-active', [], self::INVALID_CSRF_HEADERS);
 
         $this->assertJsonError($response, 403, 'CSRF');
     }
@@ -152,7 +152,7 @@ class TestEnvironmentApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $env = $this->createTestEnvironment();
 
-        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/' . $env->getId());
+        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/' . $env->getId(), [], self::INVALID_CSRF_HEADERS);
 
         $this->assertJsonError($response, 403, 'CSRF');
     }
@@ -169,7 +169,7 @@ class TestEnvironmentApiControllerTest extends WebTestCase
 
         $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $env->getId() . '/env-variables', [
             'variables' => [['name' => 'NEW_VAR', 'value' => 'value']],
-        ]);
+        ], self::INVALID_CSRF_HEADERS);
 
         $this->assertJsonError($response, 403, 'CSRF');
     }
@@ -192,7 +192,7 @@ class TestEnvironmentApiControllerTest extends WebTestCase
 
         $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $env->getId() . '/env-variables/import', [
             'content' => 'API_KEY=secret123',
-        ]);
+        ], self::INVALID_CSRF_HEADERS);
 
         $this->assertJsonError($response, 403, 'CSRF');
     }

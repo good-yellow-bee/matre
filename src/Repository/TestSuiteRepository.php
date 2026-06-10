@@ -52,16 +52,56 @@ class TestSuiteRepository extends ServiceEntityRepository
     }
 
     /**
-     * Find all test suites ordered by name.
+     * Find all test suites ordered by name, with environments eagerly loaded.
      *
      * @return TestSuite[]
      */
     public function findAllOrdered(): array
     {
         return $this->createQueryBuilder('s')
+            ->leftJoin('s.environments', 'e')
+            ->addSelect('e')
             ->orderBy('s.name', 'ASC')
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * Count total test suites.
+     */
+    public function countAll(): int
+    {
+        return (int) $this->createQueryBuilder('s')
+            ->select('COUNT(s.id)')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * Count active test suites.
+     */
+    public function countActive(): int
+    {
+        return (int) $this->createQueryBuilder('s')
+            ->select('COUNT(s.id)')
+            ->andWhere('s.isActive = :active')
+            ->setParameter('active', true)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * Count scheduled (active with cron expression) test suites.
+     */
+    public function countScheduled(): int
+    {
+        return (int) $this->createQueryBuilder('s')
+            ->select('COUNT(s.id)')
+            ->andWhere('s.isActive = :active')
+            ->andWhere('s.cronExpression IS NOT NULL')
+            ->setParameter('active', true)
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 
     /**

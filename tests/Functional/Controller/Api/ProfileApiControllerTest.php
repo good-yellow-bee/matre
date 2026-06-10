@@ -70,7 +70,7 @@ class ProfileApiControllerTest extends WebTestCase
 
         $response = $this->jsonRequest($client, 'PUT', self::BASE_URL . '/notifications', [
             'notificationsEnabled' => true,
-        ]);
+        ], self::INVALID_CSRF_HEADERS);
 
         $this->assertJsonError($response, 403, 'CSRF');
     }
@@ -86,7 +86,7 @@ class ProfileApiControllerTest extends WebTestCase
             'notificationTrigger' => 'all',
             'notifyByEmail' => true,
             'notificationEnvironments' => [$env->getId()],
-        ], csrfTokenId: 'api');
+        ]);
 
         $data = $this->assertJsonResponse($response, 200);
         $this->assertTrue($data['success']);

@@ -117,7 +117,7 @@ class EnvVariableApiControllerTest extends WebTestCase
         $response = $this->jsonRequest($client, 'POST', self::BASE_URL, [
             'name' => "NEW_VAR_{$suffix}",
             'value' => 'new_value',
-        ]);
+        ], self::INVALID_CSRF_HEADERS);
 
         $this->assertJsonError($response, 403, 'CSRF');
     }
@@ -148,7 +148,7 @@ class EnvVariableApiControllerTest extends WebTestCase
         $response = $this->jsonRequest($client, 'PUT', self::BASE_URL . '/' . $var->getId(), [
             'name' => $var->getName(),
             'value' => $newValue,
-        ]);
+        ], self::INVALID_CSRF_HEADERS);
 
         $this->assertJsonError($response, 403, 'CSRF');
     }
@@ -169,7 +169,7 @@ class EnvVariableApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
         $var = $this->createEnvVariable();
 
-        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/' . $var->getId());
+        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/' . $var->getId(), [], self::INVALID_CSRF_HEADERS);
 
         $this->assertJsonError($response, 403, 'CSRF');
     }

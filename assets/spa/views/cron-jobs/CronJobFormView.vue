@@ -176,7 +176,7 @@
           <strong class="font-semibold text-ink">Last execution:</strong>
           {{ formatDate(lastExecution.lastRunAt) }}
         </span>
-        <CronStatusBadge :status="lastExecution.lastStatus" />
+        <StatusBadge :status="lastExecution.lastStatus" />
       </div>
 
       <!-- Actions -->
@@ -213,9 +213,10 @@ import { useRoute, useRouter } from 'vue-router';
 import { ArrowLeft, CalendarClock, Check, ChevronDown, History, Loader2, Power, RotateCcw } from 'lucide-vue-next';
 import PageHeader from '../../components/ui/PageHeader.vue';
 import Toggle from '../../components/ui/Toggle.vue';
-import CronStatusBadge from './components/CronStatusBadge.vue';
+import StatusBadge from '../../components/ui/StatusBadge.vue';
 import { api } from '../../api/client';
 import { useToastStore } from '../../stores/toasts';
+import { formatDate } from '../../utils/format';
 
 const route = useRoute();
 const router = useRouter();
@@ -278,10 +279,6 @@ const isFormValid = computed(() => {
   if (!form.name || !form.cronExpression || !form.command) return false;
   return !Object.keys(errors).length;
 });
-
-function formatDate(iso) {
-  return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
 
 function onNameInput() {
   nameValid.value = false;
@@ -380,7 +377,8 @@ async function fetchCronJob() {
     form.isActive = data.isActive ?? true;
     originalData.value = { ...form };
     lastExecution.value = { lastStatus: data.lastStatus, lastRunAt: data.lastRunAt };
-    await Promise.all([validateName(), validateCron()]);
+    nameValid.value = true;
+    cronValid.value = true;
   } catch (e) {
     toasts.error(e.status === 404 ? 'Cron job not found' : 'Failed to load cron job');
     router.push({ name: 'cron-jobs' });
@@ -431,7 +429,8 @@ async function submit() {
 }
 
 onMounted(async () => {
-  await fetchCommands();
-  if (isEditMode.value) await fetchCronJob();
+  const tasks = [fetchCommands()];
+  if (isEditMode.value) tasks.push(fetchCronJob());
+  await Promise.all(tasks);
 });
 </script>

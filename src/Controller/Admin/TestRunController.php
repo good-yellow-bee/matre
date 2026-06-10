@@ -23,32 +23,12 @@ class TestRunController extends AbstractController
     ) {
     }
 
-    #[Route('', name: 'admin_test_run_index', methods: ['GET'])]
-    public function index(): Response
-    {
-        return $this->render('spa/index.html.twig');
-    }
-
-    #[Route('/new', name: 'admin_test_run_new', methods: ['GET'])]
-    public function new(): Response
-    {
-        return $this->render('spa/index.html.twig');
-    }
-
-    #[Route('/{id}', name: 'admin_test_run_show', methods: ['GET'], requirements: ['id' => '\d+'])]
-    public function show(): Response
-    {
-        return $this->render('spa/index.html.twig');
-    }
-
     #[Route('/{id}/artifacts/{filename}', name: 'admin_test_run_artifact', methods: ['GET'], requirements: ['id' => '\d+', 'filename' => '.+'])]
     public function artifact(int $id, string $filename): Response
     {
         $run = $this->testRunRepository->find($id);
         if (!$run) {
-            $this->addFlash('error', sprintf('Test run #%d does not exist.', $id));
-
-            return $this->redirectToRoute('admin_test_run_index');
+            throw $this->createNotFoundException(sprintf('Test run #%d does not exist.', $id));
         }
 
         // Security: only allow specific extensions

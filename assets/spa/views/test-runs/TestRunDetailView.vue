@@ -20,11 +20,7 @@
       </EmptyState>
     </div>
 
-    <div v-else-if="loadError" class="flex items-center gap-3 rounded-xl border border-fail/30 bg-fail/10 p-4 text-sm text-fail">
-      <AlertCircle class="h-4 w-4 shrink-0" />
-      {{ loadError }}
-      <button class="btn-ghost btn-sm ml-auto" @click="init">Retry</button>
-    </div>
+    <ErrorBanner v-else-if="loadError" :message="loadError" @retry="init" />
 
     <template v-else-if="run">
       <PageHeader :title="`Test Run #${run.id}`">
@@ -427,17 +423,6 @@
       </Modal>
 
       <Lightbox :src="lightboxSrc" :alt="lightboxName" @close="lightboxSrc = ''" />
-
-      <ConfirmDialog
-        :open="!!confirmAction"
-        :title="confirmAction?.title || ''"
-        :message="confirmAction?.message || ''"
-        :confirm-label="confirmAction?.confirmLabel || 'Confirm'"
-        :danger="confirmAction?.danger"
-        :busy="confirmBusy"
-        @confirm="executeAction"
-        @cancel="confirmAction = null"
-      />
     </template>
   </div>
 </template>
@@ -455,16 +440,14 @@ import { useAuthStore } from '../../stores/auth';
 import PageHeader from '../../components/ui/PageHeader.vue';
 import StatusBadge from '../../components/ui/StatusBadge.vue';
 import Modal from '../../components/ui/Modal.vue';
-import ConfirmDialog from '../../components/ui/ConfirmDialog.vue';
+import ErrorBanner from '../../components/ui/ErrorBanner.vue';
 import EmptyState from '../../components/ui/EmptyState.vue';
 import AnsiLog from './components/AnsiLog.vue';
 import StepTree from './components/StepTree.vue';
 import Lightbox from './components/Lightbox.vue';
-import { capitalize, formatDateTime } from './utils/format';
+import { confirm } from '../../composables/useConfirm';
+import { capitalize, formatDateTime } from '../../utils/format';
 
-const ACTIVE_STATUSES = ['pending', 'preparing', 'cloning', 'waiting', 'running', 'reporting'];
-const WATCHABLE_STATUSES = ['preparing', 'cloning', 'running'];
-const TERMINAL_STATUSES = ['completed', 'failed', 'cancelled'];
 const POLL_INTERVAL = 2000;
 
 const route = useRoute();
@@ -489,15 +472,11 @@ const stepsModal = ref({ open: false, result: null });
 const outputModal = ref({ open: false, loading: false, testName: '', status: '', text: '' });
 const lightboxSrc = ref('');
 const lightboxName = ref('');
-const confirmAction = ref(null);
-const confirmBusy = ref(false);
 
-const isActive = computed(() => !!run.value && ACTIVE_STATUSES.includes(run.value.status));
-const isTerminal = computed(() => !!run.value && TERMINAL_STATUSES.includes(run.value.status));
-const isLiveOutput = computed(() => !!run.value && ['preparing', 'cloning', 'running'].includes(run.value.status));
-const watchLiveVisible = computed(
-  () => !!run.value && WATCHABLE_STATUSES.includes(run.value.status) && !!auth.urls.novnc,
-);
+const isActive = computed(() => !!run.value && run.value.isFinished === false);
+const isTerminal = computed(() => !!run.value && run.value.isFinished !== false);
+const isLiveOutput = computed(() => !!run.value && run.value.isWatchable === true);
+const watchLiveVisible = computed(() => isLiveOutput.value && !!auth.urls.novnc);
 
 const counts = computed(() => run.value?.resultCounts || { passed: 0, failed: 0, broken: 0, skipped: 0, total: 0 });
 
@@ -599,10 +578,12 @@ async function poll() {
     liveCurrentTest.value = data.currentTest;
     liveProgress.value = data.progress;
     run.value.status = data.status;
+    run.value.isFinished = data.isFinished;
+    run.value.isWatchable = data.isWatchable;
     if (data.resultCounts) run.value.resultCounts = data.resultCounts;
     if (data.results?.length) mergeLiveResults(data.results);
 
-    if (TERMINAL_STATUSES.includes(data.status)) {
+    if (data.isFinished !== false) {
       stopPolling();
       await loadRun({ silent: true });
     }
@@ -668,45 +649,49 @@ function openLightbox(filename) {
 
 function requestAction(type) {
   const actions = {
-    cancel: { title: `Cancel run #${runId.value}`, message: 'Cancel this test run?', confirmLabel: 'Cancel Run', danger: true },
-    retry: { title: 'Retry all tests', message: 'Create a new run with the same configuration?', confirmLabel: 'Retry All' },
+    cancel: {
+      title: `Cancel run #${runId.value}`,
+      message: 'Cancel this test run?',
+      confirmLabel: 'Cancel Run',
+      danger: true,
+      action: async () => {
+        const data = await api.post(`/api/test-runs/${runId.value}/cancel`);
+        toasts.success(data.message || 'Run cancelled');
+        stopPolling();
+        await loadRun({ silent: true });
+      },
+    },
+    retry: {
+      title: 'Retry all tests',
+      message: 'Create a new run with the same configuration?',
+      confirmLabel: 'Retry All',
+      action: async () => {
+        const data = await api.post(`/api/test-runs/${runId.value}/retry`);
+        toasts.success(`New run #${data.run.id} created`);
+        router.push({ name: 'test-run-detail', params: { id: data.run.id } });
+      },
+    },
     retryFailed: {
       title: 'Retry failed tests',
       message: 'Retry failed test(s) with infrastructure errors? Only WebDriver/infrastructure failures are retryable.',
       confirmLabel: 'Retry Failed',
+      action: async () => {
+        const data = await api.post(`/api/test-runs/${runId.value}/retry-failed`);
+        toasts.success(data.message || `New run #${data.run.id} created`);
+        router.push({ name: 'test-run-detail', params: { id: data.run.id } });
+      },
     },
-    resend: { title: 'Resend notification', message: 'Resend notification via Slack/Email?', confirmLabel: 'Resend' },
+    resend: {
+      title: 'Resend notification',
+      message: 'Resend notification via Slack/Email?',
+      confirmLabel: 'Resend',
+      action: async () => {
+        const data = await api.post(`/api/test-runs/${runId.value}/resend-notification`);
+        toasts.success(data.message || 'Notification sent');
+      },
+    },
   };
-  confirmAction.value = { type, ...actions[type] };
-}
-
-async function executeAction() {
-  const { type } = confirmAction.value;
-  confirmBusy.value = true;
-  try {
-    if (type === 'cancel') {
-      const data = await api.post(`/api/test-runs/${runId.value}/cancel`);
-      toasts.success(data.message || 'Run cancelled');
-      stopPolling();
-      await loadRun({ silent: true });
-    } else if (type === 'retry') {
-      const data = await api.post(`/api/test-runs/${runId.value}/retry`);
-      toasts.success(`New run #${data.run.id} created`);
-      router.push({ name: 'test-run-detail', params: { id: data.run.id } });
-    } else if (type === 'retryFailed') {
-      const data = await api.post(`/api/test-runs/${runId.value}/retry-failed`);
-      toasts.success(data.message || `New run #${data.run.id} created`);
-      router.push({ name: 'test-run-detail', params: { id: data.run.id } });
-    } else if (type === 'resend') {
-      const data = await api.post(`/api/test-runs/${runId.value}/resend-notification`);
-      toasts.success(data.message || 'Notification sent');
-    }
-    confirmAction.value = null;
-  } catch (e) {
-    toasts.error(e.message);
-  } finally {
-    confirmBusy.value = false;
-  }
+  confirm(actions[type]);
 }
 
 async function init() {

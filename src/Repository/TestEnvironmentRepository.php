@@ -67,6 +67,30 @@ class TestEnvironmentRepository extends ServiceEntityRepository
     }
 
     /**
+     * Count total environments.
+     */
+    public function countAll(): int
+    {
+        return (int) $this->createQueryBuilder('e')
+            ->select('COUNT(e.id)')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * Count active environments.
+     */
+    public function countActive(): int
+    {
+        return (int) $this->createQueryBuilder('e')
+            ->select('COUNT(e.id)')
+            ->andWhere('e.isActive = :active')
+            ->setParameter('active', true)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
      * Find environment by name.
      */
     public function findByName(string $name): ?TestEnvironment

@@ -129,6 +129,25 @@ class TestRunRepository extends ServiceEntityRepository
     }
 
     /**
+     * Count currently running test runs.
+     */
+    public function countRunning(): int
+    {
+        return (int) $this->createQueryBuilder('r')
+            ->select('COUNT(r.id)')
+            ->andWhere('r.status IN (:statuses)')
+            ->setParameter('statuses', [
+                TestRun::STATUS_PREPARING,
+                TestRun::STATUS_CLONING,
+                TestRun::STATUS_WAITING,
+                TestRun::STATUS_RUNNING,
+                TestRun::STATUS_REPORTING,
+            ])
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
      * Find pending test runs.
      *
      * @return TestRun[]

@@ -48,26 +48,7 @@ class TestSuiteApiController extends AbstractController
         $suites = $this->testSuiteRepository->findAllOrdered();
 
         return $this->json(array_map(
-            fn (TestSuite $suite) => [
-                'id' => $suite->getId(),
-                'name' => $suite->getName(),
-                'type' => $suite->getType(),
-                'typeLabel' => $suite->getTypeLabel(),
-                'testPattern' => $suite->getTestPattern(),
-                'excludedTests' => $suite->getExcludedTests(),
-                'cronExpression' => $suite->getCronExpression(),
-                'environments' => array_map(
-                    fn ($env) => [
-                        'id' => $env->getId(),
-                        'name' => $env->getName(),
-                        'code' => $env->getCode(),
-                    ],
-                    $suite->getEnvironments()->toArray(),
-                ),
-                'isActive' => $suite->getIsActive(),
-                'createdAt' => $suite->getCreatedAt()->format('c'),
-                'updatedAt' => $suite->getUpdatedAt()?->format('c'),
-            ],
+            fn (TestSuite $suite) => $this->serializeSuite($suite),
             $suites,
         ));
     }
@@ -105,22 +86,7 @@ class TestSuiteApiController extends AbstractController
             return $this->json(['error' => 'Test suite not found'], 404);
         }
 
-        return $this->json([
-            'id' => $suite->getId(),
-            'name' => $suite->getName(),
-            'type' => $suite->getType(),
-            'testPattern' => $suite->getTestPattern(),
-            'excludedTests' => $suite->getExcludedTests(),
-            'description' => $suite->getDescription(),
-            'cronExpression' => $suite->getCronExpression(),
-            'isActive' => $suite->getIsActive(),
-            'environments' => array_map(
-                fn ($env) => $env->getId(),
-                $suite->getEnvironments()->toArray(),
-            ),
-            'createdAt' => $suite->getCreatedAt()->format('c'),
-            'updatedAt' => $suite->getUpdatedAt()?->format('c'),
-        ]);
+        return $this->json($this->serializeSuite($suite, true));
     }
 
     #[Route('/{id}/environments', name: 'api_test_suite_environments', methods: ['GET'], requirements: ['id' => '\d+'])]
@@ -141,11 +107,6 @@ class TestSuiteApiController extends AbstractController
     #[IsGranted('ROLE_ADMIN')]
     public function create(Request $request): JsonResponse
     {
-        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
-        if (!$this->isCsrfTokenValid('api', $token)) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
-        }
-
         $data = json_decode($request->getContent(), true) ?? [];
 
         $errors = $this->validateSuiteData($data);
@@ -170,11 +131,6 @@ class TestSuiteApiController extends AbstractController
     #[IsGranted('ROLE_ADMIN')]
     public function update(int $id, Request $request): JsonResponse
     {
-        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
-        if (!$this->isCsrfTokenValid('api', $token)) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
-        }
-
         $suite = $this->testSuiteRepository->find($id);
 
         if (!$suite) {
@@ -199,17 +155,12 @@ class TestSuiteApiController extends AbstractController
 
     #[Route('/{id}/toggle-active', name: 'api_test_suite_toggle_active', methods: ['POST'], requirements: ['id' => '\d+'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function toggleActive(int $id, Request $request): JsonResponse
+    public function toggleActive(int $id): JsonResponse
     {
         $suite = $this->testSuiteRepository->find($id);
 
         if (!$suite) {
             return $this->json(['error' => 'Test suite not found'], 404);
-        }
-
-        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
-        if (!$this->isCsrfTokenValid('api', $token)) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
         }
 
         $suite->setIsActive(!$suite->getIsActive());
@@ -224,17 +175,12 @@ class TestSuiteApiController extends AbstractController
 
     #[Route('/{id}/duplicate', name: 'api_test_suite_duplicate', methods: ['POST'], requirements: ['id' => '\d+'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function duplicate(int $id, Request $request): JsonResponse
+    public function duplicate(int $id): JsonResponse
     {
         $suite = $this->testSuiteRepository->find($id);
 
         if (!$suite) {
             return $this->json(['error' => 'Test suite not found'], 404);
-        }
-
-        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
-        if (!$this->isCsrfTokenValid('api', $token)) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
         }
 
         $copy = new TestSuite();
@@ -259,17 +205,12 @@ class TestSuiteApiController extends AbstractController
 
     #[Route('/{id}', name: 'api_test_suite_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function delete(int $id, Request $request): JsonResponse
+    public function delete(int $id): JsonResponse
     {
         $suite = $this->testSuiteRepository->find($id);
 
         if (!$suite) {
             return $this->json(['error' => 'Test suite not found'], 404);
-        }
-
-        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
-        if (!$this->isCsrfTokenValid('api', $token)) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
         }
 
         $name = $suite->getName();
@@ -340,6 +281,41 @@ class TestSuiteApiController extends AbstractController
                 'message' => 'Invalid cron expression',
             ]);
         }
+    }
+
+    private function serializeSuite(TestSuite $suite, bool $detail = false): array
+    {
+        $data = [
+            'id' => $suite->getId(),
+            'name' => $suite->getName(),
+            'type' => $suite->getType(),
+            'typeLabel' => $suite->getTypeLabel(),
+            'testPattern' => $suite->getTestPattern(),
+            'excludedTests' => $suite->getExcludedTests(),
+            'cronExpression' => $suite->getCronExpression(),
+            'isActive' => $suite->getIsActive(),
+            'createdAt' => $suite->getCreatedAt()->format('c'),
+            'updatedAt' => $suite->getUpdatedAt()?->format('c'),
+        ];
+
+        if ($detail) {
+            $data['description'] = $suite->getDescription();
+            $data['environments'] = array_map(
+                fn ($env) => $env->getId(),
+                $suite->getEnvironments()->toArray(),
+            );
+        } else {
+            $data['environments'] = array_map(
+                fn ($env) => [
+                    'id' => $env->getId(),
+                    'name' => $env->getName(),
+                    'code' => $env->getCode(),
+                ],
+                $suite->getEnvironments()->toArray(),
+            );
+        }
+
+        return $data;
     }
 
     /** @return array<string, string> */

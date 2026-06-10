@@ -18,7 +18,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { Eye, EyeOff } from 'lucide-vue-next';
-import { isSensitiveName } from '../display.js';
+import { isSensitiveName } from '../../../utils/sensitive';
 
 const props = defineProps({
   name: { type: String, required: true },

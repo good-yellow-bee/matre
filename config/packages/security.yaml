@@ -82,13 +82,10 @@ security:
         - { path: ^/api/me$, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: ROLE_USER }
 
-        # Admin panel - require authentication
-        - { path: ^/admin, roles: ROLE_USER }
-
-        # Specific admin routes requiring ROLE_ADMIN
-        # (Uncomment and customize as needed)
-        # - { path: ^/admin/users, roles: ROLE_ADMIN }
-        # - { path: ^/admin/settings, roles: ROLE_ADMIN }
+        # Admin panel: user-accessible pages first, everything else requires ROLE_ADMIN
+        - { path: ^/admin/(profile|test-history), roles: ROLE_USER }
+        - { path: ^/admin/?$, roles: ROLE_USER }
+        - { path: ^/admin, roles: ROLE_ADMIN }
 
     # Role hierarchy (admin inherits all user permissions)
     role_hierarchy:
