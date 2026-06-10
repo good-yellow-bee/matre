@@ -15,7 +15,9 @@ export function setUnauthorizedHandler(handler) {
 
 function getCsrfToken() {
   if (!csrfToken) {
-    // crypto.randomUUID is unavailable in non-HTTPS contexts; getRandomValues always works
+    // Stateless CSRF (SameOriginCsrfTokenManager): the server issues no tokens — it validates same-origin
+    // signals plus any token of 24+ chars, so a client-generated random value works. 24 bytes -> 48 hex chars.
+    // (crypto.randomUUID is unavailable in non-HTTPS contexts; getRandomValues always works.)
     csrfToken = Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => b.toString(16).padStart(2, '0')).join('');
   }
   return csrfToken;

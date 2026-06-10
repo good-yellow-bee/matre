@@ -72,12 +72,15 @@ test.describe('test run detail (latest failed run)', () => {
     await expect(artifacts.locator('img').first()).toBeVisible();
   });
 
-  test('steps modal opens and closes when steps are available', async ({ page }) => {
+  test('steps modal opens and closes when the run has results', async ({ page }) => {
     await openLatestFailedRun(page);
-    const stepsButton = page.getByRole('button', { name: 'Steps' }).first();
-    if (await stepsButton.count() === 0) {
-      test.skip(true, 'Run has no per-test steps button');
+    // Gate on result rows, not the button itself — a missing Steps button on a run WITH results is a regression
+    const resultRows = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Test Results' }) }).locator('tbody tr');
+    if (await resultRows.count() === 0) {
+      test.skip(true, 'Run has no test results');
     }
+    const stepsButton = page.getByRole('button', { name: 'Steps' }).first();
+    await expect(stepsButton).toBeVisible();
     await stepsButton.click();
 
     const dialog = page.getByRole('dialog');

@@ -134,6 +134,7 @@ jobs:
         run: bin/console doctrine:migrations:migrate --env=test --no-interaction
 
       - name: Load fixtures
+        # --append: a plain load purges tables, wiping migration-seeded data (default notification templates)
         run: bin/console doctrine:fixtures:load --env=test --no-interaction --append
 
       - name: Run PHPUnit smoke tests
@@ -374,6 +375,7 @@ jobs:
         run: |
           bin/console doctrine:database:create --env=test --if-not-exists
           bin/console doctrine:migrations:migrate --env=test --no-interaction
+          # --append keeps migration-seeded data (default notification templates)
           bin/console doctrine:fixtures:load --env=test --no-interaction --append
 
       - name: Start Symfony server

@@ -281,7 +281,7 @@ class TestRunApiController extends AbstractController
                 $output = $this->readTailOfFile($outputPath, 102400);
             }
         } else {
-            // Fallback to existing behavior for non-group runs
+            // Non-group runs read the run-level output file
             $outputPath = $run->getOutputFilePath();
             if ($outputPath && file_exists($outputPath)) {
                 $output = $this->readTailOfFile($outputPath, 102400);
@@ -418,7 +418,6 @@ class TestRunApiController extends AbstractController
                 'id' => $run->getExecutedBy()->getId(),
                 'username' => $run->getExecutedBy()->getUsername(),
             ] : null,
-            // Use pre-fetched counts if provided, otherwise fall back to entity method
             'resultCounts' => $resultCounts ?? $run->getResultCounts(),
             'canBeCancelled' => $run->canBeCancelled(),
             'isFinished' => $run->isFinished(),

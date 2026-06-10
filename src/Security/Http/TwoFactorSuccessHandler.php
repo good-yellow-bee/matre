@@ -13,7 +13,7 @@ use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Http\Authentication\AuthenticationSuccessHandlerInterface;
 
 /**
- * Successful 2FA code check: JSON for SPA requests, redirect for the legacy form.
+ * Successful 2FA code check: JSON for SPA requests, redirect to the dashboard for plain browser navigation.
  */
 class TwoFactorSuccessHandler implements AuthenticationSuccessHandlerInterface
 {

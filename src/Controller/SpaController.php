@@ -10,6 +10,8 @@ use Symfony\Component\Routing\Attribute\Route;
 
 /**
  * Serves the SPA shell for all client-routed paths (lowest priority, GET only).
+ *
+ * The named /login and /2fa-setup routes exist because security code generates URLs for them (app_login, 2fa_setup).
  */
 class SpaController extends AbstractController
 {

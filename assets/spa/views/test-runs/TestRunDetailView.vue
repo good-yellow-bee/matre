@@ -622,7 +622,7 @@ function openSteps(result) {
 }
 
 function onStepsLoaded({ testName }) {
-  // Backfill test name from Allure data (mirrors legacy test-name-updated event)
+  // Backfill test name from Allure data — DB rows can hold a stale/Unknown name
   if (!testName || testName === 'Unknown') return;
   const row = results.value.find((result) => result.id === stepsModal.value.result?.id);
   if (row && row.testName !== testName) row.testName = testName;

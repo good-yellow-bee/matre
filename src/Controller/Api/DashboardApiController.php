@@ -116,7 +116,8 @@ class DashboardApiController extends AbstractController
             ];
 
             if ($runs['current']) {
-                $counts = $resultCounts[$envId];
+                // A run can finish with zero result rows (e.g. generation failure)
+                $counts = $resultCounts[$envId] ?? ['passed' => 0, 'failed' => 0, 'skipped' => 0, 'broken' => 0, 'total' => 0];
                 $passRate = $counts['total'] > 0 ? round($counts['passed'] / $counts['total'] * 100, 1) : 0;
 
                 $entry['lastRun'] = [

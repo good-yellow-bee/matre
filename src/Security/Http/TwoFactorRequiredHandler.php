@@ -13,7 +13,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 
 /**
- * Access attempt while 2FA is pending: 401 JSON for SPA requests, redirect to the 2FA form otherwise.
+ * Access attempt while 2FA is pending: 401 JSON for SPA requests, redirect to the /2fa SPA route otherwise.
  */
 class TwoFactorRequiredHandler implements AuthenticationRequiredHandlerInterface
 {

@@ -8,7 +8,7 @@ const COLOR_MAP = {
   96: 'ansi-bright-cyan', 97: 'ansi-bright-white',
 };
 
-// Convert ANSI escape codes to HTML with styled spans (ported from legacy show.html.twig)
+// Convert ANSI escape codes to HTML with styled spans
 export function ansiToHtml(text) {
   if (!text) return text;
 

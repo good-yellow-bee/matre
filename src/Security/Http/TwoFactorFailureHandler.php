@@ -15,7 +15,7 @@ use Symfony\Component\Security\Http\SecurityRequestAttributes;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * Failed 2FA code check: 401 JSON for SPA requests, redirect with session error for the legacy form.
+ * Failed 2FA code check: 401 JSON for SPA requests, redirect to the /2fa SPA route for plain browser navigation.
  */
 class TwoFactorFailureHandler implements AuthenticationFailureHandlerInterface
 {

@@ -178,7 +178,7 @@ function setMode(value) {
   form.environmentId = null;
 }
 
-// Mirror legacy admin controller: derive run type from suite type
+// Derive run type from the selected suite.s type
 function deriveType(suite) {
   if (suite?.type?.startsWith('playwright')) return 'playwright';
   return 'mftf';

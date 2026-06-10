@@ -20,6 +20,7 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
  *
  * When Settings.enforce2fa is true, users who haven't set up 2FA
  * will be redirected to the setup page on any admin route access.
+ * API requests receive 403 JSON (code 2FA_SETUP_REQUIRED) instead of a redirect.
  */
 class TwoFactorEnforcementSubscriber implements EventSubscriberInterface
 {

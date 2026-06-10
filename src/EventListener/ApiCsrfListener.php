@@ -14,7 +14,7 @@ use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 /**
  * Validates the X-CSRF-Token header for all mutating API requests.
  *
- * Runs after the firewall (priority 8) so authentication errors take precedence.
+ * Runs at priority 6 — just below the firewall listener (priority 8) — so authentication errors take precedence.
  */
 #[AsEventListener(event: KernelEvents::REQUEST, priority: 6)]
 class ApiCsrfListener
@@ -33,7 +33,8 @@ class ApiCsrfListener
         }
 
         $request = $event->getRequest();
-        $path = $request->getPathInfo();
+        // Decode the path as the router does (getPathInfo() is raw) so percent-encoded /api requests can't slip past
+        $path = rawurldecode($request->getPathInfo());
 
         if (!str_starts_with($path, '/api/') || '/api/login' === $path) {
             return;

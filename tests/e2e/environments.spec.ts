@@ -6,7 +6,7 @@ test.describe('environments', () => {
     await expect(page.locator('h1')).toHaveText('Test Environments');
 
     // Scope to the DataTable card — the Symfony dev toolbar injects its own hidden tables.
-    // Data-agnostic: at least one row (local has 6, CI fixtures seed 2).
+    // Data-agnostic: at least one row (CI fixtures seed 2; local datasets vary).
     const rows = page.locator('.card tbody tr');
     await expect(rows.first()).toBeVisible();
 
