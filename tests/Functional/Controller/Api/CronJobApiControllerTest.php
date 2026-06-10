@@ -164,8 +164,18 @@ class CronJobApiControllerTest extends WebTestCase
 
     public function testToggleActiveSucceeds(): void
     {
-        // Skip - CSRF session handling in functional tests needs refactoring
-        $this->markTestSkipped('CSRF session handling in functional tests needs refactoring');
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $job = $this->createCronJob(active: true);
+
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $job->getId() . '/toggle-active');
+        $data = $this->assertJsonResponse($response, 200);
+
+        $this->assertTrue($data['success']);
+        $this->assertFalse($data['isActive']);
+
+        $this->getEntityManager()->refresh($job);
+        $this->assertFalse($job->getIsActive());
     }
 
     // =====================
@@ -185,8 +195,11 @@ class CronJobApiControllerTest extends WebTestCase
 
     public function testRunSucceeds(): void
     {
-        // Skip - CSRF session handling in functional tests needs refactoring
-        $this->markTestSkipped('CSRF session handling in functional tests needs refactoring');
+        // CronJobMessage is not routed to a transport (messenger.yaml), so dispatch is SYNCHRONOUS:
+        // CronJobMessageHandler runs the job's console command in-process via Application::doRun().
+        // Triggering /run here would execute the job command (e.g. app:test:run) for real, spawning the
+        // test runner / Docker, which must never happen from the test suite.
+        $this->markTestSkipped('POST /run dispatches CronJobMessage synchronously and executes the job command in-process (would run app:test:run for real)');
     }
 
     // =====================
@@ -206,8 +219,16 @@ class CronJobApiControllerTest extends WebTestCase
 
     public function testDeleteSucceeds(): void
     {
-        // Skip - CSRF session handling in functional tests needs refactoring
-        $this->markTestSkipped('CSRF session handling in functional tests needs refactoring');
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $job = $this->createCronJob();
+        $jobId = $job->getId();
+
+        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/' . $jobId);
+        $data = $this->assertJsonResponse($response, 200);
+
+        $this->assertTrue($data['success']);
+        $this->assertNull($this->getEntityManager()->getRepository(CronJob::class)->find($jobId));
     }
 
     public function testDeleteReturns404ForNonExistent(): void

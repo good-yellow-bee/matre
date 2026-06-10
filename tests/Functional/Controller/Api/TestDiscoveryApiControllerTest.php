@@ -181,8 +181,10 @@ class TestDiscoveryApiControllerTest extends WebTestCase
 
     public function testRefreshSucceeds(): void
     {
-        // Skip - CSRF session handling in functional tests needs refactoring
-        // Also would require mocking TestDiscoveryService
-        $this->markTestSkipped('CSRF + service mocking required');
+        // POST /refresh calls TestDiscoveryService::refreshCache(), which performs a real git clone
+        // of TEST_MODULE_REPO (no dev path in the test env). That requires network + git infra and
+        // would mutate the shared module cache, so it cannot run in the functional suite.
+        // CSRF rejection is covered by testRefreshRequiresCsrf; admin-gating by testRefreshRequiresAdminRole.
+        $this->markTestSkipped('POST /refresh triggers a real git clone via TestDiscoveryService::refreshCache() (network/git infra)');
     }
 }

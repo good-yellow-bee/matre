@@ -6,6 +6,7 @@ namespace App\Tests\Functional\Controller;
 
 use App\Entity\User;
 use App\Tests\Functional\Traits\ApiTestTrait;
+use OTPHP\TOTP;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 /**
@@ -122,5 +123,34 @@ class TwoFactorSetupControllerTest extends WebTestCase
         $em->clear();
         $fresh = $em->find(User::class, $user->getId());
         $this->assertFalse($fresh->isTotpEnabled());
+    }
+
+    public function testVerifyEnablesTotpWithValidCode(): void
+    {
+        $client = self::createClient();
+        $user = $this->loginAsUser($client);
+
+        $setupResponse = $this->jsonRequest($client, 'POST', '/api/2fa-setup');
+        $setupData = $this->assertJsonResponse($setupResponse, 200);
+
+        // OTPHP defaults (SHA1, 30s period, 6 digits) match User::getTotpAuthenticationConfiguration
+        $totp = TOTP::createFromSecret($setupData['secret']);
+        if ($totp->expiresIn() < 2) {
+            // Avoid the code expiring between generation and the verify request
+            sleep(2);
+        }
+
+        $response = $this->jsonRequest($client, 'POST', '/api/2fa-setup/verify', [
+            'code' => $totp->now(),
+        ]);
+
+        $data = $this->assertJsonResponse($response, 200);
+        $this->assertTrue($data['success']);
+
+        // The kernel reboot between requests detaches $user, so re-fetch instead of refresh
+        $em = $this->getEntityManager();
+        $em->clear();
+        $fresh = $em->find(User::class, $user->getId());
+        $this->assertTrue($fresh->isTotpEnabled());
     }
 }

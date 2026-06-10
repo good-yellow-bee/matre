@@ -176,8 +176,27 @@ class TestEnvironmentApiControllerTest extends WebTestCase
 
     public function testSaveEnvVariablesSucceeds(): void
     {
-        // Skip - CSRF session handling in functional tests needs refactoring
-        $this->markTestSkipped('CSRF session handling in functional tests needs refactoring');
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $env = $this->createTestEnvironment();
+
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $env->getId() . '/env-variables', [
+            'variables' => [
+                ['name' => 'API_KEY', 'value' => 'secret123'],
+                ['name' => 'with_meta', 'value' => 'v', 'usedInTests' => 'SomeCest'],
+            ],
+        ]);
+
+        $data = $this->assertJsonResponse($response, 200);
+        $this->assertTrue($data['success']);
+        $this->assertEquals(2, $data['count']);
+
+        $this->getEntityManager()->refresh($env);
+        // Names are uppercased; flat accessor returns values, metadata accessor keeps usedInTests
+        $this->assertEquals('secret123', $env->getEnvVariables()['API_KEY']);
+        $withMeta = $env->getEnvVariablesWithMetadata();
+        $this->assertEquals('v', $withMeta['WITH_META']['value']);
+        $this->assertEquals('SomeCest', $withMeta['WITH_META']['usedInTests']);
     }
 
     // =====================
@@ -197,10 +216,35 @@ class TestEnvironmentApiControllerTest extends WebTestCase
         $this->assertJsonError($response, 403, 'CSRF');
     }
 
-    public function testImportEnvVariablesValidatesContent(): void
+    public function testImportEnvVariablesParsesContent(): void
     {
-        // Skip - CSRF required, but at least we know it validates
-        $this->markTestSkipped('CSRF session handling in functional tests needs refactoring');
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $env = $this->createTestEnvironment();
+
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $env->getId() . '/env-variables/import', [
+            'content' => "API_KEY=secret123\nDB_HOST=localhost",
+        ]);
+
+        $data = $this->assertJsonResponse($response, 200);
+        $this->assertTrue($data['success']);
+        $this->assertEquals(2, $data['count']);
+        $names = array_column($data['variables'], 'name');
+        $this->assertContains('API_KEY', $names);
+        $this->assertContains('DB_HOST', $names);
+    }
+
+    public function testImportEnvVariablesRejectsEmptyContent(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $env = $this->createTestEnvironment();
+
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $env->getId() . '/env-variables/import', [
+            'content' => '',
+        ]);
+
+        $this->assertJsonError($response, 400);
     }
 
     private function createTestEnvironment(array $envVars = []): TestEnvironment

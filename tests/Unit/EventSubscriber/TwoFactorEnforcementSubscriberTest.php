@@ -9,6 +9,8 @@ use App\Entity\User;
 use App\EventSubscriber\TwoFactorEnforcementSubscriber;
 use App\Repository\SettingsRepository;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
@@ -48,14 +50,45 @@ class TwoFactorEnforcementSubscriberTest extends TestCase
         $this->assertNull($event->getResponse());
     }
 
-    public function testSkipsApiPaths(): void
+    public function testApiPathReturns403WhenEnforcementApplies(): void
     {
-        $request = Request::create('/api/test');
-        $event = $this->createEvent($request);
+        $user = $this->createStub(User::class);
+        $user->method('isTotpEnabled')->willReturn(false);
+        $token = $this->createTokenWithUser($user);
 
-        $this->createSubscriber()->onKernelRequest($event);
+        $event = $this->createEvent(Request::create('/api/test-runs'));
 
-        $this->assertNull($event->getResponse());
+        $subscriber = $this->createSubscriber(
+            settingsRepository: $this->createSettingsRepository(true),
+            tokenStorage: $this->createTokenStorage($token),
+        );
+        $subscriber->onKernelRequest($event);
+
+        $response = $event->getResponse();
+        $this->assertInstanceOf(JsonResponse::class, $response);
+        $this->assertEquals(403, $response->getStatusCode());
+
+        $payload = json_decode($response->getContent(), true);
+        $this->assertEquals('2FA_SETUP_REQUIRED', $payload['code']);
+    }
+
+    public function testExemptApiPathsSkipEnforcement(): void
+    {
+        foreach (['/api/2fa-setup', '/api/me', '/api/login'] as $path) {
+            $user = $this->createStub(User::class);
+            $user->method('isTotpEnabled')->willReturn(false);
+            $token = $this->createTokenWithUser($user);
+
+            $event = $this->createEvent(Request::create($path));
+
+            $subscriber = $this->createSubscriber(
+                settingsRepository: $this->createSettingsRepository(true),
+                tokenStorage: $this->createTokenStorage($token),
+            );
+            $subscriber->onKernelRequest($event);
+
+            $this->assertNull($event->getResponse(), sprintf('Enforcement should skip %s', $path));
+        }
     }
 
     public function testSkipsNonAdminPaths(): void
@@ -123,12 +156,16 @@ class TwoFactorEnforcementSubscriberTest extends TestCase
         $user->method('isTotpEnabled')->willReturn(true);
         $token = $this->createTokenWithUser($user);
 
+        // TOTP-enabled users return early, before the settings query
+        $settingsRepository = $this->createMock(SettingsRepository::class);
+        $settingsRepository->expects($this->never())->method('getOrCreate');
+
         $request = Request::create('/admin/dashboard');
         $request->attributes->set('_route', 'admin_dashboard');
         $event = $this->createEvent($request);
 
         $subscriber = $this->createSubscriber(
-            settingsRepository: $this->createSettingsRepository(true),
+            settingsRepository: $settingsRepository,
             tokenStorage: $this->createTokenStorage($token),
         );
         $subscriber->onKernelRequest($event);
@@ -142,8 +179,11 @@ class TwoFactorEnforcementSubscriberTest extends TestCase
         $user->method('isTotpEnabled')->willReturn(false);
         $token = $this->createTokenWithUser($user);
 
-        $urlGenerator = $this->createStub(UrlGeneratorInterface::class);
-        $urlGenerator->method('generate')->willReturn('/admin/2fa-setup');
+        $urlGenerator = $this->createMock(UrlGeneratorInterface::class);
+        $urlGenerator->expects($this->once())
+            ->method('generate')
+            ->with('2fa_setup')
+            ->willReturn('/admin/2fa-setup');
 
         $request = Request::create('/admin/dashboard');
         $request->attributes->set('_route', 'admin_dashboard');
@@ -156,8 +196,9 @@ class TwoFactorEnforcementSubscriberTest extends TestCase
         );
         $subscriber->onKernelRequest($event);
 
-        $this->assertNotNull($event->getResponse());
-        $this->assertTrue($event->getResponse()->isRedirection());
+        $response = $event->getResponse();
+        $this->assertInstanceOf(RedirectResponse::class, $response);
+        $this->assertEquals('/admin/2fa-setup', $response->getTargetUrl());
     }
 
     private function createSubscriber(

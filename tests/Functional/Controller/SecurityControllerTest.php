@@ -5,14 +5,18 @@ declare(strict_types=1);
 namespace App\Tests\Functional\Controller;
 
 use App\Tests\Functional\Traits\ApiTestTrait;
+use OTPHP\TOTP;
+use ParagonIE\ConstantTime\Base32;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 /**
- * Functional tests for SPA authentication: login page shell, json_login, /api/me and logout.
+ * Functional tests for SPA authentication: login page shell, json_login, 2FA challenge, /api/me and logout.
  */
 class SecurityControllerTest extends WebTestCase
 {
     use ApiTestTrait;
+
+    private string $totpUsername = '';
 
     protected function tearDown(): void
     {
@@ -176,6 +180,64 @@ class SecurityControllerTest extends WebTestCase
     }
 
     // =====================
+    // Full 2FA challenge (/2fa_check)
+    // =====================
+
+    public function testTwoFactorLoginCompletesWithValidCode(): void
+    {
+        $client = self::createClient();
+        $secret = $this->createTotpUser();
+
+        // Step 1: password login signals the 2FA challenge (session now IS_AUTHENTICATED_2FA_IN_PROGRESS)
+        $loginResponse = $this->jsonRequest($client, 'POST', '/api/login', [
+            'username' => $this->totpUsername,
+            'password' => 'Password123!',
+        ]);
+        $loginData = $this->assertJsonResponse($loginResponse, 200);
+        $this->assertFalse($loginData['authenticated']);
+        $this->assertTrue($loginData['twoFactorRequired']);
+
+        // Step 2: submit a valid TOTP code to /2fa_check (scheb success handler returns JSON)
+        $totp = TOTP::createFromSecret($secret);
+        if ($totp->expiresIn() < 2) {
+            sleep(2);
+        }
+        $checkResponse = $this->jsonRequest($client, 'POST', '/2fa_check', [
+            '_auth_code' => $totp->now(),
+        ]);
+        $checkData = $this->assertJsonResponse($checkResponse, 200);
+        $this->assertTrue($checkData['authenticated']);
+
+        // Step 3: /api/me now reports a fully-authenticated user
+        $meResponse = $this->jsonRequest($client, 'GET', '/api/me');
+        $meData = $this->assertJsonResponse($meResponse, 200);
+        $this->assertTrue($meData['authenticated']);
+        $this->assertEquals($this->totpUsername, $meData['user']['username']);
+    }
+
+    public function testTwoFactorLoginRejectsInvalidCode(): void
+    {
+        $client = self::createClient();
+        $this->createTotpUser();
+
+        $this->jsonRequest($client, 'POST', '/api/login', [
+            'username' => $this->totpUsername,
+            'password' => 'Password123!',
+        ]);
+
+        $checkResponse = $this->jsonRequest($client, 'POST', '/2fa_check', [
+            '_auth_code' => '000000',
+        ]);
+        $checkData = $this->assertJsonResponse($checkResponse, 401);
+        $this->assertFalse($checkData['authenticated']);
+        $this->assertTrue($checkData['twoFactorRequired']);
+
+        // Still not fully authenticated
+        $meData = $this->assertJsonResponse($this->jsonRequest($client, 'GET', '/api/me'), 200);
+        $this->assertFalse($meData['authenticated']);
+    }
+
+    // =====================
     // Logout
     // =====================
 
@@ -188,5 +250,24 @@ class SecurityControllerTest extends WebTestCase
 
         // Symfony intercepts this and redirects to login
         $this->assertResponseRedirects();
+    }
+
+    /**
+     * Create a throwaway TOTP-enabled user (never the shared admin) and return the raw base32 secret.
+     * OTPHP defaults (SHA1, 30s, 6 digits) match User::getTotpAuthenticationConfiguration.
+     */
+    private function createTotpUser(): string
+    {
+        // Standard 32-char base32 secret. TOTP::generate() yields a 103-char secret that the
+        // length-based CredentialEncryptionService::isEncrypted() misreads as already-encrypted,
+        // so it is stored un-encrypted and then fails to decrypt on load.
+        $secret = rtrim(Base32::encodeUpper(random_bytes(20)), '=');
+        $user = $this->createUser(password: 'Password123!');
+        $user->setTotpSecret($secret);
+        $user->setIsTotpEnabled(true);
+        $this->getEntityManager()->flush();
+        $this->totpUsername = $user->getUsername();
+
+        return $secret;
     }
 }
