@@ -165,7 +165,7 @@ jobs:
         with:
           php-version: '8.5'
           extensions: mbstring, xml, ctype, iconv
-          tools: composer:v2, php-cs-fixer
+          tools: composer:v2
 
       - name: Create .env file
         run: cp .env.example .env
@@ -180,7 +180,7 @@ jobs:
         run: composer install --prefer-dist --no-progress --no-interaction --no-scripts
 
       - name: Run PHP-CS-Fixer
-        run: php-cs-fixer fix --config=.php-cs-fixer.dist.php --dry-run --diff --verbose
+        run: vendor/bin/php-cs-fixer fix --config=.php-cs-fixer.dist.php --dry-run --diff --verbose
 
   # Security Vulnerability Check
   security-check:

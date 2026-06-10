@@ -220,7 +220,7 @@ class EnvVariableAnalyzerServiceTest extends TestCase
     }
 
     /**
-     * @param array<string, string> $tests        filename => XML content
+     * @param array<string, string> $tests filename => XML content
      * @param array<string, string> $actionGroups filename => XML content
      */
     private function createMftfStructure(array $tests = [], array $actionGroups = []): void
