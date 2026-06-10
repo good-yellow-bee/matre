@@ -51,19 +51,14 @@ class ProfileControllerTest extends WebTestCase
     // Form Tests
     // =====================
 
-    public function testNotificationsFormRendersCorrectly(): void
+    public function testNotificationsRendersSpaShell(): void
     {
         $client = self::createClient();
         $this->loginAsUser($client);
 
-        $crawler = $client->request('GET', '/admin/profile/notifications');
+        $client->request('GET', '/admin/profile/notifications');
 
         $this->assertResponseStatusCodeSame(200);
-        $this->assertSelectorExists('[data-vue-island="profile-notifications"]');
-    }
-
-    public function testNotificationsFormSubmission(): void
-    {
-        $this->markTestSkipped('Form CSRF session handling in functional tests needs refactoring');
+        $this->assertSelectorExists('#app');
     }
 }

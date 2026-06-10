@@ -9,7 +9,7 @@ use App\Tests\Functional\Traits\ApiTestTrait;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 /**
- * Functional tests for CronJobController.
+ * Functional tests for cron job SPA shell pages (mutations covered by CronJobApiControllerTest).
  */
 class CronJobControllerTest extends WebTestCase
 {
@@ -52,6 +52,7 @@ class CronJobControllerTest extends WebTestCase
         $client->request('GET', '/admin/cron-jobs');
 
         $this->assertResponseStatusCodeSame(200);
+        $this->assertSelectorExists('#app');
     }
 
     // =====================
@@ -83,14 +84,17 @@ class CronJobControllerTest extends WebTestCase
         $this->assertResponseStatusCodeSame(200);
     }
 
-    public function testShowReturns404ForNonExistent(): void
+    public function testShowServesShellForNonExistentId(): void
     {
         $client = self::createClient();
         $this->loginAsAdmin($client);
 
+        // SPA shell is served for any id; the 404 state is handled client-side
+        // (API behavior covered by CronJobApiControllerTest::testGetReturns404ForNonExistent)
         $client->request('GET', '/admin/cron-jobs/99999');
 
-        $this->assertResponseStatusCodeSame(404);
+        $this->assertResponseStatusCodeSame(200);
+        $this->assertSelectorExists('#app');
     }
 
     // =====================
@@ -106,72 +110,6 @@ class CronJobControllerTest extends WebTestCase
         $client->request('GET', '/admin/cron-jobs/' . $job->getId() . '/edit');
 
         $this->assertResponseStatusCodeSame(200);
-    }
-
-    // =====================
-    // Delete Tests
-    // =====================
-
-    public function testDeleteRequiresCsrf(): void
-    {
-        $client = self::createClient();
-        $this->loginAsAdmin($client);
-        $job = $this->createCronJob();
-
-        $client->request('POST', '/admin/cron-jobs/' . $job->getId() . '/delete');
-
-        $this->assertResponseRedirects('/admin/cron-jobs');
-        $client->followRedirect();
-        $this->assertSelectorTextContains('.alert', 'Invalid CSRF token');
-    }
-
-    public function testDeleteWithInvalidCsrf(): void
-    {
-        $client = self::createClient();
-        $this->loginAsAdmin($client);
-        $job = $this->createCronJob();
-
-        $client->request('POST', '/admin/cron-jobs/' . $job->getId() . '/delete', [
-            '_token' => 'invalid_token',
-        ]);
-
-        $this->assertResponseRedirects('/admin/cron-jobs');
-        $client->followRedirect();
-        $this->assertSelectorTextContains('.alert', 'Invalid CSRF token');
-    }
-
-    // =====================
-    // Toggle Active Tests
-    // =====================
-
-    public function testToggleActiveRequiresCsrf(): void
-    {
-        $client = self::createClient();
-        $this->loginAsAdmin($client);
-        $job = $this->createCronJob();
-
-        $client->request('POST', '/admin/cron-jobs/' . $job->getId() . '/toggle-active');
-
-        $this->assertResponseRedirects('/admin/cron-jobs');
-        $client->followRedirect();
-        $this->assertSelectorTextContains('.alert', 'Invalid CSRF token');
-    }
-
-    // =====================
-    // Run Tests
-    // =====================
-
-    public function testRunRequiresCsrf(): void
-    {
-        $client = self::createClient();
-        $this->loginAsAdmin($client);
-        $job = $this->createCronJob();
-
-        $client->request('POST', '/admin/cron-jobs/' . $job->getId() . '/run');
-
-        $this->assertResponseRedirects('/admin/cron-jobs/' . $job->getId());
-        $client->followRedirect();
-        $this->assertSelectorTextContains('.alert', 'Invalid CSRF token');
     }
 
     // =====================

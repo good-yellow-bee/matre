@@ -57,6 +57,6 @@ class AdminControllerTest extends WebTestCase
         $client->request('GET', '/admin');
 
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorExists('[data-vue-island]');
+        $this->assertSelectorExists('#app');
     }
 }

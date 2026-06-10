@@ -101,6 +101,8 @@ trait ApiTestTrait
         $requestHeaders = array_merge([
             'CONTENT_TYPE' => 'application/json',
             'HTTP_ACCEPT' => 'application/json',
+            // Stateless CSRF (SameOriginCsrfTokenManager) requires origin info
+            'HTTP_SEC_FETCH_SITE' => 'same-origin',
         ], $headers);
 
         if (null !== $csrfTokenId) {
@@ -131,6 +133,15 @@ trait ApiTestTrait
         $this->assertJson($response->getContent());
 
         return json_decode($response->getContent(), true);
+    }
+
+    protected function assertApiUnauthenticated(KernelBrowser $client): void
+    {
+        $response = $client->getResponse();
+        $this->assertEquals(401, $response->getStatusCode());
+
+        $data = json_decode($response->getContent(), true);
+        $this->assertFalse($data['authenticated']);
     }
 
     protected function assertJsonError(Response $response, int $statusCode, ?string $messageContains = null): void

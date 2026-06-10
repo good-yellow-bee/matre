@@ -44,7 +44,7 @@ class CronJobApiControllerTest extends WebTestCase
 
         $client->request('GET', self::BASE_URL . '/list');
 
-        $this->assertResponseRedirects('/login');
+        $this->assertApiUnauthenticated($client);
     }
 
     public function testListRequiresAdminRole(): void

@@ -35,7 +35,7 @@ class TestRunApiControllerTest extends WebTestCase
 
         $client->request('GET', self::BASE_URL);
 
-        $this->assertResponseRedirects('/login');
+        $this->assertApiUnauthenticated($client);
     }
 
     public function testListAllowsUserRole(): void
@@ -46,6 +46,24 @@ class TestRunApiControllerTest extends WebTestCase
         $response = $this->jsonRequest($client, 'GET', self::BASE_URL);
 
         $this->assertJsonResponse($response, 200);
+    }
+
+    public function testCancelRequiresAuthentication(): void
+    {
+        $client = self::createClient();
+
+        $client->request('POST', self::BASE_URL . '/1/cancel');
+
+        $this->assertApiUnauthenticated($client);
+    }
+
+    public function testRetryRequiresAuthentication(): void
+    {
+        $client = self::createClient();
+
+        $client->request('POST', self::BASE_URL . '/1/retry');
+
+        $this->assertApiUnauthenticated($client);
     }
 
     public function testCancelRequiresAdminRole(): void
@@ -213,6 +231,44 @@ class TestRunApiControllerTest extends WebTestCase
         // Skip - CSRF token validation in functional tests requires session setup
         // Business logic is tested in TestRunnerServiceTest::testRetryRunCreatesNewRun
         $this->markTestSkipped('CSRF session handling in functional tests needs refactoring');
+    }
+
+    // =====================
+    // Live Output Tests
+    // =====================
+
+    public function testLiveOutputRequiresAuthentication(): void
+    {
+        $client = self::createClient();
+
+        $client->request('GET', self::BASE_URL . '/1/live-output');
+
+        $this->assertApiUnauthenticated($client);
+    }
+
+    public function testLiveOutputReturnsJson(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $run = $this->createTestRun(status: TestRun::STATUS_RUNNING);
+
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '/' . $run->getId() . '/live-output');
+        $data = $this->assertJsonResponse($response, 200);
+
+        $this->assertArrayHasKey('status', $data);
+        $this->assertEquals(TestRun::STATUS_RUNNING, $data['status']);
+        $this->assertArrayHasKey('output', $data);
+        $this->assertArrayHasKey('results', $data);
+    }
+
+    public function testLiveOutputReturns404ForNonExistent(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '/99999/live-output');
+
+        $this->assertJsonError($response, 404);
     }
 
     private function createTestEnvironment(?string $name = null): TestEnvironment

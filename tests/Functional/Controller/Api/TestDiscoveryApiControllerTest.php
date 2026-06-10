@@ -33,7 +33,7 @@ class TestDiscoveryApiControllerTest extends WebTestCase
 
         $client->request('GET', self::BASE_URL . '?type=mftf_group');
 
-        $this->assertResponseRedirects('/login');
+        $this->assertApiUnauthenticated($client);
     }
 
     public function testListAllowsUserRole(): void

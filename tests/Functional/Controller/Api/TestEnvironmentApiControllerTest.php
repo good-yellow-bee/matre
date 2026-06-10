@@ -35,7 +35,7 @@ class TestEnvironmentApiControllerTest extends WebTestCase
 
         $client->request('GET', self::BASE_URL . '/' . $env->getId() . '/env-variables');
 
-        $this->assertResponseRedirects('/login');
+        $this->assertApiUnauthenticated($client);
     }
 
     public function testListEnvVariablesRequiresAdminRole(): void
@@ -115,6 +115,46 @@ class TestEnvironmentApiControllerTest extends WebTestCase
             }
         }
         $this->assertTrue($found, 'Environment-specific variable should be in response');
+    }
+
+    // =====================
+    // Get Single Environment
+    // =====================
+
+    public function testGetReturns404ForNonExistent(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '/99999');
+
+        $this->assertJsonError($response, 404, 'not found');
+    }
+
+    // =====================
+    // Toggle Active / Delete CSRF
+    // =====================
+
+    public function testToggleActiveRequiresCsrf(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $env = $this->createTestEnvironment();
+
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $env->getId() . '/toggle-active');
+
+        $this->assertJsonError($response, 403, 'CSRF');
+    }
+
+    public function testDeleteRequiresCsrf(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $env = $this->createTestEnvironment();
+
+        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/' . $env->getId());
+
+        $this->assertJsonError($response, 403, 'CSRF');
     }
 
     // =====================

@@ -7,6 +7,9 @@ namespace App\Tests\Functional\Controller\Admin;
 use App\Tests\Functional\Traits\ApiTestTrait;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
+/**
+ * Functional tests for user admin SPA shell pages (mutations covered by UserApiControllerTest).
+ */
 class UserControllerTest extends WebTestCase
 {
     use ApiTestTrait;
@@ -50,6 +53,7 @@ class UserControllerTest extends WebTestCase
         $client->request('GET', self::BASE_URL);
 
         $this->assertResponseIsSuccessful();
+        $this->assertSelectorExists('#app');
     }
 
     // =====================
@@ -81,14 +85,17 @@ class UserControllerTest extends WebTestCase
         $this->assertResponseIsSuccessful();
     }
 
-    public function testShowReturns404ForNonExistent(): void
+    public function testShowServesShellForNonExistentId(): void
     {
         $client = self::createClient();
         $this->loginAsAdmin($client);
 
+        // SPA shell is served for any id; the 404 state is handled client-side
+        // (API behavior covered by UserApiControllerTest::testGetUserReturns404ForNonExistent)
         $client->request('GET', self::BASE_URL . '/99999');
 
-        $this->assertResponseStatusCodeSame(404);
+        $this->assertResponseStatusCodeSame(200);
+        $this->assertSelectorExists('#app');
     }
 
     // =====================
@@ -104,76 +111,5 @@ class UserControllerTest extends WebTestCase
         $client->request('GET', self::BASE_URL . '/' . $user->getId() . '/edit');
 
         $this->assertResponseIsSuccessful();
-    }
-
-    // =====================
-    // Delete Tests
-    // =====================
-
-    public function testDeleteRequiresCsrf(): void
-    {
-        $client = self::createClient();
-        $this->loginAsAdmin($client);
-        $user = $this->createUser();
-
-        $client->request('POST', self::BASE_URL . '/' . $user->getId() . '/delete', [
-            '_token' => 'invalid_token',
-        ]);
-
-        $this->assertResponseRedirects('/admin/users');
-        $client->followRedirect();
-        $this->assertSelectorTextContains('.alert', 'Invalid CSRF token');
-    }
-
-    public function testDeletePreventsSelfDeletion(): void
-    {
-        // Self-deletion check is inside CSRF-validated block; dynamic CSRF token IDs
-        // (delete{id}) require session which isn't available in functional test containers
-        $this->markTestSkipped('CSRF session handling in functional tests needs refactoring');
-    }
-
-    // =====================
-    // Toggle Active Tests
-    // =====================
-
-    public function testToggleActiveRequiresCsrf(): void
-    {
-        $client = self::createClient();
-        $this->loginAsAdmin($client);
-        $user = $this->createUser();
-
-        $client->request('POST', self::BASE_URL . '/' . $user->getId() . '/toggle-active', [
-            '_token' => 'invalid_token',
-        ]);
-
-        $this->assertResponseRedirects('/admin/users');
-        $client->followRedirect();
-        $this->assertSelectorTextContains('.alert', 'Invalid CSRF token');
-    }
-
-    public function testToggleActivePreventsSelfDeactivation(): void
-    {
-        // Self-deactivation check is inside CSRF-validated block; dynamic CSRF token IDs
-        // (toggle{id}) require session which isn't available in functional test containers
-        $this->markTestSkipped('CSRF session handling in functional tests needs refactoring');
-    }
-
-    // =====================
-    // Reset 2FA Tests
-    // =====================
-
-    public function testReset2faRequiresCsrf(): void
-    {
-        $client = self::createClient();
-        $this->loginAsAdmin($client);
-        $user = $this->createUser();
-
-        $client->request('POST', self::BASE_URL . '/' . $user->getId() . '/reset-2fa', [
-            '_token' => 'invalid_token',
-        ]);
-
-        $this->assertResponseRedirects('/admin/users/' . $user->getId());
-        $client->followRedirect();
-        $this->assertSelectorTextContains('.alert', 'Invalid CSRF token');
     }
 }

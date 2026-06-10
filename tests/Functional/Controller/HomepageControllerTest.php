@@ -8,7 +8,7 @@ use App\Tests\Functional\Traits\ApiTestTrait;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 /**
- * Functional tests for HomepageController.
+ * Functional tests for the homepage SPA shell route.
  */
 class HomepageControllerTest extends WebTestCase
 {
@@ -27,15 +27,18 @@ class HomepageControllerTest extends WebTestCase
         $client->request('GET', '/');
 
         $this->assertResponseIsSuccessful();
+        $this->assertSelectorExists('#app');
     }
 
-    public function testHomepageRedirectsAuthenticatedUser(): void
+    public function testHomepageServesShellForAuthenticatedUser(): void
     {
         $client = self::createClient();
         $this->loginAsUser($client);
 
+        // The SPA router redirects authenticated users to /admin client-side
         $client->request('GET', '/');
 
-        $this->assertResponseRedirects('/admin');
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorExists('#app');
     }
 }

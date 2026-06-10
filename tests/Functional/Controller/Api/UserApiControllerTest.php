@@ -33,7 +33,7 @@ class UserApiControllerTest extends WebTestCase
 
         $client->request('GET', self::BASE_URL);
 
-        $this->assertResponseRedirects('/login');
+        $this->assertApiUnauthenticated($client);
     }
 
     public function testListRequiresAdminRole(): void
@@ -145,7 +145,7 @@ class UserApiControllerTest extends WebTestCase
             'email' => "new_{$suffix}@test.com",
             'password' => 'Password123!',
             'roles' => ['ROLE_USER'],
-        ]);
+        ], csrfTokenId: 'api');
 
         $data = $this->assertJsonResponse($response, 201);
         $this->assertTrue($data['success']);
@@ -166,7 +166,7 @@ class UserApiControllerTest extends WebTestCase
         // Send only username to trigger email/password validation
         $response = $this->jsonRequest($client, 'POST', self::BASE_URL, [
             'username' => 'validuser',
-        ]);
+        ], csrfTokenId: 'api');
 
         $data = $this->assertJsonResponse($response, 422);
         $this->assertArrayHasKey('errors', $data);
@@ -184,7 +184,7 @@ class UserApiControllerTest extends WebTestCase
             'username' => "newuser_{$suffix}",
             'email' => "new_{$suffix}@test.com",
             'password' => 'simple', // Too simple - no uppercase, no number
-        ]);
+        ], csrfTokenId: 'api');
 
         $data = $this->assertJsonResponse($response, 422);
         $this->assertArrayHasKey('password', $data['errors']);
@@ -200,7 +200,7 @@ class UserApiControllerTest extends WebTestCase
             'username' => $existingUser->getUsername(),
             'email' => 'new_unique_' . bin2hex(random_bytes(4)) . '@test.com',
             'password' => 'Password123!',
-        ]);
+        ], csrfTokenId: 'api');
 
         $data = $this->assertJsonResponse($response, 422);
         $this->assertArrayHasKey('username', $data['errors']);
@@ -216,7 +216,7 @@ class UserApiControllerTest extends WebTestCase
             'username' => 'unique_newuser_' . bin2hex(random_bytes(4)),
             'email' => $existingUser->getEmail(),
             'password' => 'Password123!',
-        ]);
+        ], csrfTokenId: 'api');
 
         $data = $this->assertJsonResponse($response, 422);
         $this->assertArrayHasKey('email', $data['errors']);
@@ -233,7 +233,7 @@ class UserApiControllerTest extends WebTestCase
             'email' => "new_{$suffix}@test.com",
             'password' => 'Password123!',
             'roles' => ['ROLE_SUPER_ADMIN'], // Not in ALLOWED_ROLES
-        ]);
+        ], csrfTokenId: 'api');
 
         $data = $this->assertJsonResponse($response, 422);
         $this->assertArrayHasKey('roles', $data['errors']);
@@ -255,7 +255,7 @@ class UserApiControllerTest extends WebTestCase
         $response = $this->jsonRequest($client, 'PUT', self::BASE_URL . '/' . $user->getId(), [
             'username' => $newUsername,
             'email' => $newEmail,
-        ]);
+        ], csrfTokenId: 'api');
 
         $data = $this->assertJsonResponse($response, 200);
         $this->assertTrue($data['success']);
@@ -276,7 +276,7 @@ class UserApiControllerTest extends WebTestCase
             'username' => $user->getUsername(),
             'email' => $user->getEmail(),
             'password' => 'NewPassword123!',
-        ]);
+        ], csrfTokenId: 'api');
 
         $this->assertJsonResponse($response, 200);
         $this->getEntityManager()->refresh($user);
@@ -293,7 +293,7 @@ class UserApiControllerTest extends WebTestCase
             'email' => $admin->getEmail(),
             'roles' => $admin->getRoles(),
             'isActive' => false,
-        ]);
+        ], csrfTokenId: 'api');
 
         $this->assertJsonError($response, 400, 'cannot deactivate your own account');
     }
@@ -308,7 +308,7 @@ class UserApiControllerTest extends WebTestCase
             'email' => $admin->getEmail(),
             'roles' => ['ROLE_USER'],
             'isActive' => true,
-        ]);
+        ], csrfTokenId: 'api');
 
         $this->assertJsonError($response, 400, 'cannot remove admin role from your own account');
     }
@@ -323,7 +323,7 @@ class UserApiControllerTest extends WebTestCase
             'email' => 'self-edit-test-' . uniqid() . '@example.com',
             'roles' => $admin->getRoles(),
             'isActive' => true,
-        ]);
+        ], csrfTokenId: 'api');
 
         $data = $this->assertJsonResponse($response, 200);
         $this->assertTrue($data['success']);
@@ -340,7 +340,7 @@ class UserApiControllerTest extends WebTestCase
         $user = $this->createUser();
         $userId = $user->getId();
 
-        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/' . $userId);
+        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/' . $userId, csrfTokenId: 'api');
 
         $data = $this->assertJsonResponse($response, 200);
         $this->assertTrue($data['success']);
@@ -354,7 +354,7 @@ class UserApiControllerTest extends WebTestCase
         $client = self::createClient();
         $admin = $this->loginAsAdmin($client);
 
-        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/' . $admin->getId());
+        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/' . $admin->getId(), csrfTokenId: 'api');
 
         $this->assertJsonError($response, 400, 'cannot delete your own');
     }
@@ -365,9 +365,88 @@ class UserApiControllerTest extends WebTestCase
         $this->loginAsAdmin($client);
 
         // Uses ParamConverter which returns Symfony's 404, not JSON
-        $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/99999');
+        $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/99999', csrfTokenId: 'api');
 
         $this->assertResponseStatusCodeSame(404);
+    }
+
+    public function testDeleteUserRequiresCsrf(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $user = $this->createUser();
+
+        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/' . $user->getId());
+
+        $this->assertJsonError($response, 403, 'CSRF');
+    }
+
+    // =====================
+    // Toggle Active / Reset 2FA Tests
+    // =====================
+
+    public function testToggleActiveRequiresCsrf(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $user = $this->createUser();
+
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $user->getId() . '/toggle-active');
+
+        $this->assertJsonError($response, 403, 'CSRF');
+    }
+
+    public function testToggleActiveSucceeds(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $user = $this->createUser(active: true);
+
+        $response = $this->jsonRequest(
+            $client,
+            'POST',
+            self::BASE_URL . '/' . $user->getId() . '/toggle-active',
+            csrfTokenId: 'api',
+        );
+
+        $data = $this->assertJsonResponse($response, 200);
+        $this->assertTrue($data['success']);
+        $this->assertFalse($data['isActive']);
+    }
+
+    public function testReset2faRequiresCsrf(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $user = $this->createUser();
+
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $user->getId() . '/reset-2fa');
+
+        $this->assertJsonError($response, 403, 'CSRF');
+    }
+
+    public function testReset2faSucceeds(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $user = $this->createUser();
+        $user->setTotpSecret('JBSWY3DPEHPK3PXP');
+        $user->setIsTotpEnabled(true);
+        $this->getEntityManager()->flush();
+
+        $response = $this->jsonRequest(
+            $client,
+            'POST',
+            self::BASE_URL . '/' . $user->getId() . '/reset-2fa',
+            csrfTokenId: 'api',
+        );
+
+        $data = $this->assertJsonResponse($response, 200);
+        $this->assertTrue($data['success']);
+
+        $this->getEntityManager()->refresh($user);
+        $this->assertNull($user->getTotpSecret());
+        $this->assertFalse($user->isTotpEnabled());
     }
 
     // =====================

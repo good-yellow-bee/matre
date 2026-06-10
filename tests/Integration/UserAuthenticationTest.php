@@ -6,6 +6,7 @@ namespace App\Tests\Integration;
 
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
@@ -26,50 +27,40 @@ class UserAuthenticationTest extends WebTestCase
     }
 
     // =====================
-    // Login Flow
+    // Login Flow (json_login)
     // =====================
 
-    public function testSuccessfulLoginRedirects(): void
+    public function testSuccessfulLoginAuthenticates(): void
     {
         $client = static::createClient();
         $user = $this->createUser('logintest', 'logintest@example.com', 'Password123!');
 
-        $client->request('GET', '/login');
+        $this->postJsonLogin($client, $user->getUsername(), 'Password123!');
+
         $this->assertResponseIsSuccessful();
-
-        $client->submitForm('Sign in', [
-            '_username' => $user->getUsername(),
-            '_password' => 'Password123!',
-        ]);
-
-        $this->assertResponseRedirects();
+        $data = json_decode($client->getResponse()->getContent(), true);
+        $this->assertTrue($data['authenticated']);
     }
 
-    public function testInvalidPasswordShowsError(): void
+    public function testInvalidPasswordReturns401(): void
     {
         $client = static::createClient();
         $user = $this->createUser('badpass', 'badpass@example.com', 'Password123!');
 
-        $client->request('GET', '/login');
-        $client->submitForm('Sign in', [
-            '_username' => $user->getUsername(),
-            '_password' => 'WrongPassword!',
-        ]);
+        $this->postJsonLogin($client, $user->getUsername(), 'WrongPassword!');
 
-        $this->assertResponseRedirects('/login');
+        $this->assertResponseStatusCodeSame(401);
+        $data = json_decode($client->getResponse()->getContent(), true);
+        $this->assertFalse($data['authenticated']);
     }
 
-    public function testNonexistentUserShowsError(): void
+    public function testNonexistentUserReturns401(): void
     {
         $client = static::createClient();
 
-        $client->request('GET', '/login');
-        $client->submitForm('Sign in', [
-            '_username' => 'doesnotexist',
-            '_password' => 'Password123!',
-        ]);
+        $this->postJsonLogin($client, 'doesnotexist', 'Password123!');
 
-        $this->assertResponseRedirects('/login');
+        $this->assertResponseStatusCodeSame(401);
     }
 
     public function testDisabledUserCannotLogin(): void
@@ -79,13 +70,9 @@ class UserAuthenticationTest extends WebTestCase
         $user->setIsActive(false);
         $this->getEntityManager()->flush();
 
-        $client->request('GET', '/login');
-        $client->submitForm('Sign in', [
-            '_username' => $user->getUsername(),
-            '_password' => 'Password123!',
-        ]);
+        $this->postJsonLogin($client, $user->getUsername(), 'Password123!');
 
-        $this->assertResponseRedirects('/login');
+        $this->assertResponseStatusCodeSame(401);
     }
 
     // =====================
@@ -288,6 +275,18 @@ class UserAuthenticationTest extends WebTestCase
     // =====================
     // Helpers
     // =====================
+
+    private function postJsonLogin(KernelBrowser $client, string $username, string $password): void
+    {
+        $client->request(
+            'POST',
+            '/api/login',
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            json_encode(['username' => $username, 'password' => $password]),
+        );
+    }
 
     private function createUser(
         string $username,

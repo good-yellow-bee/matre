@@ -8,6 +8,9 @@ use App\Entity\TestEnvironment;
 use App\Tests\Functional\Traits\ApiTestTrait;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
+/**
+ * Functional tests for test environment SPA shell pages (mutations covered by TestEnvironmentApiControllerTest).
+ */
 class TestEnvironmentControllerTest extends WebTestCase
 {
     use ApiTestTrait;
@@ -51,6 +54,7 @@ class TestEnvironmentControllerTest extends WebTestCase
         $client->request('GET', self::BASE_URL);
 
         $this->assertResponseIsSuccessful();
+        $this->assertSelectorExists('#app');
     }
 
     // =====================
@@ -82,14 +86,17 @@ class TestEnvironmentControllerTest extends WebTestCase
         $this->assertResponseIsSuccessful();
     }
 
-    public function testShowReturns404ForNonExistent(): void
+    public function testShowServesShellForNonExistentId(): void
     {
         $client = self::createClient();
         $this->loginAsAdmin($client);
 
+        // SPA shell is served for any id; the 404 state is handled client-side
+        // (API behavior covered by TestEnvironmentApiControllerTest::testGetReturns404ForNonExistent)
         $client->request('GET', self::BASE_URL . '/99999');
 
-        $this->assertResponseStatusCodeSame(404);
+        $this->assertResponseStatusCodeSame(200);
+        $this->assertSelectorExists('#app');
     }
 
     // =====================
@@ -105,70 +112,6 @@ class TestEnvironmentControllerTest extends WebTestCase
         $client->request('GET', self::BASE_URL . '/' . $env->getId() . '/edit');
 
         $this->assertResponseIsSuccessful();
-    }
-
-    // =====================
-    // Delete Tests
-    // =====================
-
-    public function testDeleteRequiresCsrf(): void
-    {
-        $client = self::createClient();
-        $this->loginAsAdmin($client);
-        $env = $this->createTestEnvironment();
-
-        $client->request('POST', self::BASE_URL . '/' . $env->getId() . '/delete');
-
-        $this->assertResponseRedirects('/admin/test-environments');
-        $client->followRedirect();
-        $this->assertSelectorTextContains('.alert', 'Invalid CSRF token');
-    }
-
-    public function testDeleteWithInvalidCsrf(): void
-    {
-        $client = self::createClient();
-        $this->loginAsAdmin($client);
-        $env = $this->createTestEnvironment();
-
-        $client->request('POST', self::BASE_URL . '/' . $env->getId() . '/delete', [
-            '_token' => 'invalid_token',
-        ]);
-
-        $this->assertResponseRedirects('/admin/test-environments');
-        $client->followRedirect();
-        $this->assertSelectorTextContains('.alert', 'Invalid CSRF token');
-    }
-
-    // =====================
-    // Toggle Active Tests
-    // =====================
-
-    public function testToggleActiveRequiresCsrf(): void
-    {
-        $client = self::createClient();
-        $this->loginAsAdmin($client);
-        $env = $this->createTestEnvironment();
-
-        $client->request('POST', self::BASE_URL . '/' . $env->getId() . '/toggle-active');
-
-        $this->assertResponseRedirects('/admin/test-environments');
-        $client->followRedirect();
-        $this->assertSelectorTextContains('.alert', 'Invalid CSRF token');
-    }
-
-    public function testToggleActiveWithInvalidCsrf(): void
-    {
-        $client = self::createClient();
-        $this->loginAsAdmin($client);
-        $env = $this->createTestEnvironment();
-
-        $client->request('POST', self::BASE_URL . '/' . $env->getId() . '/toggle-active', [
-            '_token' => 'invalid_token',
-        ]);
-
-        $this->assertResponseRedirects('/admin/test-environments');
-        $client->followRedirect();
-        $this->assertSelectorTextContains('.alert', 'Invalid CSRF token');
     }
 
     // =====================

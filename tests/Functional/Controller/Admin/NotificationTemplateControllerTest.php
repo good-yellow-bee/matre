@@ -9,7 +9,7 @@ use App\Tests\Functional\Traits\ApiTestTrait;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 /**
- * Functional tests for NotificationTemplateController.
+ * Functional tests for notification template SPA shell pages (mutations covered by NotificationTemplateApiControllerTest).
  */
 class NotificationTemplateControllerTest extends WebTestCase
 {
@@ -52,6 +52,7 @@ class NotificationTemplateControllerTest extends WebTestCase
         $client->request('GET', '/admin/notification-templates');
 
         $this->assertResponseStatusCodeSame(200);
+        $this->assertSelectorExists('#app');
     }
 
     // =====================
@@ -77,39 +78,6 @@ class NotificationTemplateControllerTest extends WebTestCase
         $client->request('GET', '/admin/notification-templates/' . $template->getId() . '/edit');
 
         $this->assertResponseStatusCodeSame(200);
-    }
-
-    // =====================
-    // Toggle Active Tests
-    // =====================
-
-    public function testToggleActiveRequiresCsrf(): void
-    {
-        $client = self::createClient();
-        $this->loginAsAdmin($client);
-        $template = $this->createNotificationTemplate();
-
-        $client->request('POST', '/admin/notification-templates/' . $template->getId() . '/toggle-active');
-
-        $this->assertResponseRedirects('/admin/notification-templates');
-        $client->followRedirect();
-        $this->assertSelectorTextContains('.alert', 'Invalid CSRF token');
-    }
-
-    // =====================
-    // Reset Defaults Tests
-    // =====================
-
-    public function testResetDefaultsRequiresCsrf(): void
-    {
-        $client = self::createClient();
-        $this->loginAsAdmin($client);
-
-        $client->request('POST', '/admin/notification-templates/reset-defaults');
-
-        $this->assertResponseRedirects('/admin/notification-templates');
-        $client->followRedirect();
-        $this->assertSelectorTextContains('.alert', 'Invalid CSRF token');
     }
 
     // =====================
