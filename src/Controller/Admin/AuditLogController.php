@@ -19,6 +19,6 @@ class AuditLogController extends AbstractController
     #[Route('', name: 'admin_audit_log_index', methods: ['GET'])]
     public function index(): Response
     {
-        return $this->render('admin/audit_log/index.html.twig');
+        return $this->render('spa/index.html.twig');
     }
 }

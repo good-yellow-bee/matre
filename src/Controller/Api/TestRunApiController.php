@@ -13,6 +13,7 @@ use App\Repository\TestRunRepository;
 use App\Repository\TestSuiteRepository;
 use App\Repository\UserRepository;
 use App\Service\AllureStepParserService;
+use App\Service\ArtifactCollectorService;
 use App\Service\NotificationService;
 use App\Service\TestRunnerService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -36,6 +37,7 @@ class TestRunApiController extends AbstractController
         private readonly TestRunnerService $testRunnerService,
         private readonly NotificationService $notificationService,
         private readonly AllureStepParserService $allureStepParser,
+        private readonly ArtifactCollectorService $artifactCollector,
         private readonly EntityManagerInterface $entityManager,
         private readonly MessageBusInterface $messageBus,
     ) {
@@ -458,14 +460,26 @@ class TestRunApiController extends AbstractController
         if ($includeDetails) {
             $data['output'] = $run->getOutput();
             $data['errorMessage'] = $run->getErrorMessage();
+            $data['totalTests'] = $run->getTotalTests();
+            $data['completedTests'] = $run->getCompletedTests();
+            $data['currentTestName'] = $run->getCurrentTestName();
+            $data['retryAttempt'] = $run->getRetryAttempt();
+            $data['retryOfFailed'] = $run->isRetryOfFailed();
+            $data['originalRun'] = $run->getOriginalRun() ? ['id' => $run->getOriginalRun()->getId()] : null;
             $data['results'] = array_map(fn ($result) => [
                 'id' => $result->getId(),
                 'testName' => $result->getTestName(),
                 'testId' => $result->getTestId(),
                 'status' => $result->getStatus(),
                 'duration' => $result->getDuration(),
+                'durationFormatted' => $result->getDurationFormatted(),
                 'errorMessage' => $result->getErrorMessage(),
+                'screenshotPath' => $result->getScreenshotPath(),
+                'hasOutput' => null !== $result->getOutputFilePath(),
             ], $run->getResults()->toArray());
+            $data['artifacts'] = $this->artifactCollector->groupArtifactsForDisplay(
+                $this->artifactCollector->listArtifacts($run),
+            );
             $data['reports'] = array_map(fn ($report) => [
                 'id' => $report->getId(),
                 'type' => $report->getReportType(),

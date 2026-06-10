@@ -11,7 +11,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
  * Admin controller for Global Environment Variables.
- * CRUD operations are handled by Vue component via API.
+ * CRUD operations are handled by the SPA via API.
  */
 #[Route('/admin/env-variables')]
 #[IsGranted('ROLE_ADMIN')]
@@ -20,6 +20,6 @@ class GlobalEnvVariableController extends AbstractController
     #[Route('', name: 'admin_env_variable_index', methods: ['GET'])]
     public function index(): Response
     {
-        return $this->render('admin/global_env_variable/index.html.twig');
+        return $this->render('spa/index.html.twig');
     }
 }

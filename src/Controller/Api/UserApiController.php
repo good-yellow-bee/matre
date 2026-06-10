@@ -69,6 +69,7 @@ class UserApiController extends AbstractController
                 'email' => $entity->getEmail(),
                 'roles' => $entity->getRoles(),
                 'isActive' => $entity->getIsActive(),
+                'totpEnabled' => $entity->isTotpEnabled(),
                 'createdAt' => $entity->getCreatedAt()->format(\DateTimeInterface::ATOM),
                 'updatedAt' => $entity->getUpdatedAt()?->format(\DateTimeInterface::ATOM),
             ];
@@ -105,6 +106,7 @@ class UserApiController extends AbstractController
             'email' => $user->getEmail(),
             'roles' => $user->getRoles(),
             'isActive' => $user->getIsActive(),
+            'totpEnabled' => $user->isTotpEnabled(),
             'notificationsEnabled' => $user->isNotificationsEnabled(),
             'notificationTrigger' => $user->getNotificationTrigger(),
             'notifyByEmail' => $user->isNotifyByEmail(),
