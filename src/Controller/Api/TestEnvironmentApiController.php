@@ -392,7 +392,6 @@ class TestEnvironmentApiController extends AbstractController
             'name' => $env->getName(),
             'code' => $env->getCode(),
             'region' => $env->getRegion(),
-            'baseUrl' => $env->getBaseUrl(),
             'displayUrl' => $this->stripCredentials($env->getBaseUrl()),
             'backendName' => $env->getBackendName(),
             'isActive' => $env->getIsActive(),
@@ -401,6 +400,8 @@ class TestEnvironmentApiController extends AbstractController
         ];
 
         if ($detail) {
+            // Raw URL (may embed basic-auth credentials) only where the edit form needs it
+            $data['baseUrl'] = $env->getBaseUrl();
             $data['description'] = $env->getDescription();
         }
 

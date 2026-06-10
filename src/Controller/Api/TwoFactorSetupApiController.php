@@ -41,17 +41,24 @@ class TwoFactorSetupApiController extends AbstractController
             return $this->json(['enabled' => true]);
         }
 
-        if (!$user->getTotpSecret()) {
+        // Entity holds plaintext after postLoad decryption; null means not provisioned yet
+        $secret = $user->getTotpSecret();
+        if (!$secret) {
             $secret = $this->totpAuthenticator->generateSecret();
             // Encrypt explicitly: raw Base32 secrets false-positive CredentialEncryptionService::isEncrypted(), so the listener would store them unencrypted and brick the account on next load
             $user->setTotpSecret($this->encryptionService->encrypt($secret));
             $this->entityManager->flush();
-            $user->setTotpSecret($secret);
         }
+
+        // QR generation reads the secret from the entity, so it must hold plaintext here
+        $user->setTotpSecret($secret);
+        $qrContent = $this->totpAuthenticator->getQRContent($user);
+        // Restore ciphertext so any later flush in this request persists encrypted data
+        $user->setTotpSecret($this->encryptionService->encrypt($secret));
 
         $builder = new Builder(
             writer: new PngWriter(),
-            data: $this->totpAuthenticator->getQRContent($user),
+            data: $qrContent,
             encoding: new Encoding('UTF-8'),
             size: 200,
             margin: 10,
@@ -60,7 +67,7 @@ class TwoFactorSetupApiController extends AbstractController
         return $this->json([
             'enabled' => false,
             'qrCode' => $builder->build()->getDataUri(),
-            'secret' => $user->getTotpSecret(),
+            'secret' => $secret,
         ]);
     }
 
