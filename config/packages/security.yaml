@@ -27,12 +27,23 @@ security:
             provider: app_user_provider
             user_checker: App\Security\UserChecker
 
+            # 401 JSON for API requests, redirect to login for browsers
+            entry_point: App\Security\Http\AuthenticationEntryPoint
+
             # Login throttling to prevent brute force attacks
             login_throttling:
                 max_attempts: 5
                 interval: '1 minute'
 
-            # Form login for admin panel
+            # JSON login for the SPA
+            json_login:
+                check_path: api_login
+                username_path: username
+                password_path: password
+                success_handler: App\Security\Http\JsonLoginSuccessHandler
+                failure_handler: App\Security\Http\JsonLoginFailureHandler
+
+            # Form login for admin panel (legacy, removed once the SPA fully replaces it)
             form_login:
                 login_path: app_login
                 check_path: app_login
@@ -61,6 +72,9 @@ security:
                 auth_form_path: 2fa_login
                 check_path: 2fa_login_check
                 enable_csrf: true
+                success_handler: App\Security\Http\TwoFactorSuccessHandler
+                failure_handler: App\Security\Http\TwoFactorFailureHandler
+                authentication_required_handler: App\Security\Http\TwoFactorRequiredHandler
 
     # Easy way to control access for large sections of your site
     # Note: Only the *first* access control that matches will be used
@@ -70,6 +84,11 @@ security:
         - { path: ^/2fa-setup, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/2fa, roles: IS_AUTHENTICATED_2FA_IN_PROGRESS }
         - { path: ^/$, roles: PUBLIC_ACCESS }
+
+        # API: public bootstrap endpoints, everything else authenticated
+        - { path: ^/api/login$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/me$, roles: PUBLIC_ACCESS }
+        - { path: ^/api, roles: ROLE_USER }
 
         # Admin panel - require authentication
         - { path: ^/admin, roles: ROLE_USER }

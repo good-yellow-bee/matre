@@ -136,6 +136,11 @@ services:
             $noVncUrl: '%env(NOVNC_URL)%'
             $allurePublicUrl: '%env(ALLURE_PUBLIC_URL)%'
 
+    App\Controller\Api\AuthApiController:
+        arguments:
+            $noVncUrl: '%env(NOVNC_URL)%'
+            $allurePublicUrl: '%env(ALLURE_PUBLIC_URL)%'
+
     App\EventListener\SecurityHeadersListener:
         arguments:
             $environment: '%kernel.environment%'

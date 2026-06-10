@@ -7,9 +7,10 @@ framework:
             interval: '1 minute'
 
         # API rate limiter - prevent API abuse
+        # Sized for the SPA: live-run polling (every 2s) plus parallel page fetches
         api:
             policy: 'sliding_window'
-            limit: 60
+            limit: 300
             interval: '1 minute'
 
         # Password reset rate limiter - prevent enumeration
