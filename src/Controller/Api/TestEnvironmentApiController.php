@@ -36,6 +36,24 @@ class TestEnvironmentApiController extends AbstractController
         ], $environments));
     }
 
+    #[Route('/list', name: 'api_test_environment_grid', methods: ['GET'])]
+    public function grid(): JsonResponse
+    {
+        $environments = $this->environmentRepository->findAllOrdered();
+
+        return $this->json(array_map(fn (TestEnvironment $env) => [
+            'id' => $env->getId(),
+            'name' => $env->getName(),
+            'code' => $env->getCode(),
+            'region' => $env->getRegion(),
+            'baseUrl' => $env->getBaseUrl(),
+            'backendName' => $env->getBackendName(),
+            'isActive' => $env->getIsActive(),
+            'createdAt' => $env->getCreatedAt()->format('c'),
+            'updatedAt' => $env->getUpdatedAt()?->format('c'),
+        ], $environments));
+    }
+
     #[Route('/{id}', name: 'api_test_environment_get', methods: ['GET'], requirements: ['id' => '\d+'])]
     public function get(int $id): JsonResponse
     {
@@ -104,6 +122,54 @@ class TestEnvironmentApiController extends AbstractController
         return $this->json([
             'success' => true,
             'message' => 'Test environment updated successfully',
+        ]);
+    }
+
+    #[Route('/{id}/toggle-active', name: 'api_test_environment_toggle_active', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function toggleActive(int $id, Request $request): JsonResponse
+    {
+        $env = $this->environmentRepository->find($id);
+
+        if (!$env) {
+            return $this->json(['error' => 'Test environment not found'], 404);
+        }
+
+        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
+        if (!$this->isCsrfTokenValid('api', $token)) {
+            return $this->json(['error' => 'Invalid CSRF token'], 403);
+        }
+
+        $env->setIsActive(!$env->getIsActive());
+        $this->entityManager->flush();
+
+        return $this->json([
+            'success' => true,
+            'isActive' => $env->getIsActive(),
+            'message' => sprintf('Environment "%s" %s', $env->getName(), $env->getIsActive() ? 'activated' : 'deactivated'),
+        ]);
+    }
+
+    #[Route('/{id}', name: 'api_test_environment_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
+    public function delete(int $id, Request $request): JsonResponse
+    {
+        $env = $this->environmentRepository->find($id);
+
+        if (!$env) {
+            return $this->json(['error' => 'Test environment not found'], 404);
+        }
+
+        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
+        if (!$this->isCsrfTokenValid('api', $token)) {
+            return $this->json(['error' => 'Invalid CSRF token'], 403);
+        }
+
+        $name = $env->getName();
+        $this->entityManager->remove($env);
+        $this->entityManager->flush();
+
+        return $this->json([
+            'success' => true,
+            'message' => sprintf('Environment "%s" has been deleted', $name),
         ]);
     }
 

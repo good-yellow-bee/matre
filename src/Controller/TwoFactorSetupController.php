@@ -16,9 +16,9 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Handles TOTP 2FA setup flow.
+ * Legacy Twig TOTP setup flow; replaced by the SPA + TwoFactorSetupApiController, removed at cleanup.
  */
-#[Route('/2fa-setup')]
+#[Route('/2fa-setup-legacy')]
 class TwoFactorSetupController extends AbstractController
 {
     public function __construct(
@@ -27,7 +27,7 @@ class TwoFactorSetupController extends AbstractController
     ) {
     }
 
-    #[Route('', name: '2fa_setup', methods: ['GET', 'POST'])]
+    #[Route('', name: '2fa_setup_legacy', methods: ['GET', 'POST'])]
     public function setup(Request $request): Response
     {
         /** @var User $user */

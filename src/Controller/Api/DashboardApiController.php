@@ -10,7 +10,9 @@ use App\Repository\TestRunRepository;
 use App\Repository\TestSuiteRepository;
 use App\Repository\UserRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpKernel\Kernel;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -24,6 +26,10 @@ class DashboardApiController extends AbstractController
         private readonly TestEnvironmentRepository $testEnvironmentRepository,
         private readonly TestSuiteRepository $testSuiteRepository,
         private readonly TestResultRepository $testResultRepository,
+        #[Autowire('%kernel.environment%')]
+        private readonly string $environment,
+        #[Autowire('%kernel.debug%')]
+        private readonly bool $debug,
     ) {
     }
 
@@ -79,6 +85,12 @@ class DashboardApiController extends AbstractController
             ],
             'activity' => [
                 'runningNow' => count($runningTests),
+            ],
+            'system' => [
+                'symfonyVersion' => Kernel::VERSION,
+                'phpVersion' => PHP_VERSION,
+                'environment' => $this->environment,
+                'debug' => $this->debug,
             ],
         ]);
     }

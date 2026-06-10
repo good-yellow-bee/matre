@@ -4,6 +4,8 @@ framework:
             - submit
             - authenticate
             - logout
+            - api
+            - two_factor
             - test_run_api
             - user_api
             - env_variable_api

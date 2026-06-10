@@ -31,6 +31,25 @@ class NotificationTemplateApiController extends AbstractController
     ) {
     }
 
+    #[Route('', name: 'api_notification_template_list', methods: ['GET'])]
+    public function list(): JsonResponse
+    {
+        $templates = $this->repository->findBy([], ['channel' => 'ASC', 'name' => 'ASC']);
+
+        $data = array_map(static fn (NotificationTemplate $template) => [
+            'id' => $template->getId(),
+            'name' => $template->getName(),
+            'nameLabel' => $template->getNameLabel(),
+            'channel' => $template->getChannel(),
+            'isActive' => $template->isActive(),
+            'isDefault' => $template->isDefault(),
+            'createdAt' => $template->getCreatedAt()->format('c'),
+            'updatedAt' => $template->getUpdatedAt()?->format('c'),
+        ], $templates);
+
+        return $this->json(['data' => $data]);
+    }
+
     #[Route('/{id}', name: 'api_notification_template_show', methods: ['GET'], requirements: ['id' => '\d+'])]
     public function show(NotificationTemplate $template): JsonResponse
     {
@@ -73,6 +92,55 @@ class NotificationTemplateApiController extends AbstractController
         return $this->json([
             'success' => true,
             'message' => 'Template updated successfully.',
+        ]);
+    }
+
+    #[Route('/{id}/toggle-active', name: 'api_notification_template_toggle_active', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function toggleActive(Request $request, NotificationTemplate $template): JsonResponse
+    {
+        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
+        if (!$this->isCsrfTokenValid('api', $token)) {
+            return $this->json(['error' => 'Invalid CSRF token'], 403);
+        }
+
+        $template->setIsActive(!$template->isActive());
+        $this->entityManager->flush();
+
+        return $this->json([
+            'success' => true,
+            'isActive' => $template->isActive(),
+            'message' => sprintf('Template "%s" %s', $template->getNameLabel(), $template->isActive() ? 'activated' : 'deactivated'),
+        ]);
+    }
+
+    #[Route('/reset-defaults', name: 'api_notification_template_reset_defaults', methods: ['POST'])]
+    public function resetDefaults(Request $request): JsonResponse
+    {
+        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
+        if (!$this->isCsrfTokenValid('api', $token)) {
+            return $this->json(['error' => 'Invalid CSRF token'], 403);
+        }
+
+        $templates = $this->repository->findAll();
+
+        foreach ($templates as $template) {
+            $defaults = $this->templateService->getDefaultTemplateContent(
+                $template->getChannel(),
+                $template->getName(),
+            );
+
+            if ($defaults['body']) {
+                $template->setSubject($defaults['subject']);
+                $template->setBody($defaults['body']);
+                $template->setIsActive(true);
+            }
+        }
+
+        $this->entityManager->flush();
+
+        return $this->json([
+            'success' => true,
+            'message' => 'All templates have been reset to defaults.',
         ]);
     }
 

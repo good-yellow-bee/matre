@@ -17,6 +17,7 @@ export default defineConfig({
     outDir: 'public/build',
     rollupOptions: {
       input: {
+        spa: './assets/spa/main.js',
         app: './assets/app.js',
         admin: './assets/admin.js',
         admin_vue: './assets/vue/admin-dashboard-app.js',

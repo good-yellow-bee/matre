@@ -263,6 +263,53 @@ class UserApiController extends AbstractController
     }
 
     /**
+     * Toggle user active status.
+     */
+    #[Route('/{id}/toggle-active', name: 'api_users_toggle_active', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function toggleActive(User $user, Request $request, EntityManagerInterface $entityManager): JsonResponse
+    {
+        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
+        if (!$this->isCsrfTokenValid('api', $token)) {
+            return $this->json(['error' => 'Invalid CSRF token'], 403);
+        }
+
+        // Prevent users from deactivating themselves
+        if ($user === $this->getUser()) {
+            return $this->json(['error' => 'You cannot deactivate your own account.'], 400);
+        }
+
+        $user->setIsActive(!$user->getIsActive());
+        $entityManager->flush();
+
+        return $this->json([
+            'success' => true,
+            'isActive' => $user->getIsActive(),
+            'message' => sprintf('User "%s" has been %s.', $user->getUsername(), $user->getIsActive() ? 'activated' : 'deactivated'),
+        ]);
+    }
+
+    /**
+     * Reset user's 2FA configuration.
+     */
+    #[Route('/{id}/reset-2fa', name: 'api_users_reset_2fa', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function reset2fa(User $user, Request $request, EntityManagerInterface $entityManager): JsonResponse
+    {
+        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
+        if (!$this->isCsrfTokenValid('api', $token)) {
+            return $this->json(['error' => 'Invalid CSRF token'], 403);
+        }
+
+        $user->setTotpSecret(null);
+        $user->setIsTotpEnabled(false);
+        $entityManager->flush();
+
+        return $this->json([
+            'success' => true,
+            'message' => sprintf('Two-factor authentication has been reset for user "%s".', $user->getUsername()),
+        ]);
+    }
+
+    /**
      * Validate username uniqueness.
      */
     #[Route('/validate-username', name: 'api_users_validate_username', methods: ['POST'])]
