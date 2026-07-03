@@ -59,19 +59,6 @@
             ".php-cs-fixer.dist.php"
         ]
     },
-    "league/flysystem-bundle": {
-        "version": "3.6",
-        "recipe": {
-            "repo": "github.com/symfony/recipes",
-            "branch": "main",
-            "version": "1.0",
-            "ref": "913dc3d7a5a1af0d2b044c5ac3a16e2f851d7380"
-        },
-        "files": [
-            "config/packages/flysystem.yaml",
-            "var/storage/.gitignore"
-        ]
-    },
     "phpstan/phpstan": {
         "version": "2.1",
         "recipe": {
@@ -144,18 +131,6 @@
         "files": [
             ".env",
             ".env.dev"
-        ]
-    },
-    "symfony/form": {
-        "version": "7.3",
-        "recipe": {
-            "repo": "github.com/symfony/recipes",
-            "branch": "main",
-            "version": "7.2",
-            "ref": "7d86a6723f4a623f59e2bf966b6aad2fc461d36b"
-        },
-        "files": [
-            "config/packages/csrf.yaml"
         ]
     },
     "symfony/framework-bundle": {
@@ -232,18 +207,6 @@
         },
         "files": [
             "config/packages/monolog.yaml"
-        ]
-    },
-    "symfony/notifier": {
-        "version": "7.1",
-        "recipe": {
-            "repo": "github.com/symfony/recipes",
-            "branch": "main",
-            "version": "5.0",
-            "ref": "178877daf79d2dbd62129dd03612cb1a2cb407cc"
-        },
-        "files": [
-            "config/packages/notifier.yaml"
         ]
     },
     "symfony/property-info": {
@@ -358,8 +321,5 @@
         "files": [
             "config/packages/messenger.yaml"
         ]
-    },
-    "twig/extra-bundle": {
-        "version": "v3.22.0"
     }
 }

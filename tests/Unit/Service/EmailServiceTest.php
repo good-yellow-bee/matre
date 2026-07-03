@@ -82,27 +82,6 @@ class EmailServiceTest extends TestCase
         );
     }
 
-    public function testSendContactFormNotification(): void
-    {
-        $mailer = $this->createMock(MailerInterface::class);
-        $mailer
-            ->expects($this->once())
-            ->method('send')
-            ->with($this->callback(function (TemplatedEmail $email) {
-                return 'admin@example.com' === $email->getTo()[0]->getAddress()
-                    && str_contains($email->getSubject(), 'John Sender')
-                    && 'emails/contact_form.html.twig' === $email->getHtmlTemplate()
-                    && 'sender@example.com' === $email->getReplyTo()[0]->getAddress();
-            }));
-
-        $this->createService($mailer)->sendContactFormNotification(
-            'admin@example.com',
-            'John Sender',
-            'sender@example.com',
-            'Test message',
-        );
-    }
-
     public function testEmailServicePropagatesTransportException(): void
     {
         $mailer = $this->createStub(MailerInterface::class);

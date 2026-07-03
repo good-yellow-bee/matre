@@ -1,13 +1,6 @@
-# Enable stateless CSRF protection for forms and logins/logouts
+# Enable stateless CSRF protection for the API and 2FA login
 framework:
-    form:
-        csrf_protection:
-            token_id: submit
-
     csrf_protection:
         stateless_token_ids:
-            - submit
-            - authenticate
-            - logout
             - api
             - two_factor

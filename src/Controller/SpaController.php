@@ -20,7 +20,7 @@ class SpaController extends AbstractController
     #[Route(
         '/{path}',
         name: 'spa_shell',
-        requirements: ['path' => '(?!api(/|$)|build/|uploads/|_profiler|_wdt|2fa_check$|logout$).*'],
+        requirements: ['path' => '(?!api(/|$)|build/|_profiler|_wdt|2fa_check$|logout$).*'],
         defaults: ['path' => ''],
         methods: ['GET'],
         priority: -100,
