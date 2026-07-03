@@ -35,7 +35,7 @@ class TestEnvironmentApiControllerTest extends WebTestCase
 
         $client->request('GET', self::BASE_URL . '/' . $env->getId() . '/env-variables');
 
-        $this->assertResponseRedirects('/login');
+        $this->assertApiUnauthenticated($client);
     }
 
     public function testListEnvVariablesRequiresAdminRole(): void
@@ -118,6 +118,46 @@ class TestEnvironmentApiControllerTest extends WebTestCase
     }
 
     // =====================
+    // Get Single Environment
+    // =====================
+
+    public function testGetReturns404ForNonExistent(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+
+        $response = $this->jsonRequest($client, 'GET', self::BASE_URL . '/99999');
+
+        $this->assertJsonError($response, 404, 'not found');
+    }
+
+    // =====================
+    // Toggle Active / Delete CSRF
+    // =====================
+
+    public function testToggleActiveRequiresCsrf(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $env = $this->createTestEnvironment();
+
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $env->getId() . '/toggle-active', [], self::INVALID_CSRF_HEADERS);
+
+        $this->assertJsonError($response, 403, 'CSRF');
+    }
+
+    public function testDeleteRequiresCsrf(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $env = $this->createTestEnvironment();
+
+        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/' . $env->getId(), [], self::INVALID_CSRF_HEADERS);
+
+        $this->assertJsonError($response, 403, 'CSRF');
+    }
+
+    // =====================
     // Save Env Variables
     // =====================
 
@@ -129,15 +169,34 @@ class TestEnvironmentApiControllerTest extends WebTestCase
 
         $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $env->getId() . '/env-variables', [
             'variables' => [['name' => 'NEW_VAR', 'value' => 'value']],
-        ]);
+        ], self::INVALID_CSRF_HEADERS);
 
         $this->assertJsonError($response, 403, 'CSRF');
     }
 
     public function testSaveEnvVariablesSucceeds(): void
     {
-        // Skip - CSRF session handling in functional tests needs refactoring
-        $this->markTestSkipped('CSRF session handling in functional tests needs refactoring');
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $env = $this->createTestEnvironment();
+
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $env->getId() . '/env-variables', [
+            'variables' => [
+                ['name' => 'API_KEY', 'value' => 'secret123'],
+                ['name' => 'with_meta', 'value' => 'v', 'usedInTests' => 'SomeCest'],
+            ],
+        ]);
+
+        $data = $this->assertJsonResponse($response, 200);
+        $this->assertTrue($data['success']);
+        $this->assertEquals(2, $data['count']);
+
+        $this->getEntityManager()->refresh($env);
+        // Names are uppercased; flat accessor returns values, metadata accessor keeps usedInTests
+        $this->assertEquals('secret123', $env->getEnvVariables()['API_KEY']);
+        $withMeta = $env->getEnvVariablesWithMetadata();
+        $this->assertEquals('v', $withMeta['WITH_META']['value']);
+        $this->assertEquals('SomeCest', $withMeta['WITH_META']['usedInTests']);
     }
 
     // =====================
@@ -152,15 +211,40 @@ class TestEnvironmentApiControllerTest extends WebTestCase
 
         $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $env->getId() . '/env-variables/import', [
             'content' => 'API_KEY=secret123',
-        ]);
+        ], self::INVALID_CSRF_HEADERS);
 
         $this->assertJsonError($response, 403, 'CSRF');
     }
 
-    public function testImportEnvVariablesValidatesContent(): void
+    public function testImportEnvVariablesParsesContent(): void
     {
-        // Skip - CSRF required, but at least we know it validates
-        $this->markTestSkipped('CSRF session handling in functional tests needs refactoring');
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $env = $this->createTestEnvironment();
+
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $env->getId() . '/env-variables/import', [
+            'content' => "API_KEY=secret123\nDB_HOST=localhost",
+        ]);
+
+        $data = $this->assertJsonResponse($response, 200);
+        $this->assertTrue($data['success']);
+        $this->assertEquals(2, $data['count']);
+        $names = array_column($data['variables'], 'name');
+        $this->assertContains('API_KEY', $names);
+        $this->assertContains('DB_HOST', $names);
+    }
+
+    public function testImportEnvVariablesRejectsEmptyContent(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $env = $this->createTestEnvironment();
+
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $env->getId() . '/env-variables/import', [
+            'content' => '',
+        ]);
+
+        $this->assertJsonError($response, 400);
     }
 
     private function createTestEnvironment(array $envVars = []): TestEnvironment

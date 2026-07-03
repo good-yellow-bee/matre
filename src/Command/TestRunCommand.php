@@ -156,7 +156,7 @@ class TestRunCommand extends Command
 
                     for ($attempt = 1; $attempt <= $maxRetries; ++$attempt) {
                         $currentCounts = $currentRun->getResultCounts();
-                        if ($currentCounts['failed'] === 0 && $currentCounts['broken'] === 0) {
+                        if (0 === $currentCounts['failed'] && 0 === $currentCounts['broken']) {
                             $io->info('No failures to retry.');
 
                             break;

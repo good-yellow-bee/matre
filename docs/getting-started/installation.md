@@ -140,11 +140,11 @@ php bin/console doctrine:fixtures:load
 ### 4. Build Frontend
 
 ```bash
-# Development with HMR
-npm run dev
-
-# Production build
+# Production build (output: public/build)
 npm run build
+
+# Rebuild on change during development
+npx vite build --watch
 ```
 
 ### 5. Start Server
@@ -159,15 +159,13 @@ php -S localhost:8000 -t public/
 
 ## Frontend Development
 
-For hot module replacement during development:
+The Twig helpers (`vite_entry_script_tags` / `vite_entry_link_tags`) serve built assets from `public/build` (resolved via the Vite manifest). For a fast feedback loop, rebuild on change and refresh the browser:
 
 ```bash
-npm run dev -- --host 127.0.0.1 --port 5173
+npx vite build --watch
 ```
 
-Vite dev server runs on http://localhost:5173 with HMR enabled.
-
-The Twig helpers (`vite_entry_script_tags`) automatically detect dev mode and serve from Vite.
+See [SPA Frontend](../development/spa-frontend.md) for the application structure.
 
 ---
 

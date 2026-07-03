@@ -1,0 +1,263 @@
+@import "tailwindcss";
+
+@source "../**/*.vue";
+@source "../**/*.js";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------------
+   MATRE design tokens — "mission control" console
+   Dark-first graphite with electric cyan signal; full light mode.
+--------------------------------------------------------------------------- */
+
+:root {
+  --m-surface: #f3f5f9;
+  --m-surface-2: #ecf0f6;
+  --m-panel: #ffffff;
+  --m-panel-2: #f8fafd;
+  --m-edge: #e3e8f0;
+  --m-edge-2: #cbd5e1;
+  --m-ink: #0e1726;
+  --m-ink-mute: #54657e;
+  --m-ink-faint: #8b99af;
+  --m-accent: #0891b2;
+  --m-accent-2: #0e7490;
+  --m-accent-ink: #ffffff;
+  --m-accent-soft: #0891b21a;
+  --m-pass: #059669;
+  --m-fail: #dc2626;
+  --m-broken: #7c3aed;
+  --m-skip: #64748b;
+  --m-run: #d97706;
+  --m-pend: #64748b;
+  --m-glow: 0 0 0 transparent;
+}
+
+.dark {
+  --m-surface: #0a0e16;
+  --m-surface-2: #0d1320;
+  --m-panel: #101724;
+  --m-panel-2: #151e2e;
+  --m-edge: #1c2638;
+  --m-edge-2: #2a3852;
+  --m-ink: #e8edf6;
+  --m-ink-mute: #93a1b8;
+  --m-ink-faint: #5c6c86;
+  --m-accent: #22d3ee;
+  --m-accent-2: #67e8f9;
+  --m-accent-ink: #062029;
+  --m-accent-soft: #22d3ee14;
+  --m-pass: #34d399;
+  --m-fail: #f87171;
+  --m-broken: #a78bfa;
+  --m-skip: #8195ae;
+  --m-run: #fbbf24;
+  --m-pend: #94a3b8;
+  --m-glow: 0 0 24px -6px #22d3ee59;
+}
+
+@theme inline {
+  --color-surface: var(--m-surface);
+  --color-surface-2: var(--m-surface-2);
+  --color-panel: var(--m-panel);
+  --color-panel-2: var(--m-panel-2);
+  --color-edge: var(--m-edge);
+  --color-edge-2: var(--m-edge-2);
+  --color-ink: var(--m-ink);
+  --color-ink-mute: var(--m-ink-mute);
+  --color-ink-faint: var(--m-ink-faint);
+  --color-accent: var(--m-accent);
+  --color-accent-2: var(--m-accent-2);
+  --color-accent-ink: var(--m-accent-ink);
+  --color-accent-soft: var(--m-accent-soft);
+  --color-pass: var(--m-pass);
+  --color-fail: var(--m-fail);
+  --color-broken: var(--m-broken);
+  --color-skip: var(--m-skip);
+  --color-run: var(--m-run);
+  --color-pend: var(--m-pend);
+}
+
+@theme {
+  --font-sans: 'Archivo Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', monospace;
+}
+
+/* ------------------------------------------------------------------ base */
+
+html {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: var(--m-surface);
+  color: var(--m-ink);
+}
+
+::selection {
+  background-color: var(--m-accent);
+  color: var(--m-accent-ink);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--m-edge-2) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--m-edge-2);
+  border-radius: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ------------------------------------------------------------ atmosphere */
+
+.bg-grid-dots {
+  background-image: radial-gradient(circle, var(--m-edge-2) 1px, transparent 1px);
+  background-size: 26px 26px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 30%, transparent 75%);
+}
+
+.glow-band {
+  background: radial-gradient(ellipse 60% 45% at 50% -10%, var(--m-accent-soft), transparent 70%);
+}
+
+/* ------------------------------------------------------------ components */
+
+@layer components {
+  .btn,
+  .btn-primary,
+  .btn-ghost,
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold
+      transition-all duration-150 select-none cursor-pointer whitespace-nowrap
+      focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent
+      disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .btn-primary {
+    @apply bg-accent text-accent-ink hover:brightness-110 active:scale-[.98];
+    box-shadow: var(--m-glow);
+  }
+
+  .btn-ghost {
+    @apply border border-edge bg-panel text-ink hover:bg-panel-2 hover:border-edge-2;
+  }
+
+  .btn-danger {
+    @apply border border-fail/30 bg-fail/10 text-fail hover:bg-fail/20;
+  }
+
+  .btn-sm {
+    @apply px-2.5 py-1.5 text-xs rounded-md;
+  }
+
+  .card {
+    @apply rounded-xl border border-edge bg-panel shadow-sm;
+  }
+
+  .input {
+    @apply w-full rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm text-ink
+      placeholder:text-ink-faint transition-colors duration-150
+      focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25;
+  }
+
+  .label {
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink-mute;
+  }
+
+  .field-error {
+    @apply mt-1 text-xs text-fail;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide;
+  }
+
+  .link {
+    @apply text-accent hover:text-accent-2 hover:underline underline-offset-4 cursor-pointer;
+  }
+
+  .kbd {
+    @apply inline-flex items-center rounded border border-edge-2 bg-panel-2 px-1.5 font-mono text-[10px] text-ink-mute;
+  }
+
+  .mono-id {
+    @apply font-mono text-[13px] text-ink;
+  }
+
+  .th-base {
+    @apply px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-widest text-ink-faint;
+  }
+
+  .td-base {
+    @apply px-4 py-3 text-sm text-ink align-middle;
+  }
+}
+
+/* --------------------------------------------------------------- motion */
+
+@keyframes led-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 currentColor; }
+  50% { opacity: .55; box-shadow: 0 0 8px 1px currentColor; }
+}
+
+.led {
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.led-pulse {
+  animation: led-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.skeleton {
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--m-panel-2) 25%, var(--m-edge) 50%, var(--m-panel-2) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rise {
+  animation: rise-in .45s cubic-bezier(.21, .9, .35, 1) both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity .15s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise, .led-pulse, .skeleton {
+    animation: none;
+  }
+}

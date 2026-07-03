@@ -33,7 +33,7 @@ class UserApiControllerTest extends WebTestCase
 
         $client->request('GET', self::BASE_URL);
 
-        $this->assertResponseRedirects('/login');
+        $this->assertApiUnauthenticated($client);
     }
 
     public function testListRequiresAdminRole(): void
@@ -368,6 +368,83 @@ class UserApiControllerTest extends WebTestCase
         $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/99999');
 
         $this->assertResponseStatusCodeSame(404);
+    }
+
+    public function testDeleteUserRequiresCsrf(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $user = $this->createUser();
+
+        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/' . $user->getId(), [], self::INVALID_CSRF_HEADERS);
+
+        $this->assertJsonError($response, 403, 'CSRF');
+    }
+
+    // =====================
+    // Toggle Active / Reset 2FA Tests
+    // =====================
+
+    public function testToggleActiveRequiresCsrf(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $user = $this->createUser();
+
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $user->getId() . '/toggle-active', [], self::INVALID_CSRF_HEADERS);
+
+        $this->assertJsonError($response, 403, 'CSRF');
+    }
+
+    public function testToggleActiveSucceeds(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $user = $this->createUser(active: true);
+
+        $response = $this->jsonRequest(
+            $client,
+            'POST',
+            self::BASE_URL . '/' . $user->getId() . '/toggle-active',
+        );
+
+        $data = $this->assertJsonResponse($response, 200);
+        $this->assertTrue($data['success']);
+        $this->assertFalse($data['isActive']);
+    }
+
+    public function testReset2faRequiresCsrf(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $user = $this->createUser();
+
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $user->getId() . '/reset-2fa', [], self::INVALID_CSRF_HEADERS);
+
+        $this->assertJsonError($response, 403, 'CSRF');
+    }
+
+    public function testReset2faSucceeds(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $user = $this->createUser();
+        $user->setTotpSecret('JBSWY3DPEHPK3PXP');
+        $user->setIsTotpEnabled(true);
+        $this->getEntityManager()->flush();
+
+        $response = $this->jsonRequest(
+            $client,
+            'POST',
+            self::BASE_URL . '/' . $user->getId() . '/reset-2fa',
+        );
+
+        $data = $this->assertJsonResponse($response, 200);
+        $this->assertTrue($data['success']);
+
+        $this->getEntityManager()->refresh($user);
+        $this->assertNull($user->getTotpSecret());
+        $this->assertFalse($user->isTotpEnabled());
     }
 
     // =====================

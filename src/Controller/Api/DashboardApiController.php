@@ -10,7 +10,9 @@ use App\Repository\TestRunRepository;
 use App\Repository\TestSuiteRepository;
 use App\Repository\UserRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpKernel\Kernel;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -24,6 +26,10 @@ class DashboardApiController extends AbstractController
         private readonly TestEnvironmentRepository $testEnvironmentRepository,
         private readonly TestSuiteRepository $testSuiteRepository,
         private readonly TestResultRepository $testResultRepository,
+        #[Autowire('%kernel.environment%')]
+        private readonly string $environment,
+        #[Autowire('%kernel.debug%')]
+        private readonly bool $debug,
     ) {
     }
 
@@ -42,18 +48,6 @@ class DashboardApiController extends AbstractController
         // Test run statistics (last 30 days)
         $testStats = $this->testRunRepository->getStatistics(30);
 
-        // Environment statistics
-        $environments = $this->testEnvironmentRepository->findAllOrdered();
-        $activeEnvironments = $this->testEnvironmentRepository->findActive();
-
-        // Suite statistics
-        $suites = $this->testSuiteRepository->findAllOrdered();
-        $activeSuites = $this->testSuiteRepository->findActive();
-        $scheduledSuites = $this->testSuiteRepository->findScheduled();
-
-        // Running tests
-        $runningTests = $this->testRunRepository->findRunning();
-
         return $this->json([
             'users' => [
                 'total' => $totalUsers,
@@ -69,18 +63,30 @@ class DashboardApiController extends AbstractController
                 'period' => '30 days',
             ],
             'environments' => [
-                'total' => count($environments),
-                'active' => count($activeEnvironments),
+                'total' => $this->testEnvironmentRepository->countAll(),
+                'active' => $this->testEnvironmentRepository->countActive(),
             ],
             'suites' => [
-                'total' => count($suites),
-                'active' => count($activeSuites),
-                'scheduled' => count($scheduledSuites),
+                'total' => $this->testSuiteRepository->countAll(),
+                'active' => $this->testSuiteRepository->countActive(),
+                'scheduled' => $this->testSuiteRepository->countScheduled(),
             ],
             'activity' => [
-                'runningNow' => count($runningTests),
+                'runningNow' => $this->testRunRepository->countRunning(),
+            ],
+            'system' => [
+                'symfonyVersion' => Kernel::VERSION,
+                'phpVersion' => PHP_VERSION,
+                'environment' => $this->environment,
+                'debug' => $this->debug,
             ],
         ]);
+    }
+
+    #[Route('/running-count', name: 'api_dashboard_running_count', methods: ['GET'])]
+    public function runningCount(): JsonResponse
+    {
+        return $this->json(['runningNow' => $this->testRunRepository->countRunning()]);
     }
 
     #[Route('/environment-stats', name: 'api_dashboard_environment_stats', methods: ['GET'])]
@@ -110,7 +116,8 @@ class DashboardApiController extends AbstractController
             ];
 
             if ($runs['current']) {
-                $counts = $resultCounts[$envId];
+                // A run can finish with zero result rows (e.g. generation failure)
+                $counts = $resultCounts[$envId] ?? ['passed' => 0, 'failed' => 0, 'skipped' => 0, 'broken' => 0, 'total' => 0];
                 $passRate = $counts['total'] > 0 ? round($counts['passed'] / $counts['total'] * 100, 1) : 0;
 
                 $entry['lastRun'] = [

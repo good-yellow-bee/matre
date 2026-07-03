@@ -9,6 +9,9 @@ use App\Entity\TestSuite;
 use App\Tests\Functional\Traits\ApiTestTrait;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
+/**
+ * Functional tests for test suite SPA shell pages (mutations covered by TestSuiteApiControllerTest).
+ */
 class TestSuiteControllerTest extends WebTestCase
 {
     use ApiTestTrait;
@@ -52,6 +55,7 @@ class TestSuiteControllerTest extends WebTestCase
         $client->request('GET', self::BASE_URL);
 
         $this->assertResponseIsSuccessful();
+        $this->assertSelectorExists('#app');
     }
 
     // =====================
@@ -83,14 +87,17 @@ class TestSuiteControllerTest extends WebTestCase
         $this->assertResponseIsSuccessful();
     }
 
-    public function testShowReturns404ForNonExistent(): void
+    public function testShowServesShellForNonExistentId(): void
     {
         $client = self::createClient();
         $this->loginAsAdmin($client);
 
+        // SPA shell is served for any id; the 404 state is handled client-side
+        // (API behavior covered by TestSuiteApiControllerTest::testGetReturns404)
         $client->request('GET', self::BASE_URL . '/99999');
 
-        $this->assertResponseStatusCodeSame(404);
+        $this->assertResponseStatusCodeSame(200);
+        $this->assertSelectorExists('#app');
     }
 
     // =====================
@@ -106,86 +113,6 @@ class TestSuiteControllerTest extends WebTestCase
         $client->request('GET', self::BASE_URL . '/' . $suite->getId() . '/edit');
 
         $this->assertResponseIsSuccessful();
-    }
-
-    // =====================
-    // Delete Tests
-    // =====================
-
-    public function testDeleteRequiresCsrf(): void
-    {
-        $client = self::createClient();
-        $this->loginAsAdmin($client);
-        $suite = $this->createTestSuite();
-
-        $client->request('POST', self::BASE_URL . '/' . $suite->getId() . '/delete');
-
-        $this->assertResponseRedirects('/admin/test-suites');
-        $client->followRedirect();
-        $this->assertSelectorTextContains('.alert', 'Invalid CSRF token');
-    }
-
-    public function testDeleteWithInvalidCsrf(): void
-    {
-        $client = self::createClient();
-        $this->loginAsAdmin($client);
-        $suite = $this->createTestSuite();
-
-        $client->request('POST', self::BASE_URL . '/' . $suite->getId() . '/delete', [
-            '_token' => 'invalid_token',
-        ]);
-
-        $this->assertResponseRedirects('/admin/test-suites');
-        $client->followRedirect();
-        $this->assertSelectorTextContains('.alert', 'Invalid CSRF token');
-    }
-
-    // =====================
-    // Toggle Active Tests
-    // =====================
-
-    public function testToggleActiveRequiresCsrf(): void
-    {
-        $client = self::createClient();
-        $this->loginAsAdmin($client);
-        $suite = $this->createTestSuite();
-
-        $client->request('POST', self::BASE_URL . '/' . $suite->getId() . '/toggle-active');
-
-        $this->assertResponseRedirects('/admin/test-suites');
-        $client->followRedirect();
-        $this->assertSelectorTextContains('.alert', 'Invalid CSRF token');
-    }
-
-    public function testToggleActiveWithInvalidCsrf(): void
-    {
-        $client = self::createClient();
-        $this->loginAsAdmin($client);
-        $suite = $this->createTestSuite();
-
-        $client->request('POST', self::BASE_URL . '/' . $suite->getId() . '/toggle-active', [
-            '_token' => 'invalid_token',
-        ]);
-
-        $this->assertResponseRedirects('/admin/test-suites');
-        $client->followRedirect();
-        $this->assertSelectorTextContains('.alert', 'Invalid CSRF token');
-    }
-
-    // =====================
-    // Duplicate Tests
-    // =====================
-
-    public function testDuplicateRequiresCsrf(): void
-    {
-        $client = self::createClient();
-        $this->loginAsAdmin($client);
-        $suite = $this->createTestSuite();
-
-        $client->request('POST', self::BASE_URL . '/' . $suite->getId() . '/duplicate');
-
-        // Duplicate throws AccessDeniedException on invalid CSRF
-        $this->assertResponseStatusCodeSame(403);
     }
 
     // =====================

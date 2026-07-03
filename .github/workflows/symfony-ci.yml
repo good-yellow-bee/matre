@@ -1,4 +1,4 @@
-name: Symfony 7 CI/CD Pipeline
+name: Symfony CI/CD Pipeline
 
 on:
   push:
@@ -56,13 +56,8 @@ jobs:
       - name: Run PHPStan static analysis
         run: vendor/bin/phpstan analyse --error-format=github --no-progress
 
-      - name: Download PHP-CS-Fixer
-        run: |
-          curl -L https://github.com/PHP-CS-Fixer/PHP-CS-Fixer/releases/download/v3.89.2/php-cs-fixer.phar -o php-cs-fixer
-          chmod +x php-cs-fixer
-
       - name: Run PHP-CS-Fixer (dry run)
-        run: ./php-cs-fixer fix --dry-run --diff --verbose
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff --verbose
 
   # ============================================================
   # Job 2: PHPUnit Tests with MySQL
@@ -119,17 +114,7 @@ jobs:
         run: php bin/console cache:clear --env=test --no-warmup || true
 
       - name: Create .env.test.local file
-        run: |
-          cat > .env.test.local <<EOF
-APP_ENV=test
-DB_HOST=127.0.0.1
-DB_USER=root
-DB_PASS=root
-DB_NAME=matre_test
-DB_VERSION=8.0
-MAILER_DSN=null://null
-MAIL_FROM=test@matre.local
-EOF
+        run: printf '%s\n' 'APP_ENV=test' 'DB_HOST=127.0.0.1' 'DB_USER=root' 'DB_PASS=root' 'DB_NAME=matre_test' 'DB_VERSION=8.0' 'MAILER_DSN=null://null' 'MAIL_FROM=test@matre.local' > .env.test.local
 
       - name: Wait for MySQL to be ready
         run: |
@@ -149,7 +134,8 @@ EOF
         run: bin/console doctrine:migrations:migrate --env=test --no-interaction
 
       - name: Load fixtures
-        run: bin/console doctrine:fixtures:load --env=test --no-interaction
+        # --append: a plain load purges tables, wiping migration-seeded data (default notification templates)
+        run: bin/console doctrine:fixtures:load --env=test --no-interaction --append
 
       - name: Run PHPUnit smoke tests
         run: vendor/bin/phpunit --testsuite="Smoke Tests" --testdox
@@ -249,14 +235,7 @@ EOF
         run: composer install --prefer-dist --no-progress --no-interaction --no-scripts
 
       - name: Create .env.test.local file
-        run: |
-          cat > .env.test.local <<EOF
-DB_HOST=127.0.0.1
-DB_USER=root
-DB_PASS=root
-DB_NAME=matre_test
-DB_VERSION=8.0
-EOF
+        run: printf '%s\n' 'DB_HOST=127.0.0.1' 'DB_USER=root' 'DB_PASS=root' 'DB_NAME=matre_test' 'DB_VERSION=8.0' > .env.test.local
 
       - name: Clear cache
         run: php bin/console cache:clear --env=test --no-warmup || true
@@ -380,17 +359,7 @@ EOF
         run: npm run build
 
       - name: Create .env.test.local file
-        run: |
-          cat > .env.test.local <<EOF
-APP_ENV=test
-DB_HOST=127.0.0.1
-DB_USER=root
-DB_PASS=root
-DB_NAME=matre_test
-DB_VERSION=8.0
-MAILER_DSN=null://null
-MAIL_FROM=test@matre.local
-EOF
+        run: printf '%s\n' 'APP_ENV=test' 'DB_HOST=127.0.0.1' 'DB_USER=root' 'DB_PASS=root' 'DB_NAME=matre_test' 'DB_VERSION=8.0' 'MAILER_DSN=null://null' 'MAIL_FROM=test@matre.local' > .env.test.local
 
       - name: Wait for MySQL
         run: |
@@ -406,7 +375,8 @@ EOF
         run: |
           bin/console doctrine:database:create --env=test --if-not-exists
           bin/console doctrine:migrations:migrate --env=test --no-interaction
-          bin/console doctrine:fixtures:load --env=test --no-interaction
+          # --append keeps migration-seeded data (default notification templates)
+          bin/console doctrine:fixtures:load --env=test --no-interaction --append
 
       - name: Start Symfony server
         run: |

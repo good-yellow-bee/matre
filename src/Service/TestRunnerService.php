@@ -93,6 +93,9 @@ class TestRunnerService
             // Clear root-level artifacts to prevent contamination from previous runs
             $this->artifactCollector->clearRootLevelArtifacts();
 
+            // Clear this run's per-run directories (stale after DB reseed or retry)
+            $this->artifactCollector->clearRunArtifacts($run);
+
             // Prepare shared module (with locking for concurrent access)
             $run->setStatus(TestRun::STATUS_CLONING);
             $this->entityManager->flush();
@@ -531,6 +534,23 @@ class TestRunnerService
     }
 
     /**
+     * Check if a test failure is caused by a retryable infrastructure/WebDriver error.
+     *
+     * Only inspects the structured errorMessage field — never the raw output file,
+     * which can contain unrelated driver-log noise and trigger false positives.
+     */
+    public function isRetryableFailure(TestResult $result): bool
+    {
+        if (!$result->isFailed() && !$result->isBroken()) {
+            return false;
+        }
+
+        $errorMessage = $result->getErrorMessage();
+
+        return null !== $errorMessage && $this->matchesRetryablePattern($errorMessage);
+    }
+
+    /**
      * Execute a retry run with specific failed test IDs sequentially.
      *
      * @param string[] $testIds Test IDs to retry
@@ -627,27 +647,10 @@ class TestRunnerService
         ]);
     }
 
-    /**
-     * Check if a test failure is caused by a retryable infrastructure/WebDriver error.
-     *
-     * Only inspects the structured errorMessage field — never the raw output file,
-     * which can contain unrelated driver-log noise and trigger false positives.
-     */
-    public function isRetryableFailure(TestResult $result): bool
-    {
-        if (!$result->isFailed() && !$result->isBroken()) {
-            return false;
-        }
-
-        $errorMessage = $result->getErrorMessage();
-
-        return null !== $errorMessage && $this->matchesRetryablePattern($errorMessage);
-    }
-
     private function matchesRetryablePattern(string $text): bool
     {
         foreach (self::RETRYABLE_ERROR_PATTERNS as $pattern) {
-            if (stripos($text, $pattern) !== false) {
+            if (false !== stripos($text, $pattern)) {
                 return true;
             }
         }

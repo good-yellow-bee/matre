@@ -34,7 +34,7 @@ class NotificationTemplateApiControllerTest extends WebTestCase
 
         $client->request('GET', self::BASE_URL . '/' . $template->getId());
 
-        $this->assertResponseRedirects('/login');
+        $this->assertApiUnauthenticated($client);
     }
 
     public function testShowRequiresAdmin(): void
@@ -86,6 +86,31 @@ class NotificationTemplateApiControllerTest extends WebTestCase
         ]);
 
         $this->assertEquals(403, $response->getStatusCode());
+    }
+
+    // =====================
+    // Toggle Active / Reset Defaults CSRF
+    // =====================
+
+    public function testToggleActiveRequiresCsrf(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $template = $this->createNotificationTemplate();
+
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $template->getId() . '/toggle-active', [], self::INVALID_CSRF_HEADERS);
+
+        $this->assertJsonError($response, 403, 'CSRF');
+    }
+
+    public function testResetDefaultsRequiresCsrf(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/reset-defaults', [], self::INVALID_CSRF_HEADERS);
+
+        $this->assertJsonError($response, 403, 'CSRF');
     }
 
     // =====================
@@ -143,22 +168,21 @@ class NotificationTemplateApiControllerTest extends WebTestCase
     {
         $em = $this->getEntityManager();
 
-        $existing = $em->getRepository(NotificationTemplate::class)->findOneBy([
+        $template = $em->getRepository(NotificationTemplate::class)->findOneBy([
             'channel' => NotificationTemplate::CHANNEL_EMAIL,
             'name' => NotificationTemplate::NAME_COMPLETED_SUCCESS,
         ]);
 
-        if ($existing) {
-            return $existing;
+        if (!$template) {
+            $template = new NotificationTemplate();
+            $template->setChannel(NotificationTemplate::CHANNEL_EMAIL);
+            $template->setName(NotificationTemplate::NAME_COMPLETED_SUCCESS);
+            $em->persist($template);
         }
 
-        $template = new NotificationTemplate();
-        $template->setChannel(NotificationTemplate::CHANNEL_EMAIL);
-        $template->setName(NotificationTemplate::NAME_COMPLETED_SUCCESS);
         $template->setSubject('Test Subject');
         $template->setBody('Test body {{ testRunId }}');
         $template->setIsActive(true);
-        $em->persist($template);
         $em->flush();
 
         return $template;

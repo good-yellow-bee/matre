@@ -1,51 +1,44 @@
-import { test, expect } from '@playwright/test';
-import { LoginPage } from './pages/LoginPage';
+import { test, expect, type Page } from '@playwright/test';
 
-test.describe('Authentication', () => {
-  test.use({ storageState: { cookies: [], origins: [] } }); // No auth for login tests
+const ADMIN_USER = process.env.E2E_ADMIN_USER ?? 'admin';
+const ADMIN_PASS = process.env.E2E_ADMIN_PASS ?? 'admin123';
 
-  test('login page renders correctly', async ({ page }) => {
-    const loginPage = new LoginPage(page);
-    await loginPage.goto();
+test.use({ storageState: { cookies: [], origins: [] } });
 
-    await expect(page).toHaveTitle(/Sign in/);
-    await expect(loginPage.usernameInput).toBeVisible();
-    await expect(loginPage.passwordInput).toBeVisible();
-    await expect(loginPage.submitButton).toBeVisible();
-    await expect(loginPage.submitButton).toHaveText('Sign in');
-  });
+async function login(page: Page) {
+  await page.goto('/login');
+  await page.locator('#username').fill(ADMIN_USER);
+  await page.locator('#password').fill(ADMIN_PASS);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.waitForURL(/\/admin/);
+}
 
-  test('login with valid credentials redirects to dashboard', async ({ page }) => {
-    const loginPage = new LoginPage(page);
-    await loginPage.goto();
-    await loginPage.login('admin', 'admin123');
-
-    await expect(page).toHaveURL(/\/admin/, { timeout: 15_000 });
-  });
-
-  test('login with invalid credentials shows error', async ({ page }) => {
-    const loginPage = new LoginPage(page);
-    await loginPage.goto();
-    await loginPage.login('admin', 'wrongpassword');
-
-    await expect(loginPage.errorAlert).toBeVisible();
-    await expect(page).toHaveURL(/\/login/);
-  });
-
-  test('unauthenticated user is redirected to login', async ({ page }) => {
+test.describe('authentication', () => {
+  test('unauthenticated /admin redirects to login', async ({ page }) => {
     await page.goto('/admin');
+    await page.waitForURL(/\/login/);
+    await expect(page.locator('#username')).toBeVisible();
+  });
+
+  test('bad credentials show error alert', async ({ page }) => {
+    await page.goto('/login');
+    await page.locator('#username').fill(ADMIN_USER);
+    await page.locator('#password').fill('definitely-wrong-password');
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page.getByText('Invalid credentials.')).toBeVisible();
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test('logout redirects to login page', async ({ page }) => {
-    // First login
-    const loginPage = new LoginPage(page);
-    await loginPage.goto();
-    await loginPage.login('admin', 'admin123');
-    await expect(page).toHaveURL(/\/admin/, { timeout: 15_000 });
+  test('good login lands on dashboard', async ({ page }) => {
+    await login(page);
+    await expect(page.locator('h1')).toContainText(`Welcome back, ${ADMIN_USER}`);
+  });
 
-    // Then logout
-    await page.goto('/logout');
-    await expect(page).toHaveURL(/\/login/);
+  test('logout returns to login', async ({ page }) => {
+    await login(page);
+    await expect(page.locator('h1')).toContainText('Welcome back');
+    await page.locator('button[title="Sign out"]').click();
+    await page.waitForURL(/\/login/);
+    await expect(page.locator('#username')).toBeVisible();
   });
 });

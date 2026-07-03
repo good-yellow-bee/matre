@@ -57,14 +57,14 @@ class SettingsControllerTest extends WebTestCase
         $this->assertResponseStatusCodeSame(200);
     }
 
-    public function testEditFormRendersCorrectly(): void
+    public function testEditRendersSpaShell(): void
     {
         $client = self::createClient();
         $this->loginAsAdmin($client);
 
-        $crawler = $client->request('GET', '/admin/settings');
+        $client->request('GET', '/admin/settings');
 
         $this->assertResponseStatusCodeSame(200);
-        $this->assertSelectorExists('form');
+        $this->assertSelectorExists('#app');
     }
 }

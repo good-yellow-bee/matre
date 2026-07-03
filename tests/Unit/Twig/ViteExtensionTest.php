@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Twig;
 
 use App\Twig\ViteExtension;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Asset\Packages;
 use Symfony\Component\Filesystem\Filesystem;
@@ -14,7 +15,7 @@ class ViteExtensionTest extends TestCase
 {
     private string $tempDir;
 
-    private Packages $packages;
+    private Packages&Stub $packages;
 
     protected function setUp(): void
     {
@@ -77,14 +78,6 @@ class ViteExtensionTest extends TestCase
         $result = $this->createExtension()->renderScripts('unknown-entry');
 
         $this->assertSame('', $result);
-    }
-
-    public function testRenderScriptsFallbackForAdminEntry(): void
-    {
-        // No manifest file at all
-        $result = $this->createExtension()->renderScripts('admin');
-
-        $this->assertSame('<script type="module" src="admin.js"></script>', $result);
     }
 
     public function testRenderLinksWithoutManifest(): void

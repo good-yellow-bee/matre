@@ -52,11 +52,6 @@ class ViteExtension extends AbstractExtension
             return implode("\n", $tags);
         }
 
-        // Admin/CMS were loaded via asset() previously; mirror that.
-        if (\in_array($entryName, ['admin', 'cms'], true)) {
-            return sprintf('<script type="module" src="%s"></script>', $this->assetUrl($entryName . '.js'));
-        }
-
         // Unknown entry and no manifest: render nothing to avoid 404s.
         return '';
     }
@@ -69,32 +64,10 @@ class ViteExtension extends AbstractExtension
                 $links[] = sprintf('<link rel="stylesheet" href="%s">', $this->assetUrl('build/' . $cssFile));
             }
 
-            // If the Vite entry has no CSS artifacts, fall back to the raw stylesheet.
-            if (!$links) {
-                if ($cssFallback = $this->cssFallback($entryName)) {
-                    $links[] = $cssFallback;
-                }
-            }
-
             return implode("\n", $links);
         }
 
-        // Keep the previous CSS links working without Vite.
-        if ($cssFallback = $this->cssFallback($entryName)) {
-            return $cssFallback;
-        }
-
         return '';
-    }
-
-    private function cssFallback(string $entryName): ?string
-    {
-        $cssPath = sprintf('styles/%s.css', $entryName);
-        if (is_file($this->projectDir . '/assets/' . $cssPath)) {
-            return sprintf('<link rel="stylesheet" href="%s">', $this->assetUrl($cssPath));
-        }
-
-        return null;
     }
 
     private function assetUrl(string $path): string

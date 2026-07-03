@@ -198,7 +198,7 @@ services:
     restart: unless-stopped
     shm_size: 2gb
     ports:
-      - "7900"  # noVNC web viewer (dynamic host port for replica support)
+      - "${NOVNC_PORT:-7900}:7900"  # noVNC web viewer — must match NOVNC_URL; override NOVNC_PORT when scaling replicas
     volumes:
       - ./var/mftf-downloads:/home/seluser/Downloads
     depends_on:

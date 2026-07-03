@@ -5,26 +5,16 @@ const ADMIN_PASS = process.env.E2E_ADMIN_PASS ?? 'admin123';
 const AUTH_FILE = 'tests/e2e/.auth/admin.json';
 
 setup('authenticate as admin', async ({ page }) => {
-  await page.goto('/login', { waitUntil: 'networkidle' });
-
-  // Wait for form to be ready
-  await page.waitForSelector('form', { state: 'visible' });
-  await page.waitForSelector('#username', { state: 'visible' });
-  await page.waitForSelector('#password', { state: 'visible' });
-  await page.waitForSelector('button[type="submit"]', { state: 'visible' });
+  await page.goto('/login');
 
   await page.locator('#username').fill(ADMIN_USER);
   await page.locator('#password').fill(ADMIN_PASS);
+  await page.getByRole('button', { name: 'Sign in' }).click();
 
-  // Submit form and wait for the initial auth redirect.
-  await Promise.all([
-    page.waitForURL(/\/(admin|login)/, { timeout: 15_000 }),
-    page.locator('button[type="submit"]').click(),
-  ]);
+  await page.waitForURL(/\/admin/, { timeout: 15_000 });
 
-  // Validate that auth persists on a protected route before saving state.
-  await page.goto('/admin/test-runs');
-  await expect(page).toHaveURL(/\/admin\/test-runs/, { timeout: 15_000 });
+  // Wait for the SPA to hydrate the dashboard before saving auth state.
+  await expect(page.locator('h1')).toContainText(`Welcome back, ${ADMIN_USER}`);
 
   await page.context().storageState({ path: AUTH_FILE });
 });

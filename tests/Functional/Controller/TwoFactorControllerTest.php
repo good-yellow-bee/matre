@@ -8,7 +8,7 @@ use App\Tests\Functional\Traits\ApiTestTrait;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 /**
- * Functional tests for TwoFactorController.
+ * Functional tests for the /2fa SPA route (2FA challenge is handled via JSON at /2fa_check).
  */
 class TwoFactorControllerTest extends WebTestCase
 {

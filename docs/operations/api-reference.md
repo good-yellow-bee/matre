@@ -8,21 +8,31 @@ REST API for programmatic access to MATRE.
 
 ### Browser Sessions
 
-Standard session-based authentication via `/login` form.
+The SPA logs in via JSON (`POST /api/login`) and uses the resulting session cookie. Session state is queryable at `GET /api/me`.
 
 ### Programmatic Access
 
-Currently session-based. Obtain session cookie by:
-1. POST to `/login` with credentials
-2. Include session cookie in subsequent requests
+Session-based. Obtain a session cookie by posting JSON credentials:
+
+```bash
+curl -c cookies.txt -X POST "http://localhost:8089/api/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "your-password"}'
+# → {"authenticated":true}
+```
+
+Then include the cookie in subsequent requests (`-b cookies.txt`). Login is throttled (5 attempts/minute). Accounts with 2FA enabled additionally require `POST /2fa_check` with `{"_auth_code": "123456"}` before the session is fully authenticated.
 
 ### CSRF Protection
 
-All POST/PUT/DELETE requests require CSRF token:
-- Header: `X-CSRF-TOKEN: {token}`
-- Or form field: `_token={token}`
+All POST/PUT/DELETE requests require an `X-CSRF-Token` header (validated by `ApiCsrfListener`, 403 otherwise). CSRF is **stateless**: any token of 24+ characters is accepted as long as the request is provably same-origin — browsers send `Origin`/`Sec-Fetch-Site` automatically; with curl, send an `Origin` header matching the base URL:
 
-Get token from any HTML page's meta tag or form.
+```bash
+-H "Origin: http://localhost:8089" \
+-H "X-CSRF-Token: 0123456789abcdef01234567"
+```
+
+No token needs to be fetched from the server.
 
 ---
 
@@ -87,7 +97,7 @@ List test runs with pagination and filtering.
 
 **Example:**
 ```bash
-curl "http://localhost:8089/api/test-runs?status=completed&limit=10"
+curl -b cookies.txt "http://localhost:8089/api/test-runs?status=completed&limit=10"
 ```
 
 **Response:**
@@ -145,7 +155,7 @@ Get detailed test run with all results.
 
 **Example:**
 ```bash
-curl "http://localhost:8089/api/test-runs/42"
+curl -b cookies.txt "http://localhost:8089/api/test-runs/42"
 ```
 
 **Response:**
@@ -222,7 +232,7 @@ Cancel a running test.
 **Requirements:**
 - Test must not be in a terminal status (`completed`, `failed`, `cancelled`)
 - User must have `ROLE_ADMIN`
-- Header `X-CSRF-Token` must contain a token valid for `test_run_api`
+- `X-CSRF-Token` header (see [CSRF Protection](#csrf-protection))
 
 **Response:**
 ```json
@@ -245,7 +255,7 @@ Retry a failed test.
 
 **Requirements:**
 - User must have `ROLE_ADMIN`
-- Header `X-CSRF-Token` must contain a token valid for `test_run_api`
+- `X-CSRF-Token` header (see [CSRF Protection](#csrf-protection))
 
 **Response:**
 ```json
@@ -311,28 +321,23 @@ Or for single items:
 
 ## Rate Limiting
 
-API requests are rate limited:
+API requests are rate limited per client IP (`ApiRateLimitListener`, `config/packages/rate_limiter.yaml`):
 
-| Limit | Value |
+| Scope | Limit |
 |-------|-------|
-| Average | 100 requests/minute |
-| Burst | 50 requests |
+| All `/api` endpoints | 300 requests/minute (sliding window) |
+| `POST /api/users` (user creation) | 10 requests/hour |
 
-**Response Headers:**
+**429 Response Headers:**
+- `Retry-After` - Seconds until requests are accepted again
 - `X-RateLimit-Limit` - Max requests per window
 - `X-RateLimit-Remaining` - Remaining requests
-- `X-RateLimit-Reset` - Seconds until reset
 
 **Rate Limited Response (429):**
 ```json
 {
-  "error": {
-    "code": "RATE_LIMITED",
-    "message": "Too many requests",
-    "details": {
-      "retryAfter": 30
-    }
-  }
+  "error": "Too many requests. Please slow down.",
+  "retry_after": 30
 }
 ```
 
@@ -343,16 +348,25 @@ API requests are rate limited:
 ### Create and Monitor Test Run
 
 ```bash
-# Create test run
-RUN_ID=$(curl -s -X POST "http://localhost:8089/api/test-runs" \
+BASE_URL="http://localhost:8089"
+
+# Login (writes session cookie)
+curl -s -c cookies.txt -X POST "$BASE_URL/api/login" \
   -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "your-password"}'
+
+# Create test run (mutating → Origin + X-CSRF-Token required)
+RUN_ID=$(curl -s -b cookies.txt -X POST "$BASE_URL/api/test-runs" \
+  -H "Content-Type: application/json" \
+  -H "Origin: $BASE_URL" \
+  -H "X-CSRF-Token: 0123456789abcdef01234567" \
   -d '{"environmentId": 1, "type": "mftf"}' | jq -r '.id')
 
 echo "Created run: $RUN_ID"
 
 # Poll until complete
 while true; do
-  STATUS=$(curl -s "http://localhost:8089/api/test-runs/$RUN_ID" | jq -r '.status')
+  STATUS=$(curl -s -b cookies.txt "$BASE_URL/api/test-runs/$RUN_ID" | jq -r '.status')
   echo "Status: $STATUS"
 
   if [ "$STATUS" = "completed" ] || [ "$STATUS" = "failed" ]; then
@@ -363,12 +377,12 @@ while true; do
 done
 
 # Get final results
-curl -s "http://localhost:8089/api/test-runs/$RUN_ID" | jq '.resultCounts'
+curl -s -b cookies.txt "$BASE_URL/api/test-runs/$RUN_ID" | jq '.resultCounts'
 ```
 
 ### Get Failed Tests
 
 ```bash
-curl -s "http://localhost:8089/api/test-runs?status=failed&limit=5" | \
+curl -s -b cookies.txt "http://localhost:8089/api/test-runs?status=failed&limit=5" | \
   jq '.data[] | {id, environment: .environment.name, failed: .resultCounts.failed}'
 ```

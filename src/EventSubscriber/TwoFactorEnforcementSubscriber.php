@@ -7,7 +7,9 @@ namespace App\EventSubscriber;
 use App\Entity\User;
 use App\Repository\SettingsRepository;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -18,6 +20,7 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
  *
  * When Settings.enforce2fa is true, users who haven't set up 2FA
  * will be redirected to the setup page on any admin route access.
+ * API requests receive 403 JSON (code 2FA_SETUP_REQUIRED) instead of a redirect.
  */
 class TwoFactorEnforcementSubscriber implements EventSubscriberInterface
 {
@@ -32,9 +35,15 @@ class TwoFactorEnforcementSubscriber implements EventSubscriberInterface
 
     /** Path prefixes that should skip enforcement */
     private const SKIP_PATH_PREFIXES = [
-        '/api/',      // API endpoints exempt
         '/_profiler', // Symfony profiler
         '/_wdt',      // Web debug toolbar
+    ];
+
+    /** API endpoints that must stay reachable while 2FA setup is pending */
+    private const API_EXEMPT_PREFIXES = [
+        '/api/login',
+        '/api/me',
+        '/api/2fa-setup',
     ];
 
     public function __construct(
@@ -66,15 +75,23 @@ class TwoFactorEnforcementSubscriber implements EventSubscriberInterface
             return;
         }
 
-        // Skip path prefixes (API, profiler)
+        // Skip path prefixes (profiler)
         foreach (self::SKIP_PATH_PREFIXES as $prefix) {
             if (str_starts_with($path, $prefix)) {
                 return;
             }
         }
 
-        // Only enforce on admin routes
-        if (!str_starts_with($path, '/admin')) {
+        $isApi = str_starts_with($path, '/api/');
+
+        if ($isApi) {
+            foreach (self::API_EXEMPT_PREFIXES as $prefix) {
+                if (str_starts_with($path, $prefix)) {
+                    return;
+                }
+            }
+        } elseif (!str_starts_with($path, '/admin')) {
+            // Only enforce on admin pages and API endpoints
             return;
         }
 
@@ -89,14 +106,23 @@ class TwoFactorEnforcementSubscriber implements EventSubscriberInterface
             return;
         }
 
+        // Check if user has 2FA enabled
+        if ($user->isTotpEnabled()) {
+            return;
+        }
+
         // Check if 2FA is enforced globally
         $settings = $this->settingsRepository->getOrCreate();
         if (!$settings->isEnforce2fa()) {
             return;
         }
 
-        // Check if user has 2FA enabled
-        if ($user->isTotpEnabled()) {
+        if ($isApi) {
+            $event->setResponse(new JsonResponse([
+                'error' => 'Two-factor authentication setup is required',
+                'code' => '2FA_SETUP_REQUIRED',
+            ], Response::HTTP_FORBIDDEN));
+
             return;
         }
 

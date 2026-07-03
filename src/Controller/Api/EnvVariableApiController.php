@@ -6,6 +6,7 @@ namespace App\Controller\Api;
 
 use App\Entity\GlobalEnvVariable;
 use App\Repository\GlobalEnvVariableRepository;
+use App\Service\EnvVariableAnalyzerService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -137,11 +138,6 @@ class EnvVariableApiController extends AbstractController
     #[Route('', name: 'api_env_variables_create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
-        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
-        if (!$this->isCsrfTokenValid('env_variable_api', $token)) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
-        }
-
         $data = json_decode($request->getContent(), true) ?? [];
 
         $var = new GlobalEnvVariable();
@@ -177,11 +173,6 @@ class EnvVariableApiController extends AbstractController
     #[Route('/{id}', name: 'api_env_variables_update', methods: ['PUT'], requirements: ['id' => '\d+'])]
     public function update(int $id, Request $request): JsonResponse
     {
-        $token = $request->headers->get('X-CSRF-Token');
-        if (!$this->isCsrfTokenValid('env_variable_api', $token)) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
-        }
-
         $var = $this->repository->find($id);
 
         if (!$var) {
@@ -228,13 +219,8 @@ class EnvVariableApiController extends AbstractController
      * Delete variable.
      */
     #[Route('/{id}', name: 'api_env_variables_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
-    public function delete(int $id, Request $request): JsonResponse
+    public function delete(int $id): JsonResponse
     {
-        $token = $request->headers->get('X-CSRF-Token');
-        if (!$this->isCsrfTokenValid('env_variable_api', $token)) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
-        }
-
         $var = $this->repository->find($id);
 
         if (!$var) {
@@ -257,11 +243,6 @@ class EnvVariableApiController extends AbstractController
     #[Route('/bulk', name: 'api_env_variables_bulk', methods: ['POST'])]
     public function bulk(Request $request): JsonResponse
     {
-        $token = $request->headers->get('X-CSRF-Token');
-        if (!$this->isCsrfTokenValid('env_variable_api', $token)) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
-        }
-
         $data = json_decode($request->getContent(), true) ?? [];
         $variables = $data['variables'] ?? [];
 
@@ -328,11 +309,6 @@ class EnvVariableApiController extends AbstractController
     #[Route('/import', name: 'api_env_variables_import', methods: ['POST'])]
     public function import(Request $request): JsonResponse
     {
-        $token = $request->headers->get('X-CSRF-Token');
-        if (!$this->isCsrfTokenValid('env_variable_api', $token)) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
-        }
-
         $data = json_decode($request->getContent(), true) ?? [];
         $content = $data['content'] ?? '';
 
@@ -340,51 +316,12 @@ class EnvVariableApiController extends AbstractController
             return $this->json(['error' => 'No content provided'], 400);
         }
 
-        $parsed = $this->parseEnvContent($content);
+        $parsed = EnvVariableAnalyzerService::parseEnvContent($content);
 
         return $this->json([
             'success' => true,
             'variables' => $parsed,
             'count' => count($parsed),
         ]);
-    }
-
-    /**
-     * Parse .env file content into array of variables.
-     *
-     * @return array<int, array{name: string, value: string}>
-     */
-    private function parseEnvContent(string $content): array
-    {
-        $lines = explode("\n", $content);
-        $variables = [];
-
-        foreach ($lines as $line) {
-            $line = trim($line);
-
-            // Skip empty lines and comments
-            if ('' === $line || str_starts_with($line, '#')) {
-                continue;
-            }
-
-            // Parse KEY=value
-            if (preg_match('/^([A-Z][A-Z0-9_]*)=(.*)$/i', $line, $matches)) {
-                $name = strtoupper($matches[1]);
-                $value = $matches[2];
-
-                // Remove surrounding quotes
-                if ((str_starts_with($value, '"') && str_ends_with($value, '"'))
-                    || (str_starts_with($value, "'") && str_ends_with($value, "'"))) {
-                    $value = substr($value, 1, -1);
-                }
-
-                $variables[] = [
-                    'name' => $name,
-                    'value' => $value,
-                ];
-            }
-        }
-
-        return $variables;
     }
 }

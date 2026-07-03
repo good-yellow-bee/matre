@@ -18,6 +18,19 @@ use Symfony\Component\Process\Process;
  */
 class MftfExecutorService
 {
+    /**
+     * Extract error details from a matched test block for failed/error tests.
+     */
+    /** Map WebDriver error descriptions to their exception class names. */
+    private const WEBDRIVER_ERROR_MAP = [
+        'element not interactable' => 'ElementNotInteractableException',
+        'element click intercepted' => 'ElementClickInterceptedException',
+        'javascript error:' => 'JavascriptErrorException',
+        'timed out after' => 'TimeoutException',
+        'timed out waiting' => 'TimeoutException',
+        'stale element reference' => 'StaleElementReferenceException',
+    ];
+
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly GlobalEnvVariableRepository $globalEnvVariableRepository,
@@ -49,7 +62,7 @@ class MftfExecutorService
      * Output is streamed to a file to prevent memory bloat on long-running tests.
      *
      * @param callable|null $lockRefreshCallback Optional callback to refresh environment lock during execution
-     * @param callable|null $heartbeatCallback   Optional callback to extend message redelivery window
+     * @param callable|null $heartbeatCallback Optional callback to extend message redelivery window
      *
      * @return array{output: string, exitCode: int}
      */
@@ -120,7 +133,7 @@ class MftfExecutorService
      * Used for sequential group execution where each test gets its own output.
      *
      * @param callable|null $lockRefreshCallback Optional callback to refresh environment lock during execution
-     * @param callable|null $heartbeatCallback   Optional callback to extend message redelivery window
+     * @param callable|null $heartbeatCallback Optional callback to extend message redelivery window
      *
      * @return array{output: string, exitCode: int, outputFilePath: string}
      */
@@ -1083,19 +1096,6 @@ class MftfExecutorService
             default => TestResult::STATUS_BROKEN,
         };
     }
-
-    /**
-     * Extract error details from a matched test block for failed/error tests.
-     */
-    /** Map WebDriver error descriptions to their exception class names. */
-    private const WEBDRIVER_ERROR_MAP = [
-        'element not interactable' => 'ElementNotInteractableException',
-        'element click intercepted' => 'ElementClickInterceptedException',
-        'javascript error:' => 'JavascriptErrorException',
-        'timed out after' => 'TimeoutException',
-        'timed out waiting' => 'TimeoutException',
-        'stale element reference' => 'StaleElementReferenceException',
-    ];
 
     private function extractErrorFromBlock(string $block): ?string
     {

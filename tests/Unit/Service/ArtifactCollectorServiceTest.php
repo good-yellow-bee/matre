@@ -35,6 +35,28 @@ class ArtifactCollectorServiceTest extends TestCase
         $this->assertSame($this->tempDir . '/var/test-artifacts/42', $service->getRunArtifactsPath($run));
     }
 
+    public function testClearRunArtifactsRemovesStalePerRunDirectories(): void
+    {
+        $service = $this->createService();
+        $run = $this->createTestRun(42);
+
+        $stalePaths = [
+            $this->tempDir . '/var/test-artifacts/42',
+            $this->tempDir . '/var/mftf-results/run-42',
+            $this->tempDir . '/var/mftf-results/allure-results/run-42',
+        ];
+        foreach ($stalePaths as $path) {
+            mkdir($path, 0o777, true);
+            file_put_contents($path . '/stale.png', 'old');
+        }
+
+        $service->clearRunArtifacts($run);
+
+        foreach ($stalePaths as $path) {
+            $this->assertDirectoryDoesNotExist($path);
+        }
+    }
+
     public function testGetArtifactWebPathReturnsCorrectPath(): void
     {
         $service = $this->createService();

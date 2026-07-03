@@ -165,8 +165,9 @@ security:
                 max_attempts: 5
                 interval: '1 minute'
 
-            form_login:
-                enable_csrf: true
+            # JSON login for the SPA
+            json_login:
+                check_path: api_login
 
             remember_me:
                 lifetime: 604800  # 1 week
@@ -174,7 +175,11 @@ security:
             two_factor:
                 auth_form_path: 2fa_login
                 check_path: 2fa_login_check
+                enable_csrf: true
+                csrf_header: X-CSRF-Token
 ```
+
+Authentication is JSON-based: the SPA posts credentials to `POST /api/login` and bootstraps the session via `GET /api/me`. See [Security](../security.md) for details.
 
 ---
 
@@ -215,22 +220,19 @@ export default defineConfig({
     outDir: 'public/build',
     rollupOptions: {
       input: {
-        app: './assets/app.js',
-        admin: './assets/admin.js',
-        // Vue islands
-        'test-run-grid-app': './assets/vue/test-run-grid-app.js',
-        // ... more entries
+        spa: './assets/spa/main.js',
       },
     },
   },
   server: {
+    strictPort: true,
     port: 5173,
     host: 'localhost',
   },
 });
 ```
 
-Add new Vue islands to `rollupOptions.input`.
+The SPA is the single Vite entry — new pages are added as router views (lazy-imported, so each view becomes its own chunk), not as new entries. See [SPA Frontend](../development/spa-frontend.md).
 
 ---
 

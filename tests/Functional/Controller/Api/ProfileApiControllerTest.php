@@ -33,7 +33,7 @@ class ProfileApiControllerTest extends WebTestCase
 
         $client->request('GET', self::BASE_URL . '/notifications');
 
-        $this->assertResponseRedirects('/login');
+        $this->assertApiUnauthenticated($client);
     }
 
     public function testGetNotificationsReturnsData(): void
@@ -60,7 +60,41 @@ class ProfileApiControllerTest extends WebTestCase
 
         $client->request('PUT', self::BASE_URL . '/notifications');
 
-        $this->assertResponseRedirects('/login');
+        $this->assertApiUnauthenticated($client);
+    }
+
+    public function testUpdateNotificationsRequiresCsrf(): void
+    {
+        $client = self::createClient();
+        $this->loginAsUser($client);
+
+        $response = $this->jsonRequest($client, 'PUT', self::BASE_URL . '/notifications', [
+            'notificationsEnabled' => true,
+        ], self::INVALID_CSRF_HEADERS);
+
+        $this->assertJsonError($response, 403, 'CSRF');
+    }
+
+    public function testUpdateNotificationsSucceeds(): void
+    {
+        $client = self::createClient();
+        $user = $this->loginAsUser($client);
+        $env = $this->createTestEnvironment();
+
+        $response = $this->jsonRequest($client, 'PUT', self::BASE_URL . '/notifications', [
+            'notificationsEnabled' => true,
+            'notificationTrigger' => 'all',
+            'notifyByEmail' => true,
+            'notificationEnvironments' => [$env->getId()],
+        ]);
+
+        $data = $this->assertJsonResponse($response, 200);
+        $this->assertTrue($data['success']);
+
+        $this->getEntityManager()->refresh($user);
+        $this->assertTrue($user->isNotificationsEnabled());
+        $this->assertEquals('all', $user->getNotificationTrigger());
+        $this->assertTrue($user->isNotifyByEmail());
     }
 
     // =====================
@@ -73,7 +107,7 @@ class ProfileApiControllerTest extends WebTestCase
 
         $client->request('GET', self::BASE_URL . '/environments');
 
-        $this->assertResponseRedirects('/login');
+        $this->assertApiUnauthenticated($client);
     }
 
     public function testGetEnvironmentsReturnsData(): void

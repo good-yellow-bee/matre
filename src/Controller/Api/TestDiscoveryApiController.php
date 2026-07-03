@@ -98,12 +98,8 @@ class TestDiscoveryApiController extends AbstractController
      */
     #[Route('/refresh', name: 'api_test_discovery_refresh', methods: ['POST'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function refresh(Request $request): JsonResponse
+    public function refresh(): JsonResponse
     {
-        if (!$this->isCsrfTokenValid('test_discovery', $request->headers->get('X-CSRF-Token'))) {
-            return $this->json(['success' => false, 'error' => 'Invalid CSRF token'], 403);
-        }
-
         try {
             $this->testDiscoveryService->refreshCache();
 

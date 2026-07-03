@@ -28,7 +28,7 @@ class DashboardApiControllerTest extends WebTestCase
 
         $client->request('GET', self::BASE_URL . '/stats');
 
-        $this->assertResponseRedirects('/login');
+        $this->assertApiUnauthenticated($client);
     }
 
     public function testStatsAllowsUserRole(): void

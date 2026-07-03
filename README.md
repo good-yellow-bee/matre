@@ -39,6 +39,7 @@ See [Notifications Guide](docs/operations/notifications.md) for configuration.
 - **Base URL management**: Auto-normalized URLs with validation
 
 ### Admin UI & API
+- **Vue 3 SPA**: Single-page admin UI (Vue Router + Pinia) on a JSON API
 - **Full CRUD**: Manage environments, test suites, and runs
 - **Real-time status**: Live monitoring of running tests
 - **Cancel/retry**: Control test runs mid-execution
@@ -158,6 +159,8 @@ Each environment can have custom variables stored in the database:
 | `POST` | `/api/test-runs/{id}/cancel` | Cancel running test |
 | `POST` | `/api/test-runs/{id}/retry` | Retry failed test |
 
+All endpoints require an authenticated session (`POST /api/login`). Mutating requests additionally need an `X-CSRF-Token` header — see [API Reference](docs/operations/api-reference.md) for working examples.
+
 ### Response Example
 
 ```json
@@ -240,11 +243,11 @@ Each environment can have custom variables stored in the database:
 # Start services
 ./local.sh start
 
-# Frontend development (HMR)
-npm run dev
-
-# Build for production
+# Build frontend (SPA served from public/build)
 npm run build
+
+# Rebuild frontend on change during development
+npx vite build --watch
 
 # Run PHPUnit tests
 ./local.sh test
@@ -267,7 +270,7 @@ See [tests/README.md](tests/README.md) for full testing documentation.
 | Layer | Technology |
 |-------|------------|
 | Backend | Symfony 8.0, PHP 8.5, Doctrine ORM 3 |
-| Frontend | Vue 3, Vite, Tailwind CSS |
+| Frontend | Vue 3 SPA (Vue Router 4, Pinia), Vite 7, Tailwind CSS 4 |
 | Database | MariaDB 11 |
 | Testing | MFTF (Codeception), Playwright |
 | Reporting | Allure |
@@ -297,9 +300,8 @@ See [tests/README.md](tests/README.md) for full testing documentation.
 ### Development
 - [Architecture Overview](docs/development/architecture.md)
 - [Entities](docs/development/entities.md)
-- [Admin CRUD](docs/development/admin-crud.md)
-- [Forms](docs/development/forms.md) — Form handling patterns
-- [Vue Islands](docs/development/vue-islands.md) — Vue 3 component pattern
+- [Admin CRUD](docs/development/admin-crud.md) — JSON API + SPA view pattern
+- [SPA Frontend](docs/development/spa-frontend.md) — Vue 3 single-page application
 - [Dev Mode](docs/development/dev-mode.md) — Local module development
 - [Unit Tests](docs/testing/unit-tests.md) — PHPUnit testing
 

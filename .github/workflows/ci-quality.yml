@@ -62,17 +62,7 @@ jobs:
         run: php bin/console cache:clear --env=test --no-warmup || true
 
       - name: Configure test environment
-        run: |
-          cat > .env.test.local <<'EOF'
-APP_ENV=test
-APP_DEBUG=0
-DB_HOST=127.0.0.1
-DB_USER=root
-DB_PASS=root
-DB_NAME=matre_test
-DB_VERSION=8.0
-MAILER_DSN="null://null"
-EOF
+        run: printf '%s\n' 'APP_ENV=test' 'APP_DEBUG=0' 'DB_HOST=127.0.0.1' 'DB_USER=root' 'DB_PASS=root' 'DB_NAME=matre_test' 'DB_VERSION=8.0' 'MAILER_DSN="null://null"' > .env.test.local
 
       - name: Wait for MySQL
         run: |
@@ -175,7 +165,7 @@ EOF
         with:
           php-version: '8.5'
           extensions: mbstring, xml, ctype, iconv
-          tools: composer:v2, php-cs-fixer
+          tools: composer:v2
 
       - name: Create .env file
         run: cp .env.example .env
@@ -190,7 +180,7 @@ EOF
         run: composer install --prefer-dist --no-progress --no-interaction --no-scripts
 
       - name: Run PHP-CS-Fixer
-        run: php-cs-fixer fix --config=.php-cs-fixer.dist.php --dry-run --diff --verbose
+        run: vendor/bin/php-cs-fixer fix --config=.php-cs-fixer.dist.php --dry-run --diff --verbose
 
   # Security Vulnerability Check
   security-check:
@@ -264,17 +254,7 @@ EOF
         run: composer install --prefer-dist --no-progress --no-interaction --no-scripts
 
       - name: Configure test environment
-        run: |
-          cat > .env.test.local <<'EOF'
-APP_ENV=test
-APP_DEBUG=0
-DB_HOST=127.0.0.1
-DB_USER=root
-DB_PASS=root
-DB_NAME=matre_test
-DB_VERSION=8.0
-MAILER_DSN="null://null"
-EOF
+        run: printf '%s\n' 'APP_ENV=test' 'APP_DEBUG=0' 'DB_HOST=127.0.0.1' 'DB_USER=root' 'DB_PASS=root' 'DB_NAME=matre_test' 'DB_VERSION=8.0' 'MAILER_DSN="null://null"' > .env.test.local
 
       - name: Clear cache
         run: php bin/console cache:clear --env=test --no-warmup || true

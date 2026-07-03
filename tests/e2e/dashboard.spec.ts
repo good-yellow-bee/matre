@@ -1,22 +1,36 @@
 import { test, expect } from '@playwright/test';
-import { DashboardPage } from './pages/DashboardPage';
 
-test.describe('Dashboard', () => {
-  test('dashboard page loads', async ({ page }) => {
-    const dashboard = new DashboardPage(page);
-    await dashboard.goto();
-
-    await expect(page).toHaveURL(/\/admin/);
-    await expect(dashboard.heading).toBeVisible();
+test.describe('dashboard', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/admin');
+    await expect(page.locator('h1')).toContainText('Welcome back');
   });
 
-  test('dashboard has navigation links', async ({ page }) => {
-    await page.goto('/admin');
-    await page.waitForLoadState('networkidle');
+  test('stat cards render with numeric values', async ({ page }) => {
+    const statsSection = page.locator('section').first();
+    const values = statsSection.locator('.font-mono.text-2xl');
+    await expect(values).toHaveCount(7);
+    for (const text of await values.allTextContents()) {
+      expect(text).toMatch(/\d/);
+    }
+    await expect(statsSection.getByText('Running Now')).toBeVisible();
+  });
 
-    // Verify key admin nav links exist
-    await expect(page.locator('a[href*="test-runs"]').first()).toBeVisible();
-    await expect(page.locator('a[href*="test-suites"]').first()).toBeVisible();
-    await expect(page.locator('a[href*="test-environments"]').first()).toBeVisible();
+  test('environment health section renders environment cards', async ({ page }) => {
+    await expect(page.getByRole('heading', { name: 'Environment Health' })).toBeVisible();
+    // Data-agnostic: an environment card (status badge or no-runs placeholder) or the empty state
+    await expect
+      .poll(async () =>
+        (await page.getByText('No completed runs').count())
+        + (await page.locator('.badge').count())
+        + (await page.getByText('No environments yet').count()))
+      .toBeGreaterThan(0);
+  });
+
+  test('quick action navigates to test runs list', async ({ page }) => {
+    await expect(page.getByRole('heading', { name: 'Quick Actions' })).toBeVisible();
+    await page.getByRole('link', { name: 'View All Runs' }).click();
+    await expect(page).toHaveURL(/\/admin\/test-runs$/);
+    await expect(page.locator('h1')).toHaveText('Test Runs');
   });
 });

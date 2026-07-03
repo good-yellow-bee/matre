@@ -4,6 +4,34 @@ This guide covers security features and best practices in MATRE.
 
 ## Authentication
 
+### JSON Login
+
+The SPA authenticates via `json_login` — credentials are posted as JSON to `POST /api/login` (route `api_login`), which establishes a session cookie:
+
+```yaml
+# config/packages/security.yaml
+firewalls:
+    main:
+        entry_point: App\Security\Http\AuthenticationEntryPoint
+
+        json_login:
+            check_path: api_login
+            username_path: username
+            password_path: password
+            success_handler: App\Security\Http\JsonLoginSuccessHandler
+            failure_handler: App\Security\Http\JsonLoginFailureHandler
+```
+
+```bash
+curl -c cookies.txt -X POST http://localhost:8089/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "secret", "_remember_me": false}'
+```
+
+The session state is exposed by `GET /api/me`, which returns one of three shapes: anonymous (`{"authenticated": false}`), 2FA challenge pending (`{"authenticated": false, "twoFactorRequired": true}`), or authenticated (user, roles, settings, Allure/noVNC URLs).
+
+The custom entry point (`App\Security\Http\AuthenticationEntryPoint`) returns 401 JSON for API/XHR requests and redirects browsers to `/login`. Logout is `POST /logout` (also accepts GET), returning JSON for XHR callers.
+
 ### Password Hashing
 
 Passwords are hashed with bcrypt (cost 12):
@@ -56,28 +84,44 @@ MATRE supports TOTP-based 2FA via scheb/2fa-bundle.
 scheb_two_factor:
     security_tokens:
         - Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken
+        - Symfony\Component\Security\Http\Authenticator\Token\PostAuthenticationToken
 
     totp:
         enabled: true
-        server_name: MATRE
-        issuer: MATRE
-        window: 1
-        parameters:
-            image: 'https://your-domain.com/logo.png'
+        server_name: 'MATRE'
+        issuer: 'MATRE'
+        leeway: 1  # Allow +/- 1 period (30 seconds) for clock drift
+```
+
+```yaml
+# config/packages/security.yaml (firewall)
+two_factor:
+    auth_form_path: 2fa_login
+    check_path: 2fa_login_check
+    enable_csrf: true
+    csrf_header: X-CSRF-Token
+    success_handler: App\Security\Http\TwoFactorSuccessHandler
+    failure_handler: App\Security\Http\TwoFactorFailureHandler
+    authentication_required_handler: App\Security\Http\TwoFactorRequiredHandler
 ```
 
 ### Routes
+
+The `/2fa` page is rendered by the SPA; only the check endpoint is server-side:
 
 ```yaml
 # config/routes/scheb_2fa.yaml
 2fa_login:
     path: /2fa
+    methods: [GET]
     defaults:
-        _controller: "scheb_two_factor.form_controller::form"
+        _controller: App\Controller\SpaController::shell
 
 2fa_login_check:
     path: /2fa_check
 ```
+
+The SPA submits the code as JSON: `POST /2fa_check` with body `{"_auth_code": "123456"}` and an `X-CSRF-Token` header. Custom JSON handlers (`TwoFactorSuccessHandler` / `TwoFactorFailureHandler` / `TwoFactorRequiredHandler`) return JSON instead of redirects.
 
 ### User Entity
 
@@ -87,41 +131,45 @@ Users with 2FA enabled have:
 
 ### Setup Flow
 
-1. User enables 2FA in settings
-2. System generates TOTP secret
+1. User opens `/2fa-setup` (SPA view; forced there by the router when `Settings.enforce2fa` is on and TOTP is not yet enabled)
+2. `POST /api/2fa-setup` provisions a secret + QR code
 3. User scans QR code with authenticator app
-4. User confirms with a valid code
+4. `POST /api/2fa-setup/verify` confirms with a valid code and enables TOTP
 5. 2FA is now required at login
 
 ---
 
 ## CSRF Protection
 
-All forms and destructive actions require CSRF tokens.
-
-### Form Login
+CSRF protection is **stateless** (no server-side token storage):
 
 ```yaml
-form_login:
-    enable_csrf: true
+# config/packages/csrf.yaml
+framework:
+    csrf_protection:
+        stateless_token_ids:
+            - submit
+            - authenticate
+            - logout
+            - api
+            - two_factor
 ```
 
-### Manual CSRF Validation
+### API Requests
 
-In controller:
-```php
-if ($this->isCsrfTokenValid('delete' . $entity->getId(), $request->request->get('_token'))) {
-    // Process action
-}
+`App\EventListener\ApiCsrfListener` validates the `X-CSRF-Token` header on **every mutating** (non-GET/HEAD/OPTIONS) `/api` request except `/api/login`, responding `403` with `{"error": "Invalid CSRF token"}` on failure. Controllers contain no token checks of their own.
+
+With stateless tokens, Symfony accepts any token value of 24+ characters as long as the request is provably same-origin (`Origin`/`Referer` header match, with a double-submit cookie fallback). The SPA client generates one random 48-hex-char token per page load and attaches it automatically; non-browser clients must send both headers:
+
+```bash
+curl -b cookies.txt -X POST http://localhost:8089/api/test-runs/42/cancel \
+  -H "Origin: http://localhost:8089" \
+  -H "X-CSRF-Token: 0123456789abcdef0123456789abcdef"
 ```
 
-In Twig:
-```twig
-<form method="post">
-    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ entity.id) }}">
-    <button type="submit">Delete</button>
-</form>
-```
+### Two-Factor Check
+
+The `/2fa_check` endpoint uses the same mechanism via the firewall (`enable_csrf: true`, `csrf_header: X-CSRF-Token`).
 
 ---
 
@@ -138,9 +186,24 @@ role_hierarchy:
 
 ```yaml
 access_control:
-    - { path: ^/admin, roles: ROLE_ADMIN }
+    # Public routes (login, home)
+    - { path: ^/login, roles: PUBLIC_ACCESS }
+    - { path: ^/2fa-setup, roles: IS_AUTHENTICATED_FULLY }
+    - { path: ^/2fa, roles: IS_AUTHENTICATED_2FA_IN_PROGRESS }
+    - { path: ^/$, roles: PUBLIC_ACCESS }
+
+    # API: public bootstrap endpoints, everything else authenticated
+    - { path: ^/api/login$, roles: PUBLIC_ACCESS }
+    - { path: ^/api/me$, roles: PUBLIC_ACCESS }
     - { path: ^/api, roles: ROLE_USER }
+
+    # Admin panel: user-accessible pages first, everything else requires ROLE_ADMIN
+    - { path: ^/admin/(profile|test-history), roles: ROLE_USER }
+    - { path: ^/admin/?$, roles: ROLE_USER }
+    - { path: ^/admin, roles: ROLE_ADMIN }
 ```
+
+The SPA's router guards mirror these rules client-side for UX, but authorization is always enforced server-side.
 
 ### Controller Protection
 
@@ -184,10 +247,7 @@ add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
 ### Content Security Policy
 
-CSP headers configured via `config/packages/nelmio_security.yaml`:
-- Self-hosted scripts/styles
-- External CDNs (fonts, libraries)
-- Inline styles (for dynamic UI)
+No CSP is configured out of the box. If you add one (e.g. via Nginx `add_header Content-Security-Policy ...`), note that the SPA shell contains a small inline script for flash-free theme initialization and fonts are self-hosted — no external CDNs are required.
 
 ---
 
@@ -209,9 +269,16 @@ private string $email;
 private string $slug;
 ```
 
-### Form Validation
+### API Input Validation
 
-Forms automatically validate against entity constraints.
+API controllers validate decoded JSON input explicitly and respond `422` with a `field => message` map:
+
+```php
+$errors = $this->validateEnvironmentData($data);
+if (!empty($errors)) {
+    return $this->json(['errors' => $errors], 422);
+}
+```
 
 ---
 
@@ -233,12 +300,14 @@ $this->createQueryBuilder('u')
 
 ## XSS Prevention
 
-Twig automatically escapes output:
+Vue automatically escapes interpolated output:
 
-```twig
-{{ user.name }}              {# Auto-escaped #}
-{{ user.html|raw }}          {# Use raw only when necessary #}
+```vue
+<span>{{ run.errorMessage }}</span>   <!-- Auto-escaped -->
+<div v-html="trusted"></div>          <!-- Avoid v-html for user-controlled data -->
 ```
+
+Where raw HTML rendering is unavoidable (ANSI-colored test output), the markup is sanitized with DOMPurify before insertion (`assets/spa/views/test-runs/utils/ansi.js`).
 
 ---
 
@@ -292,7 +361,7 @@ Security best practices:
 
 1. [ ] Strong APP_SECRET (32+ random bytes)
 2. [ ] Database credentials not in code
-3. [ ] CSRF tokens on all forms
+3. [ ] `X-CSRF-Token` header on all mutating API requests (enforced by `ApiCsrfListener`)
 4. [ ] Input validation on all user input
 5. [ ] Parameterized database queries
 6. [ ] Rate limiting on login

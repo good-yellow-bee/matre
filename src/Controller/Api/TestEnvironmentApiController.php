@@ -7,6 +7,7 @@ namespace App\Controller\Api;
 use App\Entity\TestEnvironment;
 use App\Repository\GlobalEnvVariableRepository;
 use App\Repository\TestEnvironmentRepository;
+use App\Service\EnvVariableAnalyzerService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -33,7 +34,19 @@ class TestEnvironmentApiController extends AbstractController
         return $this->json(array_map(fn (TestEnvironment $e) => [
             'id' => $e->getId(),
             'name' => $e->getName(),
+            'displayUrl' => $this->stripCredentials($e->getBaseUrl()),
         ], $environments));
+    }
+
+    #[Route('/list', name: 'api_test_environment_grid', methods: ['GET'])]
+    public function grid(): JsonResponse
+    {
+        $environments = $this->environmentRepository->findAllOrdered();
+
+        return $this->json(array_map(
+            fn (TestEnvironment $env) => $this->serializeEnvironment($env),
+            $environments,
+        ));
     }
 
     #[Route('/{id}', name: 'api_test_environment_get', methods: ['GET'], requirements: ['id' => '\d+'])]
@@ -45,18 +58,7 @@ class TestEnvironmentApiController extends AbstractController
             return $this->json(['error' => 'Test environment not found'], 404);
         }
 
-        return $this->json([
-            'id' => $env->getId(),
-            'name' => $env->getName(),
-            'code' => $env->getCode(),
-            'region' => $env->getRegion(),
-            'baseUrl' => $env->getBaseUrl(),
-            'backendName' => $env->getBackendName(),
-            'description' => $env->getDescription(),
-            'isActive' => $env->getIsActive(),
-            'createdAt' => $env->getCreatedAt()->format('c'),
-            'updatedAt' => $env->getUpdatedAt()?->format('c'),
-        ]);
+        return $this->json($this->serializeEnvironment($env, true));
     }
 
     #[Route('', name: 'api_test_environment_create', methods: ['POST'])]
@@ -104,6 +106,44 @@ class TestEnvironmentApiController extends AbstractController
         return $this->json([
             'success' => true,
             'message' => 'Test environment updated successfully',
+        ]);
+    }
+
+    #[Route('/{id}/toggle-active', name: 'api_test_environment_toggle_active', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function toggleActive(int $id): JsonResponse
+    {
+        $env = $this->environmentRepository->find($id);
+
+        if (!$env) {
+            return $this->json(['error' => 'Test environment not found'], 404);
+        }
+
+        $env->setIsActive(!$env->getIsActive());
+        $this->entityManager->flush();
+
+        return $this->json([
+            'success' => true,
+            'isActive' => $env->getIsActive(),
+            'message' => sprintf('Environment "%s" %s', $env->getName(), $env->getIsActive() ? 'activated' : 'deactivated'),
+        ]);
+    }
+
+    #[Route('/{id}', name: 'api_test_environment_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
+    public function delete(int $id): JsonResponse
+    {
+        $env = $this->environmentRepository->find($id);
+
+        if (!$env) {
+            return $this->json(['error' => 'Test environment not found'], 404);
+        }
+
+        $name = $env->getName();
+        $this->entityManager->remove($env);
+        $this->entityManager->flush();
+
+        return $this->json([
+            'success' => true,
+            'message' => sprintf('Environment "%s" has been deleted', $name),
         ]);
     }
 
@@ -209,11 +249,6 @@ class TestEnvironmentApiController extends AbstractController
     #[Route('/{id}/env-variables', name: 'api_test_environment_env_vars_save', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function saveEnvVariables(TestEnvironment $environment, Request $request): JsonResponse
     {
-        $token = $request->headers->get('X-CSRF-Token');
-        if (!$this->isCsrfTokenValid('env_variable_api', $token)) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
-        }
-
         $data = json_decode($request->getContent(), true) ?? [];
         $variables = $data['variables'] ?? [];
 
@@ -250,11 +285,6 @@ class TestEnvironmentApiController extends AbstractController
     #[Route('/{id}/env-variables/import', name: 'api_test_environment_env_vars_import', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function importEnvVariables(TestEnvironment $environment, Request $request): JsonResponse
     {
-        $token = $request->headers->get('X-CSRF-Token');
-        if (!$this->isCsrfTokenValid('env_variable_api', $token)) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
-        }
-
         $data = json_decode($request->getContent(), true) ?? [];
         $content = $data['content'] ?? '';
 
@@ -262,7 +292,7 @@ class TestEnvironmentApiController extends AbstractController
             return $this->json(['error' => 'No content provided'], 400);
         }
 
-        $parsed = $this->parseEnvContent($content);
+        $parsed = EnvVariableAnalyzerService::parseEnvContent($content);
 
         return $this->json([
             'success' => true,
@@ -355,35 +385,44 @@ class TestEnvironmentApiController extends AbstractController
         $env->setIsActive($data['isActive'] ?? true);
     }
 
-    /** @return array<int, array{name: string, value: string}> */
-    private function parseEnvContent(string $content): array
+    private function serializeEnvironment(TestEnvironment $env, bool $detail = false): array
     {
-        $lines = explode("\n", $content);
-        $variables = [];
+        $data = [
+            'id' => $env->getId(),
+            'name' => $env->getName(),
+            'code' => $env->getCode(),
+            'region' => $env->getRegion(),
+            'displayUrl' => $this->stripCredentials($env->getBaseUrl()),
+            'backendName' => $env->getBackendName(),
+            'isActive' => $env->getIsActive(),
+            'createdAt' => $env->getCreatedAt()->format('c'),
+            'updatedAt' => $env->getUpdatedAt()?->format('c'),
+        ];
 
-        foreach ($lines as $line) {
-            $line = trim($line);
-
-            if ('' === $line || str_starts_with($line, '#')) {
-                continue;
-            }
-
-            if (preg_match('/^([A-Z][A-Z0-9_]*)=(.*)$/i', $line, $matches)) {
-                $name = strtoupper($matches[1]);
-                $value = $matches[2];
-
-                if ((str_starts_with($value, '"') && str_ends_with($value, '"'))
-                    || (str_starts_with($value, "'") && str_ends_with($value, "'"))) {
-                    $value = substr($value, 1, -1);
-                }
-
-                $variables[] = [
-                    'name' => $name,
-                    'value' => $value,
-                ];
-            }
+        if ($detail) {
+            // Raw URL (may embed basic-auth credentials) only where the edit form needs it
+            $data['baseUrl'] = $env->getBaseUrl();
+            $data['description'] = $env->getDescription();
         }
 
-        return $variables;
+        return $data;
+    }
+
+    /**
+     * Rebuild a URL without user/password credentials for display.
+     */
+    private function stripCredentials(string $url): string
+    {
+        $parts = parse_url($url);
+        if (false === $parts || !isset($parts['scheme'], $parts['host'])) {
+            return $url;
+        }
+
+        $displayUrl = $parts['scheme'] . '://' . $parts['host'];
+        if (isset($parts['port'])) {
+            $displayUrl .= ':' . $parts['port'];
+        }
+
+        return $displayUrl . ($parts['path'] ?? '');
     }
 }

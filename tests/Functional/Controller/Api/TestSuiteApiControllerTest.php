@@ -34,7 +34,7 @@ class TestSuiteApiControllerTest extends WebTestCase
 
         $client->request('GET', self::BASE_URL);
 
-        $this->assertResponseRedirects('/login');
+        $this->assertApiUnauthenticated($client);
     }
 
     public function testListAllowsUserRole(): void
@@ -157,6 +157,20 @@ class TestSuiteApiControllerTest extends WebTestCase
         $this->assertArrayHasKey('id', $data);
     }
 
+    public function testCreateRequiresCsrf(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL, [
+            'name' => 'CsrfSuite_' . bin2hex(random_bytes(4)),
+            'type' => TestSuite::TYPE_MFTF_GROUP,
+            'testPattern' => 'TestGroup',
+        ], self::INVALID_CSRF_HEADERS);
+
+        $this->assertJsonError($response, 403, 'CSRF');
+    }
+
     // =====================
     // Update Suite
     // =====================
@@ -174,6 +188,43 @@ class TestSuiteApiControllerTest extends WebTestCase
         ]);
 
         $this->assertEquals(403, $response->getStatusCode());
+    }
+
+    // =====================
+    // Toggle Active / Duplicate / Delete CSRF
+    // =====================
+
+    public function testToggleActiveRequiresCsrf(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $suite = $this->createTestSuite();
+
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $suite->getId() . '/toggle-active', [], self::INVALID_CSRF_HEADERS);
+
+        $this->assertJsonError($response, 403, 'CSRF');
+    }
+
+    public function testDuplicateRequiresCsrf(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $suite = $this->createTestSuite();
+
+        $response = $this->jsonRequest($client, 'POST', self::BASE_URL . '/' . $suite->getId() . '/duplicate', [], self::INVALID_CSRF_HEADERS);
+
+        $this->assertJsonError($response, 403, 'CSRF');
+    }
+
+    public function testDeleteRequiresCsrf(): void
+    {
+        $client = self::createClient();
+        $this->loginAsAdmin($client);
+        $suite = $this->createTestSuite();
+
+        $response = $this->jsonRequest($client, 'DELETE', self::BASE_URL . '/' . $suite->getId(), [], self::INVALID_CSRF_HEADERS);
+
+        $this->assertJsonError($response, 403, 'CSRF');
     }
 
     // =====================

@@ -9,6 +9,9 @@ use App\Entity\TestRun;
 use App\Tests\Functional\Traits\ApiTestTrait;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
+/**
+ * Functional tests for test run SPA shell pages (mutations and live output covered by TestRunApiControllerTest).
+ */
 class TestRunControllerTest extends WebTestCase
 {
     use ApiTestTrait;
@@ -52,6 +55,7 @@ class TestRunControllerTest extends WebTestCase
         $client->request('GET', self::BASE_URL);
 
         $this->assertResponseIsSuccessful();
+        $this->assertSelectorExists('#app');
     }
 
     // =====================
@@ -69,123 +73,17 @@ class TestRunControllerTest extends WebTestCase
         $this->assertResponseIsSuccessful();
     }
 
-    public function testShowReturns404ForNonExistent(): void
+    public function testShowServesShellForNonExistentId(): void
     {
         $client = self::createClient();
         $this->loginAsAdmin($client);
 
+        // SPA shell is served for any id; the 404 state is handled client-side
+        // (API behavior covered by TestRunApiControllerTest::testShowReturns404ForNonExistent)
         $client->request('GET', self::BASE_URL . '/99999');
 
-        // Controller does manual find() + addFlash + redirect (not 404)
-        $this->assertResponseRedirects('/admin/test-runs');
-    }
-
-    // =====================
-    // Cancel Tests
-    // =====================
-
-    public function testCancelRequiresAuth(): void
-    {
-        $client = self::createClient();
-        $run = $this->createTestRun(status: TestRun::STATUS_RUNNING);
-
-        $client->request('POST', self::BASE_URL . '/' . $run->getId() . '/cancel');
-
-        $this->assertResponseRedirects('/login');
-    }
-
-    public function testCancelRequiresAdmin(): void
-    {
-        $client = self::createClient();
-        $this->loginAsUser($client);
-        $run = $this->createTestRun(status: TestRun::STATUS_RUNNING);
-
-        $client->request('POST', self::BASE_URL . '/' . $run->getId() . '/cancel');
-
-        $this->assertResponseStatusCodeSame(403);
-    }
-
-    public function testCancelWithInvalidCsrf(): void
-    {
-        $client = self::createClient();
-        $this->loginAsAdmin($client);
-        $run = $this->createTestRun(status: TestRun::STATUS_RUNNING);
-
-        $client->request('POST', self::BASE_URL . '/' . $run->getId() . '/cancel', [
-            '_token' => 'invalid_token',
-        ]);
-
-        $this->assertResponseRedirects('/admin/test-runs/' . $run->getId());
-        $client->followRedirect();
-        $this->assertSelectorTextContains('.alert', 'Invalid CSRF token');
-    }
-
-    // =====================
-    // Retry Tests
-    // =====================
-
-    public function testRetryRequiresAuth(): void
-    {
-        $client = self::createClient();
-        $run = $this->createTestRun(status: TestRun::STATUS_FAILED);
-
-        $client->request('POST', self::BASE_URL . '/' . $run->getId() . '/retry');
-
-        $this->assertResponseRedirects('/login');
-    }
-
-    public function testRetryRequiresAdmin(): void
-    {
-        $client = self::createClient();
-        $this->loginAsUser($client);
-        $run = $this->createTestRun(status: TestRun::STATUS_FAILED);
-
-        $client->request('POST', self::BASE_URL . '/' . $run->getId() . '/retry');
-
-        $this->assertResponseStatusCodeSame(403);
-    }
-
-    public function testRetryWithInvalidCsrf(): void
-    {
-        $client = self::createClient();
-        $this->loginAsAdmin($client);
-        $run = $this->createTestRun(status: TestRun::STATUS_FAILED);
-
-        $client->request('POST', self::BASE_URL . '/' . $run->getId() . '/retry', [
-            '_token' => 'invalid_token',
-        ]);
-
-        $this->assertResponseRedirects('/admin/test-runs/' . $run->getId());
-        $client->followRedirect();
-        $this->assertSelectorTextContains('.alert', 'Invalid CSRF token');
-    }
-
-    // =====================
-    // Live Output Tests
-    // =====================
-
-    public function testLiveOutputRequiresAuth(): void
-    {
-        $client = self::createClient();
-        $run = $this->createTestRun();
-
-        $client->request('GET', self::BASE_URL . '/' . $run->getId() . '/live-output');
-
-        $this->assertResponseRedirects('/login');
-    }
-
-    public function testLiveOutputReturnsJson(): void
-    {
-        $client = self::createClient();
-        $this->loginAsAdmin($client);
-        $run = $this->createTestRun(status: TestRun::STATUS_RUNNING);
-
-        $client->request('GET', self::BASE_URL . '/' . $run->getId() . '/live-output');
-
-        $this->assertResponseIsSuccessful();
-        $data = json_decode($client->getResponse()->getContent(), true);
-        $this->assertArrayHasKey('status', $data);
-        $this->assertEquals(TestRun::STATUS_RUNNING, $data['status']);
+        $this->assertResponseStatusCodeSame(200);
+        $this->assertSelectorExists('#app');
     }
 
     // =====================

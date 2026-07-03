@@ -1,272 +1,275 @@
-# Admin CRUD Controllers
+# Admin CRUD Pattern
 
-This guide explains how to create admin CRUD features in MATRE.
+Admin features are built as a JSON API controller (`src/Controller/Api/`) plus SPA views (`assets/spa/views/`). There are no server-rendered forms, flash messages, or redirects — the browser only ever loads the SPA shell, and all reads/writes go through `/api`.
 
-## Controller Pattern
+## API Controller Pattern
 
-All admin controllers follow this pattern (from `src/Controller/Admin/CategoryController.php`):
+Controllers follow this shape (from `src/Controller/Api/TestEnvironmentApiController.php`):
 
 ```php
 <?php
 
 declare(strict_types=1);
 
-namespace App\Controller\Admin;
+namespace App\Controller\Api;
 
 use App\Entity\YourEntity;
-use App\Form\YourEntityType;
 use App\Repository\YourEntityRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/admin/your-entities')]
+#[Route('/api/your-entities')]
 #[IsGranted('ROLE_ADMIN')]
-class YourEntityController extends AbstractController
+class YourEntityApiController extends AbstractController
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
         private readonly YourEntityRepository $repository,
+        private readonly EntityManagerInterface $entityManager,
     ) {
     }
 
-    #[Route('', name: 'admin_your_entity_index', methods: ['GET'])]
-    public function index(): Response
+    #[Route('/list', name: 'api_your_entities_list', methods: ['GET'])]
+    public function list(): JsonResponse
     {
-        return $this->render('admin/your_entity/index.html.twig', [
-            'entities' => $this->repository->findAll(),
-        ]);
+        return $this->json(array_map(
+            fn (YourEntity $entity) => $this->serializeEntity($entity),
+            $this->repository->findAllOrdered(),
+        ));
     }
 
-    #[Route('/new', name: 'admin_your_entity_new', methods: ['GET', 'POST'])]
-    public function new(Request $request): Response
+    #[Route('/{id}', name: 'api_your_entities_get', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function get(int $id): JsonResponse
     {
+        $entity = $this->repository->find($id);
+
+        if (!$entity) {
+            return $this->json(['error' => 'Entity not found'], 404);
+        }
+
+        return $this->json($this->serializeEntity($entity, true));
+    }
+
+    #[Route('', name: 'api_your_entities_create', methods: ['POST'])]
+    public function create(Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true) ?? [];
+
+        $errors = $this->validateEntityData($data);
+        if (!empty($errors)) {
+            return $this->json(['errors' => $errors], 422);
+        }
+
         $entity = new YourEntity();
-        $form = $this->createForm(YourEntityType::class, $entity);
-        $form->handleRequest($request);
+        $this->populateEntity($entity, $data);
 
-        if ($form->isSubmitted() && $form->isValid()) {
-            $this->entityManager->persist($entity);
-            $this->entityManager->flush();
+        $this->entityManager->persist($entity);
+        $this->entityManager->flush();
 
-            $this->addFlash('success', 'Created successfully.');
-            return $this->redirectToRoute('admin_your_entity_index');
+        return $this->json([
+            'success' => true,
+            'message' => 'Entity created successfully',
+            'id' => $entity->getId(),
+        ], 201);
+    }
+
+    #[Route('/{id}', name: 'api_your_entities_update', methods: ['PUT'], requirements: ['id' => '\d+'])]
+    public function update(int $id, Request $request): JsonResponse
+    {
+        $entity = $this->repository->find($id);
+
+        if (!$entity) {
+            return $this->json(['error' => 'Entity not found'], 404);
         }
 
-        return $this->render('admin/your_entity/new.html.twig', [
-            'entity' => $entity,
-            'form' => $form,
+        $data = json_decode($request->getContent(), true) ?? [];
+
+        $errors = $this->validateEntityData($data, $entity);
+        if (!empty($errors)) {
+            return $this->json(['errors' => $errors], 422);
+        }
+
+        $this->populateEntity($entity, $data);
+        $this->entityManager->flush();
+
+        return $this->json(['success' => true, 'message' => 'Entity updated successfully']);
+    }
+
+    #[Route('/{id}/toggle-active', name: 'api_your_entities_toggle_active', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function toggleActive(int $id): JsonResponse
+    {
+        $entity = $this->repository->find($id);
+
+        if (!$entity) {
+            return $this->json(['error' => 'Entity not found'], 404);
+        }
+
+        $entity->setIsActive(!$entity->getIsActive());
+        $this->entityManager->flush();
+
+        return $this->json([
+            'success' => true,
+            'isActive' => $entity->getIsActive(),
+            'message' => sprintf('Entity "%s" %s', $entity->getName(), $entity->getIsActive() ? 'activated' : 'deactivated'),
         ]);
     }
 
-    #[Route('/{id}', name: 'admin_your_entity_show', methods: ['GET'], requirements: ['id' => '\d+'])]
-    public function show(YourEntity $entity): Response
+    #[Route('/{id}', name: 'api_your_entities_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
+    public function delete(int $id): JsonResponse
     {
-        return $this->render('admin/your_entity/show.html.twig', [
-            'entity' => $entity,
-        ]);
-    }
+        $entity = $this->repository->find($id);
 
-    #[Route('/{id}/edit', name: 'admin_your_entity_edit', methods: ['GET', 'POST'], requirements: ['id' => '\d+'])]
-    public function edit(Request $request, YourEntity $entity): Response
-    {
-        $form = $this->createForm(YourEntityType::class, $entity);
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $this->entityManager->flush();
-
-            $this->addFlash('success', 'Updated successfully.');
-            return $this->redirectToRoute('admin_your_entity_index');
+        if (!$entity) {
+            return $this->json(['error' => 'Entity not found'], 404);
         }
 
-        return $this->render('admin/your_entity/edit.html.twig', [
-            'entity' => $entity,
-            'form' => $form,
-        ]);
+        $this->entityManager->remove($entity);
+        $this->entityManager->flush();
+
+        return $this->json(['success' => true, 'message' => 'Entity deleted']);
     }
 
-    #[Route('/{id}/delete', name: 'admin_your_entity_delete', methods: ['POST'], requirements: ['id' => '\d+'])]
-    public function delete(Request $request, YourEntity $entity): Response
+    /** @return array<string, string> */
+    private function validateEntityData(array $data, ?YourEntity $existing = null): array
     {
-        if ($this->isCsrfTokenValid('delete' . $entity->getId(), $request->request->get('_token'))) {
-            $this->entityManager->remove($entity);
-            $this->entityManager->flush();
-            $this->addFlash('success', 'Deleted successfully.');
-        } else {
-            $this->addFlash('error', 'Invalid CSRF token.');
-        }
+        $errors = [];
 
-        return $this->redirectToRoute('admin_your_entity_index');
+        if (empty($data['name'])) {
+            $errors['name'] = 'Name is required';
+        }
+        // ... length checks, uniqueness queries (exclude $existing on update)
+
+        return $errors;
     }
 
-    #[Route('/{id}/toggle-active', name: 'admin_your_entity_toggle_active', methods: ['POST'], requirements: ['id' => '\d+'])]
-    public function toggleActive(Request $request, YourEntity $entity): Response
+    private function serializeEntity(YourEntity $entity, bool $detail = false): array
     {
-        if ($this->isCsrfTokenValid('toggle' . $entity->getId(), $request->request->get('_token'))) {
-            $entity->setIsActive(!$entity->getIsActive());
-            $this->entityManager->flush();
+        $data = [
+            'id' => $entity->getId(),
+            'name' => $entity->getName(),
+            'isActive' => $entity->getIsActive(),
+            'createdAt' => $entity->getCreatedAt()->format('c'),
+            'updatedAt' => $entity->getUpdatedAt()?->format('c'),
+        ];
 
-            $status = $entity->getIsActive() ? 'activated' : 'deactivated';
-            $this->addFlash('success', "Entity {$status}.");
+        if ($detail) {
+            $data['description'] = $entity->getDescription();
         }
 
-        return $this->redirectToRoute('admin_your_entity_index');
+        return $data;
     }
 }
 ```
 
----
+Key conventions:
+
+- **Class-level** `#[Route('/api/{plural}')]` + `#[IsGranted('ROLE_ADMIN')]` (use `ROLE_USER` at class level and per-method `ROLE_ADMIN` when some endpoints are user-accessible, as in `TestRunApiController`).
+- **Request body:** `json_decode($request->getContent(), true) ?? []` — no Form types.
+- **Validation:** a private `validateXData()` returning a `field => message` map; respond `422` with `['errors' => $errors]`.
+- **Serialization:** a private `serializeX(X $x, bool $detail = false): array` — explicit field lists, never `$this->json($entity)` directly (avoids leaking credentials/secrets).
+- **Errors:** `['error' => '...']` with 404/400; **success:** `['success' => true, 'message' => '...']` (+ `id` and 201 on create).
+- **Async field validation** endpoints like `POST /validate-name` / `POST /validate-code` return `['valid' => bool, 'message' => '...']` for inline form feedback.
+- Some resources expose both `GET ''` (lightweight list for dropdowns) and `GET /list` (full grid payload).
 
 ## Route Conventions
 
 | Route | Name | Method | Purpose |
 |-------|------|--------|---------|
-| `/admin/entities` | `admin_entity_index` | GET | List all |
-| `/admin/entities/new` | `admin_entity_new` | GET, POST | Create form |
-| `/admin/entities/{id}` | `admin_entity_show` | GET | View details |
-| `/admin/entities/{id}/edit` | `admin_entity_edit` | GET, POST | Edit form |
-| `/admin/entities/{id}/delete` | `admin_entity_delete` | POST | Delete action |
-| `/admin/entities/{id}/toggle-active` | `admin_entity_toggle_active` | POST | Toggle status |
-
----
+| `/api/entities` | `api_entities_list` | GET | List (dropdown/lightweight) |
+| `/api/entities/list` | `api_entities_grid` | GET | Grid payload (optional) |
+| `/api/entities/{id}` | `api_entities_get` | GET | Single resource |
+| `/api/entities` | `api_entities_create` | POST | Create (201) |
+| `/api/entities/{id}` | `api_entities_update` | PUT | Update |
+| `/api/entities/{id}` | `api_entities_delete` | DELETE | Delete |
+| `/api/entities/{id}/toggle-active` | `api_entities_toggle_active` | POST | Toggle status |
+| `/api/entities/validate-name` | `api_entities_validate_name` | POST | Async validation |
 
 ## CSRF Protection
 
-Always validate CSRF tokens on destructive actions:
+CSRF is handled centrally — controllers contain **no** token checks. `App\EventListener\ApiCsrfListener` (kernel.request listener) validates the `X-CSRF-Token` header on every mutating `/api` request; the SPA API client attaches the token automatically. New endpoints get CSRF protection for free as long as they live under `/api`.
 
-```php
-// In Twig template
-<form method="post" action="{{ path('admin_entity_delete', {id: entity.id}) }}">
-    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ entity.id) }}">
-    <button type="submit">Delete</button>
-</form>
-```
+## SPA View Pattern
 
-```php
-// In controller
-if ($this->isCsrfTokenValid('delete' . $entity->getId(), $request->request->get('_token'))) {
-    // Process delete
+Views live in `assets/spa/views/{feature}/` and use the shared UI kit (see [SPA Frontend](spa-frontend.md)):
+
+```vue
+<template>
+  <div>
+    <PageHeader title="Entities" subtitle="What this page manages">
+      <template #actions>
+        <RouterLink class="btn-primary" :to="{ name: 'entity-new' }">Add Entity</RouterLink>
+      </template>
+    </PageHeader>
+
+    <DataTable :columns="columns" :rows="entities" :loading="loading">
+      <template #cell-actions="{ row }">
+        <button class="btn-danger btn-sm" @click="askDelete(row)">Delete</button>
+      </template>
+    </DataTable>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue';
+import PageHeader from '../../components/ui/PageHeader.vue';
+import DataTable from '../../components/ui/DataTable.vue';
+import { api } from '../../api/client';
+import { useToastStore } from '../../stores/toasts';
+import { confirm } from '../../composables/useConfirm';
+
+const toasts = useToastStore();
+
+const columns = [
+  { key: 'name', label: 'Name' },
+  { key: 'actions', label: 'Actions', headerClass: 'text-right', cellClass: 'text-right' },
+];
+
+const entities = ref([]);
+const loading = ref(true);
+
+async function load() {
+  loading.value = true;
+  try {
+    entities.value = await api.get('/api/entities/list');
+  } catch (e) {
+    toasts.error(e.message);
+  } finally {
+    loading.value = false;
+  }
 }
+
+function askDelete(entity) {
+  confirm({
+    title: 'Delete entity?',
+    message: `Delete entity “${entity.name}”?`,
+    confirmLabel: 'Delete',
+    danger: true,
+    action: async () => {
+      const result = await api.delete(`/api/entities/${entity.id}`);
+      entities.value = entities.value.filter((item) => item.id !== entity.id);
+      toasts.success(result.message);
+    },
+  });
+}
+
+onMounted(load);
+</script>
 ```
 
----
+`confirm()` (named export from `composables/useConfirm.js`) opens the global `ConfirmDialog` and runs `action` when the user confirms — thrown errors are toasted automatically, so the action only needs the happy path.
 
-## Templates
-
-Create templates in `templates/admin/your_entity/`:
-
-### index.html.twig
-```twig
-{% extends 'admin/base.html.twig' %}
-
-{% block title %}Entities{% endblock %}
-
-{% block body %}
-<div class="flex justify-between mb-4">
-    <h1 class="text-2xl font-bold">Entities</h1>
-    <a href="{{ path('admin_your_entity_new') }}" class="btn btn-primary">
-        Create New
-    </a>
-</div>
-
-{# Vue island for grid #}
-<div data-vue-island="entity-grid"
-     data-api-url="{{ path('api_your_entities') }}"
-     data-csrf-token="{{ csrf_token('toggle') }}">
-</div>
-
-{{ vite_entry_script_tags('your-entity-grid-app') }}
-{% endblock %}
-```
-
-### new.html.twig / edit.html.twig
-```twig
-{% extends 'admin/base.html.twig' %}
-
-{% block title %}{{ entity.id ? 'Edit' : 'Create' }} Entity{% endblock %}
-
-{% block body %}
-<div class="bg-white rounded-xl border p-6 shadow-sm mb-6">
-    <h1 class="text-xl font-semibold">
-        {{ entity.id ? 'Edit' : 'Create' }} Entity
-    </h1>
-</div>
-
-{# Vue island for form #}
-<div data-vue-island="entity-form"
-     data-api-url="{{ path('api_your_entities') }}"
-     {% if entity.id %}data-entity-id="{{ entity.id }}"{% endif %}
-     data-cancel-url="{{ path('admin_your_entity_index') }}">
-</div>
-
-{{ vite_entry_script_tags('your-entity-form-app') }}
-{% endblock %}
-```
-
-### show.html.twig
-```twig
-{% extends 'admin/base.html.twig' %}
-
-{% block title %}{{ entity.name }}{% endblock %}
-
-{% block body %}
-<div class="bg-white rounded-xl border p-6">
-    <h1 class="text-xl font-semibold mb-4">{{ entity.name }}</h1>
-
-    <dl class="grid grid-cols-2 gap-4">
-        <dt class="text-slate-500">Status</dt>
-        <dd>{{ entity.isActive ? 'Active' : 'Inactive' }}</dd>
-
-        <dt class="text-slate-500">Created</dt>
-        <dd>{{ entity.createdAt|date('Y-m-d H:i') }}</dd>
-    </dl>
-
-    <div class="mt-6 flex gap-2">
-        <a href="{{ path('admin_your_entity_edit', {id: entity.id}) }}"
-           class="btn btn-primary">Edit</a>
-        <a href="{{ path('admin_your_entity_index') }}"
-           class="btn btn-secondary">Back</a>
-    </div>
-</div>
-{% endblock %}
-```
-
----
-
-## Flash Messages
-
-Use flash messages for user feedback:
-
-```php
-$this->addFlash('success', 'Operation completed.');
-$this->addFlash('error', 'Something went wrong.');
-$this->addFlash('warning', 'Please review.');
-```
-
-Display in base template:
-```twig
-{% for type, messages in app.flashes %}
-    {% for message in messages %}
-        <div class="alert alert-{{ type }}">{{ message }}</div>
-    {% endfor %}
-{% endfor %}
-```
-
----
+Form views (`{Feature}FormView.vue`) handle both create and edit (route param decides), submit via `api.post`/`api.put`, map a 422 `errors` payload onto per-field error state, and navigate back with `router.push` on success.
 
 ## Checklist
 
 When creating a new admin feature:
 
-1. [ ] Create entity (`src/Entity/`)
-2. [ ] Create form type (`src/Form/`)
-3. [ ] Create repository (`src/Repository/`)
-4. [ ] Create controller (`src/Controller/Admin/`)
-5. [ ] Create templates (`templates/admin/entity/`)
-6. [ ] Create Vue components if needed
-7. [ ] Add API endpoints for Vue islands
-8. [ ] Write tests
+1. [ ] Create entity (`src/Entity/`) + repository (`src/Repository/`)
+2. [ ] Create API controller (`src/Controller/Api/{Feature}ApiController.php`)
+3. [ ] Create views (`assets/spa/views/{feature}/`) with feature-private `components/`
+4. [ ] Register routes in `assets/spa/router/index.js` (+ sidebar entry in `AppSidebar.vue`)
+5. [ ] Write tests (`tests/Functional/Controller/Api/`, optionally a Playwright spec)
+6. [ ] Rebuild frontend: `npm run build`

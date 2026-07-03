@@ -58,6 +58,45 @@ class EnvVariableAnalyzerService
     }
 
     /**
+     * Parse .env file content into a list of name/value pairs.
+     *
+     * @return array<int, array{name: string, value: string}>
+     */
+    public static function parseEnvContent(string $content): array
+    {
+        $lines = explode("\n", $content);
+        $variables = [];
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+
+            // Skip empty lines and comments
+            if ('' === $line || str_starts_with($line, '#')) {
+                continue;
+            }
+
+            // Parse KEY=value
+            if (preg_match('/^([A-Z][A-Z0-9_]*)=(.*)$/i', $line, $matches)) {
+                $name = strtoupper($matches[1]);
+                $value = $matches[2];
+
+                // Remove surrounding quotes
+                if ((str_starts_with($value, '"') && str_ends_with($value, '"'))
+                    || (str_starts_with($value, "'") && str_ends_with($value, "'"))) {
+                    $value = substr($value, 1, -1);
+                }
+
+                $variables[] = [
+                    'name' => $name,
+                    'value' => $value,
+                ];
+            }
+        }
+
+        return $variables;
+    }
+
+    /**
      * Scan MFTF XML test files for {{_ENV.VAR}} patterns.
      *
      * This method resolves transitive dependencies:

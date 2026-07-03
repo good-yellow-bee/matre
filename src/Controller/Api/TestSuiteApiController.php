@@ -42,6 +42,17 @@ class TestSuiteApiController extends AbstractController
         ));
     }
 
+    #[Route('/list', name: 'api_test_suite_grid', methods: ['GET'])]
+    public function grid(): JsonResponse
+    {
+        $suites = $this->testSuiteRepository->findAllOrdered();
+
+        return $this->json(array_map(
+            fn (TestSuite $suite) => $this->serializeSuite($suite),
+            $suites,
+        ));
+    }
+
     #[Route('/types', name: 'api_test_suite_types', methods: ['GET'])]
     public function types(): JsonResponse
     {
@@ -75,22 +86,7 @@ class TestSuiteApiController extends AbstractController
             return $this->json(['error' => 'Test suite not found'], 404);
         }
 
-        return $this->json([
-            'id' => $suite->getId(),
-            'name' => $suite->getName(),
-            'type' => $suite->getType(),
-            'testPattern' => $suite->getTestPattern(),
-            'excludedTests' => $suite->getExcludedTests(),
-            'description' => $suite->getDescription(),
-            'cronExpression' => $suite->getCronExpression(),
-            'isActive' => $suite->getIsActive(),
-            'environments' => array_map(
-                fn ($env) => $env->getId(),
-                $suite->getEnvironments()->toArray(),
-            ),
-            'createdAt' => $suite->getCreatedAt()->format('c'),
-            'updatedAt' => $suite->getUpdatedAt()?->format('c'),
-        ]);
+        return $this->json($this->serializeSuite($suite, true));
     }
 
     #[Route('/{id}/environments', name: 'api_test_suite_environments', methods: ['GET'], requirements: ['id' => '\d+'])]
@@ -157,6 +153,76 @@ class TestSuiteApiController extends AbstractController
         ]);
     }
 
+    #[Route('/{id}/toggle-active', name: 'api_test_suite_toggle_active', methods: ['POST'], requirements: ['id' => '\d+'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function toggleActive(int $id): JsonResponse
+    {
+        $suite = $this->testSuiteRepository->find($id);
+
+        if (!$suite) {
+            return $this->json(['error' => 'Test suite not found'], 404);
+        }
+
+        $suite->setIsActive(!$suite->getIsActive());
+        $this->entityManager->flush();
+
+        return $this->json([
+            'success' => true,
+            'isActive' => $suite->getIsActive(),
+            'message' => sprintf('Test suite "%s" %s', $suite->getName(), $suite->getIsActive() ? 'activated' : 'deactivated'),
+        ]);
+    }
+
+    #[Route('/{id}/duplicate', name: 'api_test_suite_duplicate', methods: ['POST'], requirements: ['id' => '\d+'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function duplicate(int $id): JsonResponse
+    {
+        $suite = $this->testSuiteRepository->find($id);
+
+        if (!$suite) {
+            return $this->json(['error' => 'Test suite not found'], 404);
+        }
+
+        $copy = new TestSuite();
+        $copy->setName($this->testSuiteRepository->findNextAvailableCopyName($suite->getName()));
+        $copy->setType($suite->getType());
+        $copy->setDescription($suite->getDescription());
+        $copy->setTestPattern($suite->getTestPattern());
+        $copy->setExcludedTests($suite->getExcludedTests());
+        $copy->setCronExpression($suite->getCronExpression());
+        $copy->setEstimatedDuration($suite->getEstimatedDuration());
+        $copy->setIsActive(true);
+
+        $this->entityManager->persist($copy);
+        $this->entityManager->flush();
+
+        return $this->json([
+            'success' => true,
+            'id' => $copy->getId(),
+            'message' => sprintf('Test suite duplicated as "%s"', $copy->getName()),
+        ], 201);
+    }
+
+    #[Route('/{id}', name: 'api_test_suite_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function delete(int $id): JsonResponse
+    {
+        $suite = $this->testSuiteRepository->find($id);
+
+        if (!$suite) {
+            return $this->json(['error' => 'Test suite not found'], 404);
+        }
+
+        $name = $suite->getName();
+        $this->entityManager->remove($suite);
+        $this->entityManager->flush();
+
+        return $this->json([
+            'success' => true,
+            'message' => sprintf('Test suite "%s" has been deleted', $name),
+        ]);
+    }
+
     #[Route('/validate-name', name: 'api_test_suite_validate_name', methods: ['POST'])]
     public function validateName(Request $request): JsonResponse
     {
@@ -215,6 +281,41 @@ class TestSuiteApiController extends AbstractController
                 'message' => 'Invalid cron expression',
             ]);
         }
+    }
+
+    private function serializeSuite(TestSuite $suite, bool $detail = false): array
+    {
+        $data = [
+            'id' => $suite->getId(),
+            'name' => $suite->getName(),
+            'type' => $suite->getType(),
+            'typeLabel' => $suite->getTypeLabel(),
+            'testPattern' => $suite->getTestPattern(),
+            'excludedTests' => $suite->getExcludedTests(),
+            'cronExpression' => $suite->getCronExpression(),
+            'isActive' => $suite->getIsActive(),
+            'createdAt' => $suite->getCreatedAt()->format('c'),
+            'updatedAt' => $suite->getUpdatedAt()?->format('c'),
+        ];
+
+        if ($detail) {
+            $data['description'] = $suite->getDescription();
+            $data['environments'] = array_map(
+                fn ($env) => $env->getId(),
+                $suite->getEnvironments()->toArray(),
+            );
+        } else {
+            $data['environments'] = array_map(
+                fn ($env) => [
+                    'id' => $env->getId(),
+                    'name' => $env->getName(),
+                    'code' => $env->getCode(),
+                ],
+                $suite->getEnvironments()->toArray(),
+            );
+        }
+
+        return $data;
     }
 
     /** @return array<string, string> */

@@ -35,7 +35,7 @@ class TestHistoryApiControllerTest extends WebTestCase
 
         $client->request('GET', self::BASE_URL . '?testId=SomeTest&environmentId=1');
 
-        $this->assertResponseRedirects('/login');
+        $this->assertApiUnauthenticated($client);
     }
 
     public function testHistoryAllowsUserRole(): void
@@ -57,7 +57,7 @@ class TestHistoryApiControllerTest extends WebTestCase
 
         $client->request('GET', self::BASE_URL . '/test-ids');
 
-        $this->assertResponseRedirects('/login');
+        $this->assertApiUnauthenticated($client);
     }
 
     // =====================

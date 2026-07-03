@@ -63,15 +63,7 @@ class UserApiController extends AbstractController
         $paginator = new DoctrinePaginator($qb, true);
         $items = [];
         foreach ($paginator as $entity) {
-            $items[] = [
-                'id' => $entity->getId(),
-                'username' => $entity->getUsername(),
-                'email' => $entity->getEmail(),
-                'roles' => $entity->getRoles(),
-                'isActive' => $entity->getIsActive(),
-                'createdAt' => $entity->getCreatedAt()->format(\DateTimeInterface::ATOM),
-                'updatedAt' => $entity->getUpdatedAt()?->format(\DateTimeInterface::ATOM),
-            ];
+            $items[] = $this->serializeUser($entity);
         }
 
         return $this->json([
@@ -99,23 +91,7 @@ class UserApiController extends AbstractController
             return $this->json(['error' => 'User not found'], 404);
         }
 
-        return $this->json([
-            'id' => $user->getId(),
-            'username' => $user->getUsername(),
-            'email' => $user->getEmail(),
-            'roles' => $user->getRoles(),
-            'isActive' => $user->getIsActive(),
-            'notificationsEnabled' => $user->isNotificationsEnabled(),
-            'notificationTrigger' => $user->getNotificationTrigger(),
-            'notifyByEmail' => $user->isNotifyByEmail(),
-            'notifyBySlack' => $user->isNotifyBySlack(),
-            'notificationEnvironments' => array_map(
-                fn (TestEnvironment $env) => $env->getId(),
-                $user->getNotificationEnvironments()->toArray(),
-            ),
-            'createdAt' => $user->getCreatedAt()->format('c'),
-            'updatedAt' => $user->getUpdatedAt()?->format('c'),
-        ]);
+        return $this->json($this->serializeUser($user, true));
     }
 
     /**
@@ -263,6 +239,43 @@ class UserApiController extends AbstractController
     }
 
     /**
+     * Toggle user active status.
+     */
+    #[Route('/{id}/toggle-active', name: 'api_users_toggle_active', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function toggleActive(User $user, EntityManagerInterface $entityManager): JsonResponse
+    {
+        // Prevent users from deactivating themselves
+        if ($user === $this->getUser()) {
+            return $this->json(['error' => 'You cannot deactivate your own account.'], 400);
+        }
+
+        $user->setIsActive(!$user->getIsActive());
+        $entityManager->flush();
+
+        return $this->json([
+            'success' => true,
+            'isActive' => $user->getIsActive(),
+            'message' => sprintf('User "%s" has been %s.', $user->getUsername(), $user->getIsActive() ? 'activated' : 'deactivated'),
+        ]);
+    }
+
+    /**
+     * Reset user's 2FA configuration.
+     */
+    #[Route('/{id}/reset-2fa', name: 'api_users_reset_2fa', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function reset2fa(User $user, EntityManagerInterface $entityManager): JsonResponse
+    {
+        $user->setTotpSecret(null);
+        $user->setIsTotpEnabled(false);
+        $entityManager->flush();
+
+        return $this->json([
+            'success' => true,
+            'message' => sprintf('Two-factor authentication has been reset for user "%s".', $user->getUsername()),
+        ]);
+    }
+
+    /**
      * Validate username uniqueness.
      */
     #[Route('/validate-username', name: 'api_users_validate_username', methods: ['POST'])]
@@ -332,6 +345,33 @@ class UserApiController extends AbstractController
             'valid' => !$exists,
             'message' => $exists ? 'Email already exists' : 'Email is available',
         ]);
+    }
+
+    private function serializeUser(User $user, bool $detail = false): array
+    {
+        $data = [
+            'id' => $user->getId(),
+            'username' => $user->getUsername(),
+            'email' => $user->getEmail(),
+            'roles' => $user->getRoles(),
+            'isActive' => $user->getIsActive(),
+            'totpEnabled' => $user->isTotpEnabled(),
+            'createdAt' => $user->getCreatedAt()->format('c'),
+            'updatedAt' => $user->getUpdatedAt()?->format('c'),
+        ];
+
+        if ($detail) {
+            $data['notificationsEnabled'] = $user->isNotificationsEnabled();
+            $data['notificationTrigger'] = $user->getNotificationTrigger();
+            $data['notifyByEmail'] = $user->isNotifyByEmail();
+            $data['notifyBySlack'] = $user->isNotifyBySlack();
+            $data['notificationEnvironments'] = array_map(
+                fn (TestEnvironment $env) => $env->getId(),
+                $user->getNotificationEnvironments()->toArray(),
+            );
+        }
+
+        return $data;
     }
 
     /**

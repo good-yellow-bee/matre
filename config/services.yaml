@@ -24,12 +24,6 @@ services:
     App\Twig\ViteExtension:
         tags: ['twig.extension']
 
-    # HTML Sanitizer extension for XSS prevention
-    App\Twig\HtmlSanitizerExtension:
-        arguments:
-            $htmlSanitizer: '@html_sanitizer.sanitizer.app.html_sanitizer'
-        tags: ['twig.extension']
-
     # API Rate Limiting listener for abuse prevention
     App\EventListener\ApiRateLimitListener:
         arguments:
@@ -131,7 +125,7 @@ services:
         arguments:
             $magentoContainer: '%env(MAGENTO_CONTAINER)%'
 
-    App\Controller\Admin\TestRunController:
+    App\Controller\Api\AuthApiController:
         arguments:
             $noVncUrl: '%env(NOVNC_URL)%'
             $allurePublicUrl: '%env(ALLURE_PUBLIC_URL)%'

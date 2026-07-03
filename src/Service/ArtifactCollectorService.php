@@ -107,7 +107,7 @@ class ArtifactCollectorService
      * Associate collected screenshots with test results based on filename matching.
      *
      * @param TestResult[] $results
-     * @param string[]     $screenshotPaths
+     * @param string[] $screenshotPaths
      */
     public function associateScreenshotsWithResults(array $results, array $screenshotPaths): void
     {
@@ -261,6 +261,28 @@ class ArtifactCollectorService
 
         if ($removed > 0) {
             $this->logger->info('Cleaned up old run directories', ['count' => $removed]);
+        }
+    }
+
+    /**
+     * Remove all per-run directories for this run ID before execution starts.
+     * Prevents stale artifacts from a previous run with the same ID (DB reseed
+     * or retry) from being listed as this run's output.
+     */
+    public function clearRunArtifacts(TestRun $run): void
+    {
+        $filesystem = new Filesystem();
+        $paths = [
+            $this->getRunArtifactsPath($run),
+            sprintf('%s/%s/run-%d', $this->projectDir, $this->mftfResultsDir, $run->getId()),
+            sprintf('%s/%s/allure-results/run-%d', $this->projectDir, $this->mftfResultsDir, $run->getId()),
+        ];
+
+        foreach ($paths as $path) {
+            if (is_dir($path)) {
+                $filesystem->remove($path);
+                $this->logger->info('Cleared stale per-run directory', ['path' => $path]);
+            }
         }
     }
 

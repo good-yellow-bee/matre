@@ -130,12 +130,12 @@ namespace App\Tests\Functional\Controller;
 use App\Repository\UserRepository;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
-class AdminDashboardControllerTest extends WebTestCase
+class AdminControllerTest extends WebTestCase
 {
     public function testDashboardRequiresLogin(): void
     {
         $client = static::createClient();
-        $client->request('GET', '/admin/dashboard');
+        $client->request('GET', '/admin');
 
         $this->assertResponseRedirects('/login');
     }
@@ -151,10 +151,11 @@ class AdminDashboardControllerTest extends WebTestCase
         // Login
         $client->loginUser($adminUser);
 
-        $client->request('GET', '/admin/dashboard');
+        $client->request('GET', '/admin');
 
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('h1', 'Dashboard');
+        // Admin pages serve the SPA shell; UI content is asserted in Playwright tests
+        $this->assertSelectorExists('#app');
     }
 }
 ```

@@ -66,17 +66,7 @@ class CronJobApiController extends AbstractController
             ->getQuery()
             ->getResult();
 
-        $data = array_map(static fn (CronJob $job) => [
-            'id' => $job->getId(),
-            'name' => $job->getName(),
-            'description' => $job->getDescription(),
-            'command' => $job->getCommand(),
-            'cronExpression' => $job->getCronExpression(),
-            'isActive' => $job->getIsActive(),
-            'lastStatus' => $job->getLastStatus(),
-            'lastRunAt' => $job->getLastRunAt()?->format('c'),
-            'createdAt' => $job->getCreatedAt()->format('c'),
-        ], $results);
+        $data = array_map(fn (CronJob $job) => $this->serializeCronJob($job), $results);
 
         return $this->json([
             'data' => $data,
@@ -95,19 +85,7 @@ class CronJobApiController extends AbstractController
             return $this->json(['error' => 'Cron job not found'], 404);
         }
 
-        return $this->json([
-            'id' => $job->getId(),
-            'name' => $job->getName(),
-            'description' => $job->getDescription(),
-            'command' => $job->getCommand(),
-            'cronExpression' => $job->getCronExpression(),
-            'isActive' => $job->getIsActive(),
-            'lastStatus' => $job->getLastStatus(),
-            'lastOutput' => $job->getLastOutput(),
-            'lastRunAt' => $job->getLastRunAt()?->format('c'),
-            'createdAt' => $job->getCreatedAt()->format('c'),
-            'updatedAt' => $job->getUpdatedAt()?->format('c'),
-        ]);
+        return $this->json($this->serializeCronJob($job, true));
     }
 
     #[Route('', name: 'api_cron_jobs_create', methods: ['POST'])]
@@ -168,17 +146,12 @@ class CronJobApiController extends AbstractController
     }
 
     #[Route('/{id}/toggle-active', name: 'api_cron_jobs_toggle_active', methods: ['POST'], requirements: ['id' => '\d+'])]
-    public function toggleActive(int $id, Request $request): JsonResponse
+    public function toggleActive(int $id): JsonResponse
     {
         $job = $this->cronJobRepository->find($id);
 
         if (!$job) {
             return $this->json(['error' => 'Cron job not found'], 404);
-        }
-
-        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
-        if (!$this->isCsrfTokenValid('cron_job_api', $token)) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
         }
 
         $job->setIsActive(!$job->getIsActive());
@@ -192,17 +165,12 @@ class CronJobApiController extends AbstractController
     }
 
     #[Route('/{id}/run', name: 'api_cron_jobs_run', methods: ['POST'], requirements: ['id' => '\d+'])]
-    public function run(int $id, Request $request): JsonResponse
+    public function run(int $id): JsonResponse
     {
         $job = $this->cronJobRepository->find($id);
 
         if (!$job) {
             return $this->json(['error' => 'Cron job not found'], 404);
-        }
-
-        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
-        if (!$this->isCsrfTokenValid('cron_job_api', $token)) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
         }
 
         $this->messageBus->dispatch(new CronJobMessage($job->getId()));
@@ -214,17 +182,12 @@ class CronJobApiController extends AbstractController
     }
 
     #[Route('/{id}', name: 'api_cron_jobs_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
-    public function delete(int $id, Request $request): JsonResponse
+    public function delete(int $id): JsonResponse
     {
         $job = $this->cronJobRepository->find($id);
 
         if (!$job) {
             return $this->json(['error' => 'Cron job not found'], 404);
-        }
-
-        $token = $request->request->get('_token') ?? $request->headers->get('X-CSRF-Token');
-        if (!$this->isCsrfTokenValid('cron_job_api', $token)) {
-            return $this->json(['error' => 'Invalid CSRF token'], 403);
         }
 
         $name = $job->getName();
@@ -321,6 +284,28 @@ class CronJobApiController extends AbstractController
                 'message' => 'Invalid cron expression',
             ]);
         }
+    }
+
+    private function serializeCronJob(CronJob $job, bool $detail = false): array
+    {
+        $data = [
+            'id' => $job->getId(),
+            'name' => $job->getName(),
+            'description' => $job->getDescription(),
+            'command' => $job->getCommand(),
+            'cronExpression' => $job->getCronExpression(),
+            'isActive' => $job->getIsActive(),
+            'lastStatus' => $job->getLastStatus(),
+            'lastRunAt' => $job->getLastRunAt()?->format('c'),
+            'createdAt' => $job->getCreatedAt()->format('c'),
+        ];
+
+        if ($detail) {
+            $data['lastOutput'] = $job->getLastOutput();
+            $data['updatedAt'] = $job->getUpdatedAt()?->format('c');
+        }
+
+        return $data;
     }
 
     /** @return array<string, string> */
