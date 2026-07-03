@@ -93,6 +93,9 @@ class TestRunnerService
             // Clear root-level artifacts to prevent contamination from previous runs
             $this->artifactCollector->clearRootLevelArtifacts();
 
+            // Clear this run's per-run directories (stale after DB reseed or retry)
+            $this->artifactCollector->clearRunArtifacts($run);
+
             // Prepare shared module (with locking for concurrent access)
             $run->setStatus(TestRun::STATUS_CLONING);
             $this->entityManager->flush();
